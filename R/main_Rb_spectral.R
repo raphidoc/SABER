@@ -64,7 +64,7 @@ for (i in 1:length(shallow_qc_stations)) {
   
   bgc_params_rb = get_in_situ_params(station_name = stat_temp, use_bb_nup = T)
   
-  IOP_files = list.files("./Rb_spectral/surface_iops/", full.names = T)
+  IOP_files = list.files("./data/Rb_spectral/surface_iops/", full.names = T)
   
   idx_a_rb = grep(IOP_files, pattern = paste0("abs_surf_",stat_temp))
   idx_bb_rb = grep(IOP_files, pattern = paste0("bb_surf_",stat_temp))
@@ -261,7 +261,7 @@ iop_aop_rb = suppressWarnings(read.surface.IOPs.wise(station.args = stationID,sa
 
 bgc_params_rb = get_in_situ_params(station_name = stationID, use_bb_nup = T)
 
-IOP_files = list.files("./Rb_spectral/surface_iops/", full.names = T)
+IOP_files = list.files("./data/Rb_spectral/surface_iops/", full.names = T)
 
 idx_a_rb = grep(IOP_files, pattern = paste0("abs_surf_",stationID))
 idx_bb_rb = grep(IOP_files, pattern = paste0("bb_surf_",stationID))
@@ -448,7 +448,7 @@ if (type_Rrs_below_rb == "shallow") {
 }
 
 # #1.1 Read Kildir absorption data
-# absdata_kildir = read.csv("./Rb_spectral/absorption_final/At-w.All_Kildir_surf-QC.csv",
+# absdata_kildir = read.csv("./data/Rb_spectral/absorption_final/At-w.All_Kildir_surf-QC.csv",
 #                           header = T)
 # 
 # abs_surf_depth_kildir = colnames(absdata_kildir) #extract depth from where acquisition started
@@ -461,7 +461,7 @@ if (type_Rrs_below_rb == "shallow") {
 #                                       "boat" = "kildir") #Create surface depth data-frame
 # 
 # #1.2 Read Saucier absorption data
-# absdata_saucier = read.csv("./Rb_spectral/absorption_final/At-w.All_Saucier_surf-QC_new.csv", 
+# absdata_saucier = read.csv("./data/Rb_spectral/absorption_final/At-w.All_Saucier_surf-QC_new.csv", 
 #                            header = T)
 # abs_surf_depth_saucier = colnames(absdata_saucier) #extract depth from where acquisition started
 # 
@@ -493,7 +493,7 @@ if (type_Rrs_below_rb == "shallow") {
 # ###======================================================================
 # 
 # #2.1 Read Kildir backscatter data
-# bbdata_kildir = read.csv("./Rb_spectral/backscatter_final/Bbp.All_Kildir_surf_new.csv",
+# bbdata_kildir = read.csv("./data/Rb_spectral/backscatter_final/Bbp.All_Kildir_surf_new.csv",
 #                          header = T)
 # bb_surf_depth_kildir = colnames(bbdata_kildir) #extract depth from where acquisition started
 # 
@@ -505,7 +505,7 @@ if (type_Rrs_below_rb == "shallow") {
 #                                       "boat" = "kildir") #Create surface depth data-frame
 # 
 # #2.2 Read Saucier backscatter data
-# bbdata_saucier = read.csv("./Rb_spectral/backscatter_final/Bbp.All_Saucier_surf-QC_new.csv",
+# bbdata_saucier = read.csv("./data/Rb_spectral/backscatter_final/Bbp.All_Saucier_surf-QC_new.csv",
 #                          header = T)
 # bb_surf_depth_saucier = colnames(bbdata_saucier) #extract depth from where acquisition started
 # colnames(bbdata_saucier) =  t(bbdata_saucier[1,])
@@ -536,9 +536,9 @@ if (type_Rrs_below_rb == "shallow") {
 # ###======================================================================
 # 
 # #3.1 Read COP-S actual database and hyperspectral database
-# cops_db =  read.csv("./Rb_spectral/COPS_db.csv",header = T)
+# cops_db =  read.csv("./data/Rb_spectral/COPS_db.csv",header = T)
 # 
-# cops_hs =  read.csv("./Rb_spectral/copsdata.csv",header = T)
+# cops_hs =  read.csv("./data/Rb_spectral/copsdata.csv",header = T)
 # 
 # correct_statnames = gsub( names(cops_hs)[-1], pattern = "\\.", replacement = "-") #replace "." 
 #                                                                                   #by "-"
@@ -577,7 +577,7 @@ if (type_Rrs_below_rb == "shallow") {
 # #                            "a"= (absdata_kildir[abs_data_idx]))
 # # colnames(abs_surf_temp) = c('wave','a')
 # 
-# write.csv(file = paste0("./Rb_spectral/surface_iops/abs_surf_", stationID, ".csv"), 
+# write.csv(file = paste0("./data/Rb_spectral/surface_iops/abs_surf_", stationID, ".csv"), 
 #           x = absdata_sample, row.names = F, quote = F)
 # 
 # #4.3 Backscatter
@@ -590,7 +590,7 @@ if (type_Rrs_below_rb == "shallow") {
 # #                            "bb"= (bbdata_kildir[bb_data_idx]))
 # # colnames(bb_surf_temp) = c('wave','bb')
 # 
-# write.csv(file = paste0("./Rb_spectral/surface_iops/abs_surf_", stationID, ".csv"), 
+# write.csv(file = paste0("./data/Rb_spectral/surface_iops/abs_surf_", stationID, ".csv"), 
 #           x = bbdata_sample, row.names = F, quote = F)
 # 
 # 

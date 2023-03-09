@@ -1,9 +1,10 @@
 
-read.surface.IOPs.wise <- function(absdata_kildir = "./Rb_spectral/absorption_final/At-w.All_Kildir_surf-QC.csv",
-                                   absdata_saucier = "./Rb_spectral/absorption_final/At-w.All_Saucier_surf-QC_new.csv",
-                                   bbdata_kildir = "./Rb_spectral/backscatter_final/Bbp.All_Kildir_surf_new.csv",
-                                   bbdata_saucier = "./Rb_spectral/backscatter_final/Bbp.All_Saucier_surf-QC_new.csv",
+read.surface.IOPs.wise <- function(absdata_kildir = "./data/Rb_spectral/absorption_final/At-w.All_Kildir_surf-QC.csv",
+                                   absdata_saucier = "./data/Rb_spectral/absorption_final/At-w.All_Saucier_surf-QC_new.csv",
+                                   bbdata_kildir = "./data/Rb_spectral/backscatter_final/Bbp.All_Kildir_surf_new.csv",
+                                   bbdata_saucier = "./data/Rb_spectral/backscatter_final/Bbp.All_Saucier_surf-QC_new.csv",
                                    station.args = "OUT-F18",
+                                   verbose = T,
                                    save_on_disc = F){
   ###======================================================================
   # 1. READ ABSORPTION DATA
@@ -32,8 +33,10 @@ read.surface.IOPs.wise <- function(absdata_kildir = "./Rb_spectral/absorption_fi
   abs_surf_depth_saucier_df = data.frame("station" = colnames(absdata_saucier)[-1],
                                          "surface_depth" = substr(abs_surf_depth_saucier[-1],2,4),
                                          "boat" = "saucier") #Create surface depth data-frame
+  if (verbose == TRUE) {
+    print("Absorption for all stations loaded")
+  }
   
-  print("Absorption for all stations loaded")
   
   #1.3 Create unified long data-format for absorption
   absdata_kildir_long = reshape2::melt(absdata_kildir, id.vars = "wavelength") #kildir
@@ -51,7 +54,10 @@ read.surface.IOPs.wise <- function(absdata_kildir = "./Rb_spectral/absorption_fi
      absdata_saucier, abs_surf_depth_saucier, abs_surf_depth_saucier_df,
      absdata_kildir_long, absdata_saucier_long)
   
-  print("Absorption in long format generated")
+  if (verbose == TRUE) {
+    print("Absorption in long format generated")
+  }
+ 
   
   ###======================================================================
   # 2. READ BACKSCATTER DATA
@@ -80,7 +86,10 @@ read.surface.IOPs.wise <- function(absdata_kildir = "./Rb_spectral/absorption_fi
                                         "surface_depth" = substr(bb_surf_depth_saucier[-1],2,4),
                                         "boat" = "saucier") #Create surface depth data-frame
   
-  print("Backscatter for all stations loaded")
+  if (verbose == TRUE) {
+    print("Backscatter for all stations loaded")
+  }
+  
   
   #2.3 Create unified long data-format for backscatter
   bbdata_kildir_long = reshape2::melt(bbdata_kildir, id.vars = "wavelength") #kildir
@@ -98,16 +107,19 @@ read.surface.IOPs.wise <- function(absdata_kildir = "./Rb_spectral/absorption_fi
      bbdata_saucier, bb_surf_depth_saucier, bb_surf_depth_saucier_df,
      bbdata_kildir_long, bbdata_saucier_long)
   
-  print("Backscatter in long format generated")
+  if (verbose == TRUE) {
+    print("Backscatter in long format generated")
+  }
+  
   
   ###======================================================================
   # 3. READ Rrs DATA
   ###======================================================================
   
   #3.1 Read COP-S actual database and hyperspectral database
-  cops_db =  read.csv("./Rb_spectral/COPS_db.csv",header = T)
+  cops_db =  read.csv("./data/Rb_spectral/COPS_db.csv",header = T)
   
-  cops_hs =  read.csv("./Rb_spectral/copsdata.csv",header = T)
+  cops_hs =  read.csv("./data/Rb_spectral/copsdata.csv",header = T)
   
   correct_statnames = gsub( names(cops_hs)[-1], pattern = "\\.", replacement = "-") #replace "." 
   #by "-"
@@ -129,7 +141,10 @@ read.surface.IOPs.wise <- function(absdata_kildir = "./Rb_spectral/absorption_fi
   cops_db_shallow$stationID = rownames(cops_db_shallow)
   cops_db_hs_shallow = cops_hs[,c(1,cops_db_shallow_idx+1)]
   
-  print("Rrs in long format generated")
+  if (verbose == TRUE) {
+    print("Rrs in long format generated")
+  }
+  
   
   ###======================================================================
   # 4. READ desired IOPs and Rrs DATA
@@ -152,9 +167,13 @@ read.surface.IOPs.wise <- function(absdata_kildir = "./Rb_spectral/absorption_fi
   #                            "a"= (absdata_kildir[abs_data_idx]))
   # colnames(abs_surf_temp) = c('wave','a')
   absdata_sample$at_w[absdata_sample$at_w < 0] = 0
-  write.csv(file = paste0("./Rb_spectral/surface_iops/abs_surf_", stationID, ".csv"), 
+  write.csv(file = paste0("./data/Rb_spectral/surface_iops/abs_surf_", stationID, ".csv"), 
             x = absdata_sample, row.names = F, quote = F)
-  print(paste0("Absorption for station ", stationID, " is exported"))
+  
+  if (verbose == TRUE) {
+    print(paste0("Absorption for station ", stationID, " is exported"))
+  }
+  
   
   #4.3 Backscatter
   bbdata_sample = bbdata_all_surf_long[bbdata_all_surf_long$station == 
@@ -171,10 +190,13 @@ read.surface.IOPs.wise <- function(absdata_kildir = "./Rb_spectral/absorption_fi
   #                            "bb"= (bbdata_kildir[bb_data_idx]))
   # colnames(bb_surf_temp) = c('wave','bb')
   
-  write.csv(file = paste0("./Rb_spectral/surface_iops/bb_surf_", stationID, ".csv"), 
+  write.csv(file = paste0("./data/Rb_spectral/surface_iops/bb_surf_", stationID, ".csv"), 
             x = bbdata_sample, row.names = F, quote = F)
   
-  print(paste0("Backscatter for station ", stationID, " is exported"))
+  if (verbose == TRUE) {
+    print(paste0("Backscatter for station ", stationID, " is exported"))
+  }
+  
   
   #4.4 Rrs
   rrs_data_idx = grep(paste0("^",stationID,"$"), correct_statnames)
@@ -190,7 +212,10 @@ read.surface.IOPs.wise <- function(absdata_kildir = "./Rb_spectral/absorption_fi
   rrs_hs_temp_interp = approx(x=cops_hs$wave, y = rrs_hs_temp,
                               xout = wavelength, method = "linear" )$y
   
-  print(paste0("Rrs for station ", stationID, " is exported"))
+  if (verbose == TRUE) {
+    print(paste0("Rrs for station ", stationID, " is exported"))
+  }
+  
   
   #4.5 Depth from COP-S
   
@@ -206,7 +231,10 @@ read.surface.IOPs.wise <- function(absdata_kildir = "./Rb_spectral/absorption_fi
   
   depth_input = as.numeric(as.character(cops_db_flip$Bottom.depth[depth_idx]))
   
-  print(paste0("Depth for station ", stationID, " is exported"))
+  if (verbose == TRUE) {
+    print(paste0("Depth for station ", stationID, " is exported"))
+  }
+  
   
   return(list("a_data" = absdata_sample, "bb_data" = bbdata_sample, "zB_COPS" = depth_input,
               "Rrs_0p" = rrs_hs_temp_interp))
@@ -244,7 +272,7 @@ get_in_situ_params <- function(station_name = "OUT-F18", use_bb_nup = TRUE) {
   if (use_bb_nup == TRUE ) {
     
     #invisible(capture.output(test_IOP_func = suppressWarnings(read.surface.IOPs.wise(station.args = statname))))  
-    test_IOP_func = suppressWarnings(read.surface.IOPs.wise(station.args = statname))
+    test_IOP_func = suppressWarnings(read.surface.IOPs.wise(station.args = statname, verbose = F))
     bbdata = test_IOP_func$bb_data
     
     #### Compute bbp and bb spectral slope
@@ -282,7 +310,7 @@ get_in_situ_params <- function(station_name = "OUT-F18", use_bb_nup = TRUE) {
   } else {
     print("WARNING!!! ONLY USE WHEN QC CHECKED DEPTH PROFILE IS AVAILABLE")
     
-    bbpath = list.files(path = "./Rb_spectral/backscatter/", 
+    bbpath = list.files(path = "./data/Rb_spectral/backscatter/", 
                         pattern = "2019*", full.names = T, )
     idx = grep(statname, bbpath)
     if (is.na(idx)) {

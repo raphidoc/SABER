@@ -9,7 +9,7 @@ Saber_generate_rb <- function(lambda = seq(400,800,10), fA= fA.set){
   
   # Bottom Albedo (costant)
   # wavelength range [350;900] [nm]
-  bott0<- read.table("./input-spectra/Bott0const.R")
+  bott0<- read.table("./data/input-spectra/Bott0const.R")
   wavebottom <- bott0$V1
   Bott0 <-  bott0$V2
   abott0 <- rep(0,length(lambda))
@@ -17,7 +17,7 @@ Saber_generate_rb <- function(lambda = seq(400,800,10), fA= fA.set){
   
   # Bottom Albedo Sand
   # wavelenght range [350;1000] [nm]
-  bott1 <- read.table("./input-spectra/Bott1SAND.R")
+  bott1 <- read.table("./data/input-spectra/Bott1SAND.R")
   wavebottom <- bott1$V1
   Bott1 <-  bott1$V2
   abott1 <- rep(0,length(lambda))
@@ -25,7 +25,7 @@ Saber_generate_rb <- function(lambda = seq(400,800,10), fA= fA.set){
   
   # Bottom Albedo of fine-grained sediment
   # wavelenght range [350;900] [nm]
-  bott2 <- read.table("./input-spectra/Bott2silt.R")
+  bott2 <- read.table("./data/input-spectra/Bott2silt.R")
   wavebottom <- bott2$V1
   Bott2 <-  bott2$V2
   abott2 <- rep(0,length(lambda))
@@ -33,7 +33,7 @@ Saber_generate_rb <- function(lambda = seq(400,800,10), fA= fA.set){
   
   # Bottom Albedo of green makrophyte "Chara contraria"
   # wavelenght range [350;900] [nm]
-  bott3 <- read.table("./input-spectra/Bott3chara.R")
+  bott3 <- read.table("./data/input-spectra/Bott3chara.R")
   wavebottom <- bott3$V1
   Bott3 <-  bott3$V2
   abott3 <- rep(0,length(lambda))
@@ -41,7 +41,7 @@ Saber_generate_rb <- function(lambda = seq(400,800,10), fA= fA.set){
   
   # Bottom Albedo of green makrophyte "Potamogeton perfoliatus"
   # wavelenght range [350;900] [nm]
-  bott4 <- read.table("./input-spectra/Bott4perfol.R")
+  bott4 <- read.table("./data/input-spectra/Bott4perfol.R")
   wavebottom <- bott4$V1
   Bott4 <-  bott4$V2
   abott4 <- rep(0,length(lambda))
@@ -49,7 +49,7 @@ Saber_generate_rb <- function(lambda = seq(400,800,10), fA= fA.set){
   
   # Bottom Albedo of green makrophyte "Potamogeton pectinatus"
   # wavelenght range [350;900] [nm]
-  bott5 <- read.table("./input-spectra/Bott5pectin.R")
+  bott5 <- read.table("./data/input-spectra/Bott5pectin.R")
   wavebottom <- bott5$V1
   Bott5 <-  bott5$V2
   abott5 <- rep(0,length(lambda))

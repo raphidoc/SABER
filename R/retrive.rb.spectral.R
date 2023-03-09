@@ -41,7 +41,7 @@ Saber_retrieve_rb <-  function(use_true_IOPs = F,
   
   ## Pure water absorption (1/m)
   # wavelength range [190;4000] [nm]
-  abs.water <- read.table("./input-spectra/abs_W.A", header = F) 
+  abs.water <- read.table("./data/input-spectra/abs_W.A", header = F) 
   wavelength <- abs.water$V1
   absorpt_W <-  abs.water$V2
   
@@ -81,7 +81,7 @@ Saber_retrieve_rb <-  function(use_true_IOPs = F,
     
     ## Plankthon absorption (1/m)
     # load plankton absorption data
-    A0_A1_PhytoPlanc <- read.table("./input-spectra/A0_A1_PhytoPlanc.dat")
+    A0_A1_PhytoPlanc <- read.table("./data/input-spectra/A0_A1_PhytoPlanc.dat")
     # extract the values from the table
     lam_p <- A0_A1_PhytoPlanc$V1
     a0_p <- A0_A1_PhytoPlanc$V2

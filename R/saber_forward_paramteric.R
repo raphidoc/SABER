@@ -39,7 +39,7 @@ snell_law <- function(view,sun){#Function to convert above water to under water 
 }
 
 #Read default test data
-demo.rrs = read.csv("./input-spectra/demo_rrs_Om.csv", header = T)
+demo.rrs = read.csv("./data/input-spectra/demo_rrs_Om.csv", header = T)
 Saber_forward_paramteric <-  function(chl=4.96, acdom440=0.9322314, anap440=0.07, 
                                       bbp.550=0.00726002, 
                            z=2, 
@@ -83,7 +83,7 @@ Saber_forward_paramteric <-  function(chl=4.96, acdom440=0.9322314, anap440=0.07
   ## Pure water absorption (1/m)
   
   # wavelenght range [190;4000] [nm]
-  abs.water <- read.table("./input-spectra/abs_W.A", header = F) 
+  abs.water <- read.table("./data/input-spectra/abs_W.A", header = F) 
   wavelength <- abs.water$V1
   absorpt_W <-  abs.water$V2
   
@@ -97,7 +97,7 @@ Saber_forward_paramteric <-  function(chl=4.96, acdom440=0.9322314, anap440=0.07
   ## Plankthon absorption (1/m)
   
   # load plankton absorption data
-  A0_A1_PhytoPlanc <- read.table("./input-spectra/A0_A1_PhytoPlanc.dat")
+  A0_A1_PhytoPlanc <- read.table("./data/input-spectra/A0_A1_PhytoPlanc.dat")
   # extract the values from the table
   lam_p <- A0_A1_PhytoPlanc$V1
   a0_p <- A0_A1_PhytoPlanc$V2
@@ -358,7 +358,7 @@ Saber_forward_paramteric <-  function(chl=4.96, acdom440=0.9322314, anap440=0.07
       
       # Bottom Albedo (costant)
       # wavelength range [350;900] [nm]
-      bott0<- read.table("./input-spectra/Bott0const.R")
+      bott0<- read.table("./data/input-spectra/Bott0const.R")
       wavebottom <- bott0$V1
       Bott0 <-  bott0$V2
       abott0 <- rep(0,length(lambda))
@@ -366,7 +366,7 @@ Saber_forward_paramteric <-  function(chl=4.96, acdom440=0.9322314, anap440=0.07
       
       # Bottom Albedo Sand
       # wavelenght range [350;1000] [nm]
-      bott1 <- read.table("./input-spectra/Bott1SAND.R")
+      bott1 <- read.table("./data/input-spectra/Bott1SAND.R")
       wavebottom <- bott1$V1
       Bott1 <-  bott1$V2
       abott1 <- rep(0,length(lambda))
@@ -374,7 +374,7 @@ Saber_forward_paramteric <-  function(chl=4.96, acdom440=0.9322314, anap440=0.07
       
       # Bottom Albedo of fine-grained sediment
       # wavelenght range [350;900] [nm]
-      bott2 <- read.table("./input-spectra/Bott2silt.R")
+      bott2 <- read.table("./data/input-spectra/Bott2silt.R")
       wavebottom <- bott2$V1
       Bott2 <-  bott2$V2
       abott2 <- rep(0,length(lambda))
@@ -382,7 +382,7 @@ Saber_forward_paramteric <-  function(chl=4.96, acdom440=0.9322314, anap440=0.07
       
       # Bottom Albedo of green makrophyte "Chara contraria"
       # wavelenght range [350;900] [nm]
-      bott3 <- read.table("./input-spectra/Bott3chara.R")
+      bott3 <- read.table("./data/input-spectra/Bott3chara.R")
       wavebottom <- bott3$V1
       Bott3 <-  bott3$V2
       abott3 <- rep(0,length(lambda))
@@ -390,7 +390,7 @@ Saber_forward_paramteric <-  function(chl=4.96, acdom440=0.9322314, anap440=0.07
       
       # Bottom Albedo of green makrophyte "Potamogeton perfoliatus"
       # wavelenght range [350;900] [nm]
-      bott4 <- read.table("./input-spectra/Bott4perfol.R")
+      bott4 <- read.table("./data/input-spectra/Bott4perfol.R")
       wavebottom <- bott4$V1
       Bott4 <-  bott4$V2
       abott4 <- rep(0,length(lambda))
@@ -398,7 +398,7 @@ Saber_forward_paramteric <-  function(chl=4.96, acdom440=0.9322314, anap440=0.07
       
       # Bottom Albedo of green makrophyte "Potamogeton pectinatus"
       # wavelenght range [350;900] [nm]
-      bott5 <- read.table("./input-spectra/Bott5pectin.R")
+      bott5 <- read.table("./data/input-spectra/Bott5pectin.R")
       wavebottom <- bott5$V1
       Bott5 <-  bott5$V2
       abott5 <- rep(0,length(lambda))
@@ -482,7 +482,7 @@ Saber_forward_paramteric <-  function(chl=4.96, acdom440=0.9322314, anap440=0.07
   ## Remote sensing reflectance above the surface
   #--------------------------------------------------------------------------
   # Extraterrestrial solar irradiance [mW/m^2 nm]
-  E0 <-  read.table("./input-spectra/E0.txt", header = F)
+  E0 <-  read.table("./data/input-spectra/E0.txt", header = F)
   E0.wavelength <-  E0$V1
   E0.ett <-  E0$V2
   E0 <- rep(length(lambda), 0)
@@ -490,7 +490,7 @@ Saber_forward_paramteric <-  function(chl=4.96, acdom440=0.9322314, anap440=0.07
   E0 <-  Hmisc::approxExtrap(x =E0.wavelength, y =E0.ett, xout = lambda, method = "linear")$y
   
   # Oxygen absorption [1/cm]
-  absO2 <- read.table("./input-spectra/absO2.A", header = F)
+  absO2 <- read.table("./data/input-spectra/absO2.A", header = F)
   absO2.wavelength <-  absO2$V1
   absO2.oxy <-  absO2$V2
   abs_O2 <- rep(length(lambda), 0)
@@ -498,7 +498,7 @@ Saber_forward_paramteric <-  function(chl=4.96, acdom440=0.9322314, anap440=0.07
   abs_O2 <-  Hmisc::approxExtrap(x =absO2.wavelength, y =absO2.oxy, xout = lambda, method = "linear")$y
   
   # Ozone absorption [1/cm]
-  absO3 <- read.table("./input-spectra/absO3.A", header = F)
+  absO3 <- read.table("./data/input-spectra/absO3.A", header = F)
   absO3.wavelength <-  absO3$V1
   absO3.oxy <-  absO3$V2
   abs_O3 <- rep(length(lambda), 0)
@@ -506,7 +506,7 @@ Saber_forward_paramteric <-  function(chl=4.96, acdom440=0.9322314, anap440=0.07
   abs_O3 <-  Hmisc::approxExtrap(x =absO3.wavelength, y =absO3.oxy, xout = lambda, method = "linear")$y
   
   # Water vapour absorption [1/cm]
-  absWV <- read.table("./input-spectra/absWV.A", header = F)
+  absWV <- read.table("./data/input-spectra/absWV.A", header = F)
   absWV.wavelength <-  absWV$V1
   absWV.wv <-  absWV$V2
   abs_WV <- rep(length(lambda), 0)

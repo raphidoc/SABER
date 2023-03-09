@@ -30,29 +30,30 @@
 rm(list=ls(all=TRUE))
 setwd("/home/musk0001/R_inverse_wasi")
 
-source("./saber_forward.R")
-source("./saber_forward_grad.R")
-source("./saber_forward_paramteric.R")
-source("./saber_forward_parametric_conc.R")
-source("./saber_forward_parametric_conc_wise.R")
-source("./SABER.sicf.R")
-source("./QAA_v5.R")
-source("./saber_inverse.R")
-source("./lee_forward.R")
+source("./R/saber_forward.R")
+source("./R/saber_forward_grad.R")
+source("./R/saber_forward_paramteric.R")
+source("./R/saber_forward_parametric_conc.R")
+source("./R/saber_forward_parametric_conc_wise.R")
+source("./R/SABER.sicf.R")
+source("./R/QAA_v5.R")
+source("./R/saber_inverse.R")
+source("./R/lee_forward.R")
 
-source("./snell_law.R")
+source("./R/snell_law.R")
+source("./R/gregg_carder_ed.R")
 #source("C:/R/Cops/R/GreggCarder.R")
 
-source("./retrive.rb.spectral.wise.R")
-source("./generate.rb.spectral.R")
-source("./read.surface.IOPs.wise.R")
-source("./inelastic.wavelength.redistribution.R")
+source("./R/retrive.rb.spectral.wise.R")
+source("./R/generate.rb.spectral.R")
+source("./R/read.surface.IOPs.wise.R")
+source("./R/inelastic.wavelength.redistribution.R")
 
-source("./solve.objective.inverse.R")
-source("./solve.objective.inverse.shallow.R")
-source("./solve.objective.inverse.shallowv2.R")
-source("./solve.objective.inverse.shallow.constrained.batch.R")
-source("./mcmc.functions.R")
+source("./R/solve.objective.inverse.R")
+source("./R/solve.objective.inverse.shallow.R")
+source("./R/solve.objective.inverse.shallowv2.R")
+source("./R/solve.objective.inverse.shallow.constrained.batch.R")
+source("./R/mcmc.functions.R")
 #-------------------------------------------------------------------------------------------
 library(dplyr)
 library(readxl)
@@ -182,8 +183,8 @@ fA5=0; # Potamogeton pectinatus
 #fA.set= c(fA0,fA1,fA2,fA3,fA4,fA5)
 fA.set= c(fA1,fA2,fA3,fA4,fA5) #exclude the constant fA0
 
-source("./retrive.rb.spectral.R")
-source("./generate.rb.spectral.R")
+source("./R/retrive.rb.spectral.R")
+source("./R/generate.rb.spectral.R")
 
 #1.7 Atmospheric conditions
 
@@ -222,7 +223,8 @@ WV= 2.500; # [cm]
 #based simulation refer to the following code till prior to Section 2.2. 
 
 if (batch == TRUE) {
-  insitu.data.HL <- read_excel_allsheets(paste0(getwd(),"/IOP_AOP_Sun60.xls"))
+  insitu.data.HL <- read_excel_allsheets(paste0(getwd(),"/insitu_data/IOP_AOP_Sun60.xls"))
+  
   #water IOP
   water.data <- insitu.data.HL$Basics[6:46, 1:3]                           
   names(water.data) <- c("wavelength", "a_w", "bb_w") 
@@ -309,7 +311,7 @@ if (insitu.present == TRUE & batch == TRUE) { #Set the observed Rrs manually fro
 if (insitu.present == TRUE & batch == FALSE & insitu.type == "COPS"){#Set the observed Rrs
                                                                   #manually from field data
   
-  IOP_AOP_surf = suppressWarnings(read.surface.IOPs.wise(station.args = statname))
+  IOP_AOP_surf = suppressWarnings(read.surface.IOPs.wise(station.args = statname,save_on_disc = F))
   insitu.data = IOP_AOP_surf$Rrs_0p
 } 
 
@@ -346,7 +348,7 @@ if (insitu.present == TRUE & batch == FALSE & insitu.type == "HL") {#Set the obs
 
 if (insitu.present == FALSE & batch == FALSE) {#Set the observed Rrs as a QSAA model retrieved Rrs
   
-  rrs.demo <- read.csv("./input-spectra/demo_rrs.csv",header = T)
+  rrs.demo <- read.csv("./data/input-spectra/demo_rrs.csv",header = T)
   
   
   rrs.demo.Om <- as.numeric(rrs.demo[1,-1])
@@ -395,7 +397,7 @@ base.bbp = Fit.input$bbp.550
 type_Rrs_below_jacobian = "deep"
 Cops::GreggCarder.data()
 
-IOP_files = list.files("./Rb_spectral/surface_iops/", full.names = T)
+IOP_files = list.files("./data/Rb_spectral/surface_iops/", full.names = T)
 
 idx_a = grep(IOP_files, pattern = paste0("abs_surf_",statname))
 idx_bb = grep(IOP_files, pattern = paste0("bb_surf_",statname))
@@ -495,7 +497,7 @@ forward.op.am.param.conc.dg_comp_sicf_fdom <- Saber_forward_paramteric_conc_wise
                                               sunzen_Ed = -99, 
                                               lat_Ed = 49.02487, lon_Ed = -68.37059,
                                               date_time_Ed = "2019-08-18 20:59 GMT", 
-                                              Ed_fDOM_path = "./input-spectra/Ed_HL.csv",
+                                              Ed_fDOM_path = "./data/input-spectra/Ed_HL.csv",
                                               use_fDOM_rad = F,
                                               
                                               verbose = F, plot = T)
@@ -550,7 +552,7 @@ forward.op.am.param.conc.true_iop_sicf_fDOM <- Saber_forward_paramteric_conc_wis
                                               fDOM = T, sunzen_Ed = -99,
                                               lat_Ed = 49.02487, lon_Ed = -68.37059,
                                               date_time_Ed = "2019-08-18 20:59 GMT", 
-                                              Ed_fDOM_path = "./input-spectra/Ed_HL.csv",
+                                              Ed_fDOM_path = "./data/input-spectra/Ed_HL.csv",
                                               use_fDOM_rad = F,
                                             
                                             verbose = F, plot = T)

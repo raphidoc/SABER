@@ -52,11 +52,11 @@ snell_law <- function(view,sun){#Function to convert above water to under water 
 }
 
 #Read default test data
-demo.rrs = read.csv("./input-spectra/demo_rrs_Om.csv", header = T)
+demo.rrs = read.csv("./data/input-spectra/demo_rrs_Om.csv", header = T)
 
 Saber_forward_paramteric_conc_wise <-  function(use_true_IOPs = T,
-                                           a_non_water_path = "./rb_retrieve_demo_a.csv", 
-                                           bb_non_water_path = "./rb_retrieve_demo_bb.csv",
+                                           a_non_water_path = "./data/rb_retrieve_demo_a.csv", 
+                                           bb_non_water_path = "./data/rb_retrieve_demo_bb.csv",
                                            
                                            chl=4.96, acdom440=NULL, anap440=NULL, 
                                            a_dg = 1, bbp.550=0.00726002, 
@@ -75,7 +75,7 @@ Saber_forward_paramteric_conc_wise <-  function(use_true_IOPs = T,
                                            sunzen_Ed = 60, lat_Ed = 49, lon_Ed = -68,
                                            date_time_Ed = "2019-08-18 20:50 GMT", 
                                            #hr_GMT_Ed = "2019-08-18 20:50 GMT",
-                                           Ed_fDOM_path = "./input-spectra/Ed_HL.csv",
+                                           Ed_fDOM_path = "./data/input-spectra/Ed_HL.csv",
                                            use_fDOM_rad = F,
                                            
                                            plot = FALSE, verbose = FALSE,
@@ -152,7 +152,7 @@ Saber_forward_paramteric_conc_wise <-  function(use_true_IOPs = T,
   ## absorption (1/m)
   
   # wavelength range [190;4000] [nm]
-  abs.water <- read.table("./input-spectra/abs_W.A", header = F) 
+  abs.water <- read.table("./data/input-spectra/abs_W.A", header = F) 
   wavelength <- abs.water$V1
   absorpt_W <-  abs.water$V2
   
@@ -194,7 +194,7 @@ Saber_forward_paramteric_conc_wise <-  function(use_true_IOPs = T,
     ## Plankthon absorption (1/m)
     
     # load plankton absorption data
-    A0_A1_PhytoPlanc <- read.table("./input-spectra/A0_A1_PhytoPlanc.dat")
+    A0_A1_PhytoPlanc <- read.table("./data/input-spectra/A0_A1_PhytoPlanc.dat")
     
     # extract the values from the table
     lam_p <- A0_A1_PhytoPlanc$V1
@@ -415,11 +415,11 @@ Saber_forward_paramteric_conc_wise <-  function(use_true_IOPs = T,
     g 
     
     if (plot == TRUE & dg_composite == FALSE) {
-      ggsave(paste0("./SABER.absorption.model_chl=",signif(C_ph, digits = 3) ,"_acdom440=", signif(base.CDOM, digits = 3),"_anap440=", signif(base.NAP,digits = 3), ".png"), plot = g,
+      ggsave(paste0("./Outputs/Forward/SABER.absorption.model_chl=",signif(C_ph, digits = 3) ,"_acdom440=", signif(base.CDOM, digits = 3),"_anap440=", signif(base.NAP,digits = 3), ".png"), plot = g,
              scale = 1.5, width = 4.5, height = 4.5, units = "in",dpi = 300)
     }
     if (plot == TRUE & dg_composite == TRUE) {
-      ggsave(paste0("./SABER.absorption.model_chl=",signif(C_ph, digits = 3) ,"_adg440=", signif(base_CDM, digits = 3), ".png"), plot = g,
+      ggsave(paste0("./Outputs/Forward/SABER.absorption.model_chl=",signif(C_ph, digits = 3) ,"_adg440=", signif(base_CDM, digits = 3), ".png"), plot = g,
              scale = 1.5, width = 4.5, height = 4.5, units = "in",dpi = 300)
     }
     
@@ -640,7 +640,7 @@ Saber_forward_paramteric_conc_wise <-  function(use_true_IOPs = T,
       
       # Bottom Albedo (costant)
       # wavelength range [350;900] [nm]
-      bott0<- read.table("./input-spectra/Bott0const.R")
+      bott0<- read.table("./data/input-spectra/Bott0const.R")
       wavebottom <- bott0$V1
       Bott0 <-  bott0$V2
       abott0 <- rep(0,length(lambda))
@@ -648,7 +648,7 @@ Saber_forward_paramteric_conc_wise <-  function(use_true_IOPs = T,
       
       # Bottom Albedo Sand
       # wavelenght range [350;1000] [nm]
-      bott1 <- read.table("./input-spectra/Bott1SAND.R")
+      bott1 <- read.table("./data/input-spectra/Bott1SAND.R")
       wavebottom <- bott1$V1
       Bott1 <-  bott1$V2
       abott1 <- rep(0,length(lambda))
@@ -656,7 +656,7 @@ Saber_forward_paramteric_conc_wise <-  function(use_true_IOPs = T,
       
       # Bottom Albedo of fine-grained sediment
       # wavelenght range [350;900] [nm]
-      bott2 <- read.table("./input-spectra/Bott2silt.R")
+      bott2 <- read.table("./data/input-spectra/Bott2silt.R")
       wavebottom <- bott2$V1
       Bott2 <-  bott2$V2
       abott2 <- rep(0,length(lambda))
@@ -664,7 +664,7 @@ Saber_forward_paramteric_conc_wise <-  function(use_true_IOPs = T,
       
       # Bottom Albedo of green makrophyte "Chara contraria"
       # wavelenght range [350;900] [nm]
-      bott3 <- read.table("./input-spectra/Bott3chara.R")
+      bott3 <- read.table("./data/input-spectra/Bott3chara.R")
       wavebottom <- bott3$V1
       Bott3 <-  bott3$V2
       abott3 <- rep(0,length(lambda))
@@ -672,7 +672,7 @@ Saber_forward_paramteric_conc_wise <-  function(use_true_IOPs = T,
       
       # Bottom Albedo of green makrophyte "Potamogeton perfoliatus"
       # wavelenght range [350;900] [nm]
-      bott4 <- read.table("./input-spectra/Bott4perfol.R")
+      bott4 <- read.table("./data/input-spectra/Bott4perfol.R")
       wavebottom <- bott4$V1
       Bott4 <-  bott4$V2
       abott4 <- rep(0,length(lambda))
@@ -680,7 +680,7 @@ Saber_forward_paramteric_conc_wise <-  function(use_true_IOPs = T,
       
       # Bottom Albedo of green makrophyte "Potamogeton pectinatus"
       # wavelenght range [350;900] [nm]
-      bott5 <- read.table("./input-spectra/Bott5pectin.R")
+      bott5 <- read.table("./data/input-spectra/Bott5pectin.R")
       wavebottom <- bott5$V1
       Bott5 <-  bott5$V2
       abott5 <- rep(0,length(lambda))
@@ -989,7 +989,7 @@ Saber_forward_paramteric_conc_wise <-  function(use_true_IOPs = T,
   ## Remote sensing reflectance above the surface
   #--------------------------------------------------------------------------
   # Extraterrestrial solar irradiance [mW/m^2 nm]
-  E0 <-  read.table("./input-spectra/E0.txt", header = F)
+  E0 <-  read.table("./data/input-spectra/E0.txt", header = F)
   E0.wavelength <-  E0$V1
   E0.ett <-  E0$V2
   E0 <- rep(length(lambda), 0)
@@ -997,7 +997,7 @@ Saber_forward_paramteric_conc_wise <-  function(use_true_IOPs = T,
   E0 <-  Hmisc::approxExtrap(x =E0.wavelength, y =E0.ett, xout = lambda, method = "linear")$y
   
   # Oxygen absorption [1/cm]
-  absO2 <- read.table("./input-spectra/absO2.A", header = F)
+  absO2 <- read.table("./data/input-spectra/absO2.A", header = F)
   absO2.wavelength <-  absO2$V1
   absO2.oxy <-  absO2$V2
   abs_O2 <- rep(length(lambda), 0)
@@ -1005,7 +1005,7 @@ Saber_forward_paramteric_conc_wise <-  function(use_true_IOPs = T,
   abs_O2 <-  Hmisc::approxExtrap(x =absO2.wavelength, y =absO2.oxy, xout = lambda, method = "linear")$y
   
   # Ozone absorption [1/cm]
-  absO3 <- read.table("./input-spectra/absO3.A", header = F)
+  absO3 <- read.table("./data/input-spectra/absO3.A", header = F)
   absO3.wavelength <-  absO3$V1
   absO3.oxy <-  absO3$V2
   abs_O3 <- rep(length(lambda), 0)
@@ -1013,7 +1013,7 @@ Saber_forward_paramteric_conc_wise <-  function(use_true_IOPs = T,
   abs_O3 <-  Hmisc::approxExtrap(x =absO3.wavelength, y =absO3.oxy, xout = lambda, method = "linear")$y
   
   # Water vapour absorption [1/cm]
-  absWV <- read.table("./input-spectra/absWV.A", header = F)
+  absWV <- read.table("./data/input-spectra/absWV.A", header = F)
   absWV.wavelength <-  absWV$V1
   absWV.wv <-  absWV$V2
   abs_WV <- rep(length(lambda), 0)
@@ -1159,16 +1159,16 @@ Saber_forward_paramteric_conc_wise <-  function(use_true_IOPs = T,
             panel.border = element_rect(colour = "black", fill = NA, size = 1.5))
     g1 
     if (plot == TRUE & use_true_IOPs == TRUE) {
-      ggsave(paste0("./SABER.forward.Rrs_station_",statname, ".png"), plot = g1,
+      ggsave(paste0("./Outputs/Forward/SABER.forward.Rrs_station_",statname, ".png"), plot = g1,
              scale = 1.5, width = 4.5, height = 4.5, units = "in",dpi = 300)
       
     } else {
       if (plot == "TRUE" & type_Rrs_below == "deep") {
-        ggsave(paste0("./SABER.forward.Rrs_chl_",signif(C_ph, digits = 3) ,"_adg440_", signif(base_CDM, digits = 3),".png"), plot = g1,
+        ggsave(paste0("./Outputs/Forward/SABER.forward.Rrs_chl_",signif(C_ph, digits = 3) ,"_adg440_", signif(base_CDM, digits = 3),".png"), plot = g1,
                scale = 1.5, width = 4.5, height = 4.5, units = "in",dpi = 300)
       }
       if (plot == "TRUE" & type_Rrs_below == "shallow") {
-        ggsave(paste0("./SABER.forward.Rrs_chl_",signif(C_ph, digits = 3) ,"_adg440_", signif(base_CDM, digits = 3), "_z_", signif(zB,digits = 3),  ".png"), plot = g1,
+        ggsave(paste0("./Outputs/Forward/SABER.forward.Rrs_chl_",signif(C_ph, digits = 3) ,"_adg440_", signif(base_CDM, digits = 3), "_z_", signif(zB,digits = 3),  ".png"), plot = g1,
                scale = 1.5, width = 4.5, height = 4.5, units = "in",dpi = 300)
       }
       
@@ -1232,11 +1232,11 @@ Saber_forward_paramteric_conc_wise <-  function(use_true_IOPs = T,
     g1 
     
     if (plot == "TRUE" & type_Rrs_below == "deep") {
-      ggsave(paste0("./SABER.forward.Rrs_chl_",signif(C_ph, digits = 3) ,"_adg440_", signif(base_CDM, digits = 3), ".png"), plot = g1,
+      ggsave(paste0("./Outputs/Forward/SABER.forward.Rrs_chl_",signif(C_ph, digits = 3) ,"_adg440_", signif(base_CDM, digits = 3), ".png"), plot = g1,
              scale = 1.5, width = 4.5, height = 4.5, units = "in",dpi = 300)
     }
     if (plot == "TRUE" & type_Rrs_below == "shallow") {
-      ggsave(paste0("./SABER.forward.Rrs_chl_",signif(C_ph, digits = 3) ,"_adg440_", signif(base_CDM, digits = 3), "_z_", signif(zB,digits = 3),  ".png"), plot = g1,
+      ggsave(paste0("./Outputs/Forward/SABER.forward.Rrs_chl_",signif(C_ph, digits = 3) ,"_adg440_", signif(base_CDM, digits = 3), "_z_", signif(zB,digits = 3),  ".png"), plot = g1,
              scale = 1.5, width = 4.5, height = 4.5, units = "in",dpi = 300)
     }
     

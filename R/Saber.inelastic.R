@@ -1,7 +1,7 @@
 
 Rrs_Fluorescence <- function(dg_comsposite=TRUE, dg_443,
                              c_chl, abs_cdom_443, abs_nap_443,
-                             Ed_path = "./input-spectra/Ed_HL.csv",
+                             Ed_path = "./data/input-spectra/Ed_HL.csv",
                              use_analytic_Ed = TRUE,
                              coeff_x=c(0.0992,0.40,0.078), 
                              wavelength=seq(400,800,10), phi_f=0.01) {
@@ -246,7 +246,7 @@ legend(x = "topleft",          # Position
 #---------------------------------------------------------------------------
 #Get Ed0 from HL simulated Ed data
 #---------------------------------------------------------------------------
-Ed_path = "./input-spectra/Ed_HL.csv"
+Ed_path = "./data/input-spectra/Ed_HL.csv"
 Ed_sim = read.csv(file = Ed_path, header = TRUE, skip = 9)
 
 
