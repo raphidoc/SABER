@@ -399,8 +399,8 @@ Cops::GreggCarder.data()
 
 IOP_files = list.files("./data/Rb_spectral/surface_iops/", full.names = T)
 
-idx_a = grep(IOP_files, pattern = paste0("abs_surf_",statname))
-idx_bb = grep(IOP_files, pattern = paste0("bb_surf_",statname))
+idx_a = grep(IOP_files, pattern = paste0("abs_surf_",statname, ".csv$"))
+idx_bb = grep(IOP_files, pattern = paste0("bb_surf_",statname, ".csv$"))
 
 
 #-----------------------------------------------------------------------------
