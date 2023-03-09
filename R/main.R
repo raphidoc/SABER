@@ -99,7 +99,7 @@ sunzen_below = function(sun_zen_aove=45){
 
 #1.1 Water type specifications
 type_case_water = 2
-type_Rrs_below = "deep"
+type_Rrs_below = "shallow"
 type_Rrs_below_rb = "shallow"
 type_Rrs_water = "below_surface"
 
@@ -108,7 +108,7 @@ batch=FALSE #Set TRUE for IOCCG dataset duplication; Set FALSE for user wanted i
 
 insitu.present=TRUE #Set TRUE if actual in situ or simulated observations exist; 
                      #else set FALSE
-statname = "MAN-R01" #if insitu.present = TRUE, set the station-name 
+statname = "MAN-R06" #if insitu.present = TRUE, set the station-name 
 
 insitu_type = c("HL", "COPS") 
 insitu.type = insitu_type[2] #<<USER INPUT >> selection for type of in situ data
@@ -297,6 +297,7 @@ if (batch == TRUE) {
 #2.2 Obtain in vivo values for IOP and BGC from sampling data
 #------------------------------------------------------------
 if (insitu.present == TRUE & !is.null(insitu.type)) {
+  iop_aop_data = read.surface.IOPs.wise(station.args = statname, verbose = T, save_on_disc = T)
   invivo_data = get_in_situ_params(station_name = statname, use_bb_nup = TRUE)
 }
 
@@ -311,7 +312,8 @@ if (insitu.present == TRUE & batch == TRUE) { #Set the observed Rrs manually fro
 if (insitu.present == TRUE & batch == FALSE & insitu.type == "COPS"){#Set the observed Rrs
                                                                   #manually from field data
   
-  IOP_AOP_surf = suppressWarnings(read.surface.IOPs.wise(station.args = statname,save_on_disc = F))
+  IOP_AOP_surf = suppressWarnings(read.surface.IOPs.wise(station.args = statname,save_on_disc = F,
+                                                         verbose = F))
   insitu.data = IOP_AOP_surf$Rrs_0p
 } 
 
@@ -402,7 +404,8 @@ IOP_files = list.files("./data/Rb_spectral/surface_iops/", full.names = T)
 idx_a = grep(IOP_files, pattern = paste0("abs_surf_",statname, ".csv$"))
 idx_bb = grep(IOP_files, pattern = paste0("bb_surf_",statname, ".csv$"))
 
-
+Rb_files = list.files("./Outputs/Bottom_ref/", pattern = "*.csv", full.names = T)
+idx_rb = grep(Rb_files, pattern = paste0("Rb_spectral_data_",statname, ".csv$"))
 #-----------------------------------------------------------------------------
 #4.3 Test different bio-optical parametrization effect on rrs in forward SABER
 #-----------------------------------------------------------------------------
@@ -481,8 +484,12 @@ forward.op.am.param.conc.dg_comp_sicf_fdom <- Saber_forward_paramteric_conc_wise
                                               acdom440 = NULL, 
                                               anap440 = NULL, 
                                               a_dg =  Fit.input$acdom.440 + Fit.input$anap.440 ,
-                                              bbp.550 = Fit.input$bbp.550,
+                                              bbp.550 = Fit.input$bbp.550, 
                                               
+                                              z = iop_aop_data$zB_COPS,
+                                              use_spectral_rb = T, spectral_rb_path = Rb_files[idx_rb],
+                                              
+                                                
                                               #realdata = rrs.forward.am,
                                               realdata = surface_rrs_translate(Rrs = insitu.data),
                                               
@@ -508,17 +515,25 @@ rrs.forward.am.param.conc.dg_comp_sicf_fdom <- forward.op.am.param.conc.dg_comp_
 forward.op.am.param.conc.true_iop <- Saber_forward_paramteric_conc_wise(use_true_IOPs = T, 
                                       a_non_water_path = IOP_files[idx_a],
                                       bb_non_water_path = IOP_files[idx_bb],
+                                      
                                       chl = Fit.input$chl, 
                                       acdom440 =NULL, 
                                       anap440 =NULL , 
                                       a_dg = Fit.input$acdom.440 + Fit.input$anap.440,
                                       bbp.550 = Fit.input$bbp.550,
+                                      
+                                      z = iop_aop_data$zB_COPS,
+                                      use_spectral_rb = T, spectral_rb_path = Rb_files[idx_rb],
+                                      
                                       #realdata = rrs.forward.am,
                                       realdata = surface_rrs_translate(Rrs = insitu.data),
+                                      
                                       slope.parametric = T,
                                       dg_composite = T,
+                                      
                                       use_spectral_shape_chl = F,
                                       use_spectral_shape_dg = T,
+                                      
                                       sicf = F, q_phi = 0.02, 
                                       fDOM = F,
                                       verbose = F, plot = F)
@@ -536,6 +551,10 @@ forward.op.am.param.conc.true_iop_sicf_fDOM <- Saber_forward_paramteric_conc_wis
                                               anap440 =NULL , 
                                               a_dg = Fit.input$acdom.440 + Fit.input$anap.440,
                                               bbp.550 = Fit.input$bbp.550,
+                                              
+                                              z = iop_aop_data$zB_COPS,
+                                              use_spectral_rb = T, 
+                                              spectral_rb_path = Rb_files[idx_rb],
                                               
                                               #realdata = rrs.forward.am,
                                               realdata = surface_rrs_translate(Rrs = insitu.data),
@@ -625,7 +644,7 @@ g <- ggplot(data = forward_rrs_collection)  +
         panel.border = element_rect(colour = "black", fill = NA, size = 1.5))
 g  
 if (plot == TRUE) {
-  ggsave(paste0("./forward.SABER.collection_",statname,".png"), plot = g,
+  ggsave(paste0("./Outputs/Forward/forward.SABER.collection_",statname,".png"), plot = g,
          scale = 1.5, width = 4.5, height = 4.5, units = "in",dpi = 300)
 }
 

@@ -68,6 +68,8 @@ Saber_forward_paramteric_conc_wise <-  function(use_true_IOPs = T,
                                            
                                            z=2, 
                                            rb.fraction = fA.set,
+                                           use_spectral_rb = F,
+                                           spectral_rb_path = "./Outputs/Bottom_ref/Rb_spectral_data_MAN-R01.csv",
                                            
                                            sicf = TRUE, q_phi=0.02,
                                            
@@ -515,12 +517,26 @@ Saber_forward_paramteric_conc_wise <-  function(use_true_IOPs = T,
       print("Simulation wavelength and backscatter wavelength are different")
       
       #### Compute bbp and bb spectral slope
-      HS6_wl = c(394, 420, 470, 532, 620, 700)
-      x = 555/HS6_wl
-      #nz=length(IOP.fitted.down$Depth)
-      nz=1 #As we only are interested for surface bb
-      bbP555.down =rep(0,nz)
-      nuP.down    =rep(0,nz)
+      if (length(bb_non_water_wave) == 6) {
+        print("HS-6 VSF is used")
+        HS6_wl = c(394, 420, 470, 532, 620, 700)
+        x = 555/HS6_wl
+        #nz=length(IOP.fitted.down$Depth)
+        nz=1 #As we only are interested for surface bb
+        bbP555.down =rep(0,nz)
+        nuP.down    =rep(0,nz)
+      }
+      
+      if (length(bb_non_water_wave) == 9) {
+        
+        print("BB9 VSF is used")
+        HS6_wl = c(412, 440, 488, 510, 532, 595, 650, 676, 715)
+        x = 555/HS6_wl
+        #nz=length(IOP.fitted.down$Depth)
+        nz=1 #As we only are interested for surface bb
+        bbP555.down =rep(0,nz)
+        nuP.down    =rep(0,nz)
+      }
       
       for (i in 1:nz) {
         #y = IOP.fitted.down$HS6$bbP[i,]
@@ -630,75 +646,94 @@ Saber_forward_paramteric_conc_wise <-  function(use_true_IOPs = T,
   } else{
     
     if (type_Rrs_below == "shallow") {
+      
       #Bottom Contribution
-      
-      # Reflection factors of bottom surface [1/sr]
-      #B0 <- 1/pi; 
-      B1 <- 1/pi; B2 <- 1/pi; B3 <- 1/pi; B4 <- 1/pi; B5 <- 1/pi; 
-      #BOTTOM <- c(B0,B1,B2,B3,B4,B5)
-      BOTTOM <- c(B1,B2,B3,B4,B5)
-      
-      # Bottom Albedo (costant)
-      # wavelength range [350;900] [nm]
-      bott0<- read.table("./data/input-spectra/Bott0const.R")
-      wavebottom <- bott0$V1
-      Bott0 <-  bott0$V2
-      abott0 <- rep(0,length(lambda))
-      abott0 <-  Hmisc::approxExtrap(wavebottom, Bott0, xout = lambda, method = "linear")$y
-      
-      # Bottom Albedo Sand
-      # wavelenght range [350;1000] [nm]
-      bott1 <- read.table("./data/input-spectra/Bott1SAND.R")
-      wavebottom <- bott1$V1
-      Bott1 <-  bott1$V2
-      abott1 <- rep(0,length(lambda))
-      abott1 <-  Hmisc::approxExtrap(wavebottom, Bott1, xout = lambda, method = "linear")$y
-      
-      # Bottom Albedo of fine-grained sediment
-      # wavelenght range [350;900] [nm]
-      bott2 <- read.table("./data/input-spectra/Bott2silt.R")
-      wavebottom <- bott2$V1
-      Bott2 <-  bott2$V2
-      abott2 <- rep(0,length(lambda))
-      abott2 <-  Hmisc::approxExtrap(wavebottom, Bott2, xout = lambda, method = "linear")$y
-      
-      # Bottom Albedo of green makrophyte "Chara contraria"
-      # wavelenght range [350;900] [nm]
-      bott3 <- read.table("./data/input-spectra/Bott3chara.R")
-      wavebottom <- bott3$V1
-      Bott3 <-  bott3$V2
-      abott3 <- rep(0,length(lambda))
-      abott3 <-  Hmisc::approxExtrap(wavebottom, Bott3, xout = lambda, method = "linear")$y
-      
-      # Bottom Albedo of green makrophyte "Potamogeton perfoliatus"
-      # wavelenght range [350;900] [nm]
-      bott4 <- read.table("./data/input-spectra/Bott4perfol.R")
-      wavebottom <- bott4$V1
-      Bott4 <-  bott4$V2
-      abott4 <- rep(0,length(lambda))
-      abott4 <-  Hmisc::approxExtrap(wavebottom, Bott4, xout = lambda, method = "linear")$y
-      
-      # Bottom Albedo of green makrophyte "Potamogeton pectinatus"
-      # wavelenght range [350;900] [nm]
-      bott5 <- read.table("./data/input-spectra/Bott5pectin.R")
-      wavebottom <- bott5$V1
-      Bott5 <-  bott5$V2
-      abott5 <- rep(0,length(lambda))
-      abott5 <-  Hmisc::approxExtrap(wavebottom, Bott5, xout = lambda, method = "linear")$y
-      
-      #abott <- rbind(abott0, abott1, abott2, abott3, abott4, abott5)
-      abott <- rbind(abott1, abott2, abott3, abott4, abott5)
-      
-      Bottom <-  matrix(nrow = nrow(abott), ncol = ncol(abott), 0)
-      Rrs_Bottom <- matrix(nrow = nrow(abott), ncol = ncol(abott), 0)# Bottom remote sensing reflectance [1/sr]
-      
-      for (i in 1:length(fA)){
-        Bottom[i,] <-  fA[i]*abott[i,]
-        Rrs_Bottom[i,] <-  BOTTOM[i]* Bottom[i,] #fA(i)*abott(:,i);
+      if (use_spectral_rb == FALSE) {
+        print("Bottom reflectance is assumed as LMM of user defined pure-spectra")
+        # Reflection factors of bottom surface [1/sr]
+        #B0 <- 1/pi; 
+        B1 <- 1/pi; B2 <- 1/pi; B3 <- 1/pi; B4 <- 1/pi; B5 <- 1/pi; 
+        #BOTTOM <- c(B0,B1,B2,B3,B4,B5)
+        BOTTOM <- c(B1,B2,B3,B4,B5)
+        
+        # Bottom Albedo (costant)
+        # wavelength range [350;900] [nm]
+        bott0<- read.table("./data/input-spectra/Bott0const.R")
+        wavebottom <- bott0$V1
+        Bott0 <-  bott0$V2
+        abott0 <- rep(0,length(lambda))
+        abott0 <-  Hmisc::approxExtrap(wavebottom, Bott0, xout = lambda, method = "linear")$y
+        
+        # Bottom Albedo Sand
+        # wavelenght range [350;1000] [nm]
+        bott1 <- read.table("./data/input-spectra/Bott1SAND.R")
+        wavebottom <- bott1$V1
+        Bott1 <-  bott1$V2
+        abott1 <- rep(0,length(lambda))
+        abott1 <-  Hmisc::approxExtrap(wavebottom, Bott1, xout = lambda, method = "linear")$y
+        
+        # Bottom Albedo of fine-grained sediment
+        # wavelenght range [350;900] [nm]
+        bott2 <- read.table("./data/input-spectra/Bott2silt.R")
+        wavebottom <- bott2$V1
+        Bott2 <-  bott2$V2
+        abott2 <- rep(0,length(lambda))
+        abott2 <-  Hmisc::approxExtrap(wavebottom, Bott2, xout = lambda, method = "linear")$y
+        
+        # Bottom Albedo of green makrophyte "Chara contraria"
+        # wavelenght range [350;900] [nm]
+        bott3 <- read.table("./data/input-spectra/Bott3chara.R")
+        wavebottom <- bott3$V1
+        Bott3 <-  bott3$V2
+        abott3 <- rep(0,length(lambda))
+        abott3 <-  Hmisc::approxExtrap(wavebottom, Bott3, xout = lambda, method = "linear")$y
+        
+        # Bottom Albedo of green makrophyte "Potamogeton perfoliatus"
+        # wavelenght range [350;900] [nm]
+        bott4 <- read.table("./data/input-spectra/Bott4perfol.R")
+        wavebottom <- bott4$V1
+        Bott4 <-  bott4$V2
+        abott4 <- rep(0,length(lambda))
+        abott4 <-  Hmisc::approxExtrap(wavebottom, Bott4, xout = lambda, method = "linear")$y
+        
+        # Bottom Albedo of green makrophyte "Potamogeton pectinatus"
+        # wavelenght range [350;900] [nm]
+        bott5 <- read.table("./data/input-spectra/Bott5pectin.R")
+        wavebottom <- bott5$V1
+        Bott5 <-  bott5$V2
+        abott5 <- rep(0,length(lambda))
+        abott5 <-  Hmisc::approxExtrap(wavebottom, Bott5, xout = lambda, method = "linear")$y
+        
+        #abott <- rbind(abott0, abott1, abott2, abott3, abott4, abott5)
+        abott <- rbind(abott1, abott2, abott3, abott4, abott5)
+        
+        Bottom <-  matrix(nrow = nrow(abott), ncol = ncol(abott), 0)
+        Rrs_Bottom <- matrix(nrow = nrow(abott), ncol = ncol(abott), 0)# Bottom remote sensing reflectance [1/sr]
+        
+        for (i in 1:length(fA)){
+          Bottom[i,] <-  fA[i]*abott[i,]
+          Rrs_Bottom[i,] <-  BOTTOM[i]* Bottom[i,] #fA(i)*abott(:,i);
+        }
+        
+        Bottom <- colSums(Bottom)
+        Rrs_Bottom <- colSums(Rrs_Bottom)# [1/sr]
+        
+      } else {
+        print("Bottom reflectance is read from user-defined bottom reflectance file")
+        rb_bottom = read.csv(spectral_rb_path, header = T)
+        rb_bottom_wave = rb_bottom$wave
+        rb_bottom_rb = rb_bottom$rb_est_iop
+        
+        if ( !(all(length(rb_bottom_wave) == length(lambda)) && all(rb_bottom_wave == lambda))) {
+          print("Simulation wavelength and supplied bottom reflectancewavelength are different")
+          rb_bottom_rb_interp = approx(x=rb_bottom_wave, y = rb_bottom_rb, xout = lambda, 
+                                       method = "linear")$y
+          Rrs_Bottom = rb_bottom_rb_interp
+        } else {
+          Rrs_Bottom = rb_bottom_rb
+        }
+        
       }
-      
-      Bottom <- colSums(Bottom)
-      Rrs_Bottom <- colSums(Rrs_Bottom)# [1/sr]
       
       if (verbose == TRUE) {
         print(paste0("Aerial fraction scaled bottom albedo generated from ", min(lambda), " nm to ", max(lambda), " nm."))
