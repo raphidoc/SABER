@@ -88,6 +88,33 @@ read_excel_allsheets <- function(filename, tibble = FALSE) {
   x
 }
 
+read_IOCCG_data <- function(filepath = paste0(getwd(),"/data/IOP_AOP_Sun60.xls")){
+  
+  insitu.data.HL <- read_excel_allsheets(filename = filepath)
+  
+  #water IOP
+  water.data <- insitu.data.HL$Basics[6:46, 1:3]                           
+  names(water.data) <- c("wavelength", "a_w", "bb_w") 
+  
+  a.ph = insitu.data.HL$a_ph; a.g = insitu.data.HL$a_g; a.d = insitu.data.HL$a_dm
+  bb = insitu.data.HL$bb_ch + insitu.data.HL$bb_dm
+  
+  #chl, acdom440, anap440 & bbp550 from IOCCG dataset 
+  chldata <- insitu.data.HL$a_ph[-1,1]
+  
+  acdom440data <- insitu.data.HL$a_g[which(names(insitu.data.HL$a_g[1,]) == "440")]
+  
+  anap440data <- insitu.data.HL$a_dm[which(names(insitu.data.HL$a_dm[1,]) == "440")]
+  
+  bbp550data <- insitu.data.HL$bb[which(names(insitu.data.HL$bb[1,]) == "550")] -
+    as.numeric(water.data$bb_w[water.data$wavelength == 550])
+  
+  return(data.frame("chl"=chldata, "acdom440"= acdom440data$`440`,
+                            "anap440"= anap440data$`440`, "bbp550"= bbp550data$`550`))
+  
+}
+                              
+                              
 sunzen_below = function(sun_zen_aove=45){
   sun_zen_below_rad = asin(sin(sun_zen_aove*(pi/180))/1.333)
   sun_zen_below_deg = sun_zen_below_rad*(180/pi)
@@ -99,7 +126,7 @@ sunzen_below = function(sun_zen_aove=45){
 
 #1.1 Water type specifications
 type_case_water = 2
-type_Rrs_below = "shallow"
+type_Rrs_below = "deep"
 type_Rrs_below_rb = "shallow"
 type_Rrs_water = "below_surface"
 
@@ -108,7 +135,7 @@ batch=FALSE #Set TRUE for IOCCG dataset duplication; Set FALSE for user wanted i
 
 insitu.present=TRUE #Set TRUE if actual in situ or simulated observations exist; 
                      #else set FALSE
-statname = "MAN-R06" #if insitu.present = TRUE, set the station-name 
+statname = "OUT-R01" #if insitu.present = TRUE, set the station-name 
 
 insitu_type = c("HL", "COPS") 
 insitu.type = insitu_type[2] #<<USER INPUT >> selection for type of in situ data
@@ -223,27 +250,7 @@ WV= 2.500; # [cm]
 #based simulation refer to the following code till prior to Section 2.2. 
 
 if (batch == TRUE) {
-  insitu.data.HL <- read_excel_allsheets(paste0(getwd(),"/insitu_data/IOP_AOP_Sun60.xls"))
-  
-  #water IOP
-  water.data <- insitu.data.HL$Basics[6:46, 1:3]                           
-  names(water.data) <- c("wavelength", "a_w", "bb_w") 
-  
-  a.ph = insitu.data.HL$a_ph; a.g = insitu.data.HL$a_g; a.d = insitu.data.HL$a_dm
-  bb = insitu.data.HL$bb_ch + insitu.data.HL$bb_dm
-  
-  #chl, acdom440, anap440 & bbp550 from IOCCG dataset 
-  chldata <- insitu.data.HL$a_ph[-1,1]
-  
-  acdom440data <- insitu.data.HL$a_g[which(names(insitu.data.HL$a_g[1,]) == "440")]
-  
-  anap440data <- insitu.data.HL$a_dm[which(names(insitu.data.HL$a_dm[1,]) == "440")]
-  
-  bbp550data <- insitu.data.HL$bb[which(names(insitu.data.HL$bb[1,]) == "550")] -
-    as.numeric(water.data$bb_w[water.data$wavelength == 550])
-  
-  HL.deep.iop <- data.frame("chl"=chldata, "acdom440"= acdom440data$`440`,
-                            "anap440"= anap440data$`440`, "bbp550"= bbp550data$`550`)
+  Hl.deep.iop = read_IOCCG_data()
   #sub-surface (0^-) Rrs
   rrs.HL <- as.matrix(insitu.data.HL$r_rs); rrs.HL.wl <- as.numeric(names(insitu.data.HL$r_rs))
   
@@ -477,7 +484,7 @@ rrs.forward.am.param.conc.dg_comp <- forward.op.am.param.conc.dg_comp[[1]]$Rrs #
 
 #4.3.3.3. parametric values for s_dg (a_dg slope) and \eta (bbp slope) following QAAv5
 #with spectral shape normalization and SICF+fDOM
-forward.op.am.param.conc.dg_comp_sicf_fdom <- Saber_forward_paramteric_conc_wise(
+forward.op.am.param.conc.dg_comp_sicf_fdom <- Saber_forward_final(
                                               use_true_IOPs = F,
                                               
                                               chl = Fit.input$chl, 
@@ -493,8 +500,8 @@ forward.op.am.param.conc.dg_comp_sicf_fdom <- Saber_forward_paramteric_conc_wise
                                               #realdata = rrs.forward.am,
                                               realdata = surface_rrs_translate(Rrs = insitu.data),
                                               
-                                              slope.parametric = T,
                                               dg_composite = T,
+                                              slope.parametric = T,
                                               use_spectral_shape_chl = F,
                                               use_spectral_shape_dg = T,
                                               
@@ -507,12 +514,12 @@ forward.op.am.param.conc.dg_comp_sicf_fdom <- Saber_forward_paramteric_conc_wise
                                               Ed_fDOM_path = "./data/input-spectra/Ed_HL.csv",
                                               use_fDOM_rad = F,
                                               
-                                              verbose = F, plot = T)
+                                              verbose = F, plot = F)
 
 rrs.forward.am.param.conc.dg_comp_sicf_fdom <- forward.op.am.param.conc.dg_comp_sicf_fdom[[1]]$Rrs #Extract AM03 modeled Rrs
 
 #4.3.4.1. full spectral IOPs are provided and no SICF+fDOM
-forward.op.am.param.conc.true_iop <- Saber_forward_paramteric_conc_wise(use_true_IOPs = T, 
+forward.op.am.param.conc.true_iop <- Saber_forward_final(use_true_IOPs = T, 
                                       a_non_water_path = IOP_files[idx_a],
                                       bb_non_water_path = IOP_files[idx_bb],
                                       
@@ -541,7 +548,7 @@ forward.op.am.param.conc.true_iop <- Saber_forward_paramteric_conc_wise(use_true
 rrs.forward.am.param.conc.true_iop <- forward.op.am.param.conc.true_iop[[1]]$Rrs #Extract AM03 modeled Rrs
 
 #4.3.4.2. full spectral IOPs are provided and included SICF+fDOM
-forward.op.am.param.conc.true_iop_sicf_fDOM <- Saber_forward_paramteric_conc_wise(
+forward.op.am.param.conc.true_iop_sicf_fDOM <- Saber_forward_final(
                                               use_true_IOPs = T, 
                                               a_non_water_path = IOP_files[idx_a],
                                               bb_non_water_path = IOP_files[idx_bb],
@@ -589,6 +596,8 @@ forward_rrs_collection = data.frame("wave" = wavelength, "insitu" = surface_rrs_
 
 xmin = 400; xmax= 800; xstp=100
 ymin= 0; ymax=signif(1.25*max(forward_rrs_collection$insitu), digits = 1);ystp= ymax/5
+
+ymax = 0.025;ystp= ymax/5
 asp_rat <- (xmax-xmin)/(ymax-ymin)
 
 g <- ggplot(data = forward_rrs_collection)  + 
@@ -778,13 +787,13 @@ if (insitu.present == TRUE) {
 #5.1 Set Rrs observation data to invert
 if (insitu.present == TRUE) {
   
-  obsdata <-insitu.data #manual set observed rrs to begin inversion
+  obsdata <-surface_rrs_translate(insitu.data) #manual set observed rrs to begin inversion
   
 }else {
   
-  obsdata <-rrs.forward.am #set observed rrs to non-parametric SABER output
+  #obsdata <-rrs.forward.am #set observed rrs to non-parametric SABER output
   
-  #obsdata <-rrs.forward.am.sicf.dg_comp #set observed rrs to parametric SABER with SICF
+  obsdata <-rrs.forward.am #set observed rrs to parametric SABER with SICF
 }
 
 #5.1 Pre-FIT of initial values
@@ -829,7 +838,7 @@ if (preFit == TRUE) {
                               realdata = obsdata, verbose = T)[[1]]$Rrs
   
   #Show prefit spectra (Convert to ggplot2)
-  plot(wavelength, obsdata, type="l", col="red", ylim=c(0,0.004))
+  plot(wavelength, obsdata, type="l", col="red", ylim=c(0,max(obsdata)))
   lines(wavelength, rrs.prefit, col="green")
 }
 
@@ -1031,7 +1040,7 @@ out <- runMCMC(bayesianSetup = bayessetup, settings = settings, sampler = sample
 summary(out)
 
 #5.4.6 MCMC diagnostics
-plot(out, start = 1000) #chain and parameter density
+plot(out, start = 2000) #chain and parameter density
 correlationPlot(out, start = 1000) #correlation plot among parameters
 marginalPlot(out, start = 1000) #Variation in marginal prob density of prior and posterior
 

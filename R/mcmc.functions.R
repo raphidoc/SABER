@@ -3,6 +3,8 @@ create.prior.data <- function(use.ioccg.prior=F, use.wise.prior=F, use.nomad.pri
   
   if (use.ioccg.prior == TRUE) {
     
+    Hl.deep.iop = read_IOCCG_data()
+    
     fit.chl.norm <- fitdistrplus::fitdist(HL.deep.iop$chl, "weibull") #try to fit dist
     
     
@@ -16,11 +18,11 @@ create.prior.data <- function(use.ioccg.prior=F, use.wise.prior=F, use.nomad.pri
   if (use.wise.prior == TRUE) {
     
     #Load WISE-Man 2019 in situ Prior data
-    bgc.data <- read.csv("S:/Work/UQAR/Datasets/WISE/in-Situ/L3/biogeochemistry_wiseman.csv",
+    bgc.data <- read.csv("./data/biogeochemistry_wiseman.csv",
                          header = T)
-    acdom.data <- read.csv("S:/Work/UQAR/Datasets/WISE/in-Situ/L3/ag_long_wiseman.csv",
+    acdom.data <- read.csv("./data/ag_long_wiseman.csv",
                            header = T)
-    anap.data <- read.csv("S:/Work/UQAR/Datasets/WISE/in-Situ/L3/ad_long_wiseman.csv",
+    anap.data <- read.csv("./data/ad_long_wiseman.csv",
                           header = T)
     
     chl.sample <- bgc.data$Chl
@@ -47,7 +49,7 @@ create.prior.data <- function(use.ioccg.prior=F, use.wise.prior=F, use.nomad.pri
   if (use.nomad.prior == TRUE) {
     
     #Load NOMAD in situ Prior data
-    bgc.data <- read.csv("./nomad_dataset_simplified.csv",
+    bgc.data <- read.csv("./data/nomad_dataset_simplified.csv",
                          header = T, sep = ",")
     
     
@@ -97,11 +99,11 @@ create.prior.data <- function(use.ioccg.prior=F, use.wise.prior=F, use.nomad.pri
 }
 
 #Create Prior density function
-prior = function(param){
+prior = function(param, pop_sd = pop.sd, verbose = F){
   chl = param[1]
   acdom.440 = param[2]
   anap.440 = param[3]
-  #x.sd = param[5]
+  x.sd = param[4]
   chl.prior = dweibull(x=chl,shape = fit.chl.norm$estimate[1], 
                        scale =fit.chl.norm$estimate[2] , log = T)
   
@@ -111,14 +113,25 @@ prior = function(param){
   anap440.prior = dweibull(x=anap.440,shape = fit.anap440.norm$estimate[1], 
                            scale =fit.anap440.norm$estimate[2] , log = T)
   
-  lklhood.prior = dunif(x = x.sd, min = 0.0001, max = 0.01, log = T)
+  lklhood.prior = dunif(x = x.sd, min = 0.000001, max  = 0.001, log = T)
   
-  return(chl.prior+acdom440.prior+anap440.prior+lklhood.prior)
-  #return(chl.prior+acdom440.prior+anap440.prior)
+  if (verbose == T) {
+    if (pop_sd == TRUE) {
+      print("Prior of forward model noise is not fitted")
+      return(chl.prior+acdom440.prior+anap440.prior)
+      
+    } else {
+      print("Prior of forward model noise is fitted")
+      return(chl.prior+acdom440.prior+anap440.prior+lklhood.prior)
+    }
+  }
+  
+  
+  #
 }
 
 #Create Prior sampling function
-sampler = function(n=1){
+sampler = function(n=1, pop_sd = pop.sd, verbose=F ){
   
   chl.prior = rweibull(n, shape = fit.chl.norm$estimate[1], 
                        scale =fit.chl.norm$estimate[2])
@@ -131,8 +144,19 @@ sampler = function(n=1){
   
   lklhood.prior = runif(n, min = 0.0001, max = 0.01)
   
-  return(cbind(chl.prior,acdom440.prior,anap440.prior,lklhood.prior))
-  #return(cbind(chl.prior,acdom440.prior,anap440.prior))
+  if (verbose == TRUE) {
+    if (pop_sd == "known") {
+      
+      print("Prior of forward model noise is not fitted")
+      return(cbind(chl.prior,acdom440.prior,anap440.prior))
+      
+    } else {
+      
+      print("Prior of forward model noise is fitted")
+      return(cbind(chl.prior,acdom440.prior,anap440.prior,lklhood.prior))
+    }
+  }
+  
 }
 
 

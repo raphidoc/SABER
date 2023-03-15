@@ -1,5 +1,5 @@
 #=====================================================================================================
-# Saber_forward_paramteric_conc_wise.R simulates the remote sensing reflectance given the wavelengths,
+# Saber_forward_final.R simulates the remote sensing reflectance given the wavelengths,
 # the water components along with bathymetry and bottom reflectance (for shallow water).
 
 # This code has all possible modes "state-of-the-art" of bio-optical parametrizations for IOPs. It
@@ -54,7 +54,7 @@ snell_law <- function(view,sun){#Function to convert above water to under water 
 #Read default test data
 demo.rrs = read.csv("./data/input-spectra/demo_rrs_Om.csv", header = T)
 
-Saber_forward_paramteric_conc_wise <-  function(use_true_IOPs = T,
+Saber_forward_final <-  function(use_true_IOPs = T,
                                            a_non_water_path = "./data/rb_retrieve_demo_a.csv", 
                                            bb_non_water_path = "./data/rb_retrieve_demo_bb.csv",
                                            
@@ -97,6 +97,11 @@ Saber_forward_paramteric_conc_wise <-  function(use_true_IOPs = T,
   cat(paste0("\033[0;36m","=====================================================================================================","\033[0m","\n"))
   cat(paste0("\033[0;36m","######################################### SIMULATION BEGINS #########################################","\033[0m","\n"))
   cat(paste0("\033[0;36m","=====================================================================================================","\033[0m","\n"))
+  
+  if (dg_composite == FALSE & slope.parametric == TRUE) {
+    stop("QAA based paramteric derivation of absorption spectral slope can ONLY be calculated if dg_composite = TRUE")
+  }
+  
   
   if (use_true_IOPs == FALSE) {
     if (is.null(base.CDOM) & is.null(base.NAP)) {
@@ -273,6 +278,7 @@ Saber_forward_paramteric_conc_wise <-  function(use_true_IOPs = T,
           
         } else {
           S_CDM <- 0.017 #<< USER INPUT >>
+          print(paste0("The spectral slope for CDOM + NAP is kept constant as:", S_CDM))
         }
         
         abs_CDM_440 <-  1 # [1/m], CDOM abs. coeff. at 440 [nm] normalized
@@ -432,9 +438,16 @@ Saber_forward_paramteric_conc_wise <-  function(use_true_IOPs = T,
     # Backscattering coefficient for suspended particles [1/m]
     if (slope.parametric == TRUE) {
       
-      #parametric formula to retrieve spectral slope of bbp using QAAv5
-      refexponent = 2*(1-(1.2*exp(-0.9 * (Rrs_obs.interp[which.min(abs(lambda - 443))]/Rrs_obs.interp[which.min(abs(lambda - 555))]))))
-      print(paste0("The spectral slope for bbp is calculated as:", refexponent))
+      if (type_Rrs_below == "deep") {
+        #parametric formula to retrieve spectral slope of bbp using QAAv5
+        refexponent = 2*(1-(1.2*exp(-0.9 * (Rrs_obs.interp[which.min(abs(lambda - 443))]/Rrs_obs.interp[which.min(abs(lambda - 555))]))))
+        print(paste0("The spectral slope for bbp is calculated as:", refexponent))
+        
+      } else {
+        print("Shallow water type, QAA will derive wrong eta_bbp, replaced with constant 0.")
+        refexponent <- 0.46 # << USER INPUT >>
+        
+      }
       
     } else {
       refexponent <- 0.46 # << USER INPUT >>
@@ -769,6 +782,9 @@ Saber_forward_paramteric_conc_wise <-  function(use_true_IOPs = T,
       }
     }
   }
+  
+  #Store the Rrs from elastic scattering
+  Rrs_elastic = Rrs_below
   
   #===============================================================
   #Calculate [chl] Fluorescence equivalent Rrs
@@ -1217,7 +1233,7 @@ Saber_forward_paramteric_conc_wise <-  function(use_true_IOPs = T,
     
     #Calculate residual as function of wavelength
     Res.spectral <- (Rrs - Rrs_obs.interp)*100/Rrs_obs.interp
-    return(list(data.frame("wavelength"=lambda, "Rrs"=Rrs,
+    return(list(data.frame("wavelength"=lambda, "Rrs"=Rrs, "Rrs_elastic" = Rrs_elastic,
                            "p.bias"=Res.spectral),"ss.residual"=Res,"method"=c("SSR eucledian")))
     #return(Res)
     

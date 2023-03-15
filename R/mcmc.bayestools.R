@@ -44,11 +44,11 @@ if (use.ioccg.prior == TRUE) {
 if (use.wise.prior == TRUE) {
   
   #Load WISE-Man 2019 in situ Prior data
-  bgc.data <- read.csv("S:/Work/UQAR/Datasets/WISE/in-Situ/L3/biogeochemistry_wiseman.csv",
+  bgc.data <- read.csv("./data/biogeochemistry_wiseman.csv",
                        header = T)
-  acdom.data <- read.csv("S:/Work/UQAR/Datasets/WISE/in-Situ/L3/ag_long_wiseman.csv",
+  acdom.data <- read.csv("./data/ag_long_wiseman.csv",
                          header = T)
-  anap.data <- read.csv("S:/Work/UQAR/Datasets/WISE/in-Situ/L3/ad_long_wiseman.csv",
+  anap.data <- read.csv("./data/ad_long_wiseman.csv",
                         header = T)
   
   chl.sample <- bgc.data$Chl
@@ -75,7 +75,7 @@ if (use.wise.prior == TRUE) {
 if (use.nomad.prior == TRUE) {
   
   #Load NOMAD in situ Prior data
-  bgc.data <- read.csv("./nomad_dataset_simplified.csv",
+  bgc.data <- read.csv("./data/nomad_dataset_simplified.csv",
                        header = T, sep = ",")
   
   

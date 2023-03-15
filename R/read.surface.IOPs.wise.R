@@ -246,11 +246,11 @@ get_in_situ_params <- function(station_name = "OUT-F18", use_bb_nup = TRUE) {
   
   statname = station_name
   #Load WISE-Man BGC data
-  bgc_wiseman <- read.csv("~/L3/WaterSampling/biogeochemistry_wiseman.csv",header = T)
+  bgc_wiseman <- read.csv("./data/biogeochemistry_wiseman.csv",header = T)
   
-  a_d <- read.csv("~/L3/WaterSampling/ad_long_wiseman.csv", header = T)
-  a_p <- read.csv("~/L3/WaterSampling/ap_long_wiseman.csv", header = T)
-  a_g <- read.csv("~/L3/WaterSampling/ag_long_wiseman.csv", header = T)
+  a_d <- read.csv("./data/ad_long_wiseman.csv", header = T)
+  a_p <- read.csv("./data/ap_long_wiseman.csv", header = T)
+  a_g <- read.csv("./data/ag_long_wiseman.csv", header = T)
   a_g <- subset(a_g,wavelength >= 290)
   
   #Create data structure
