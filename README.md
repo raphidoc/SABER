@@ -77,7 +77,7 @@ In such problems, a cost/objective function, $s_\mathrm{obj}$ is formulated for 
 The MCMC framework randomly samples parametric sets following a probabilistic candidate function and compare the quadrature in $s_\mathrm{obj}$. The convergence here in MCMC is diagnosed by reaching _stationary distribution_ for the parametric space. The posterior distribution, which is the joint probability distribution of parameter space, is calculated as: 
 $$\mathbb{P}(par|R_\mathrm{rs}) \propto \mathbb{P}(par) \mathbb{P}(R_\mathrm{rs}|par)$$
 
-Where $\mathbb{P}(par)$ is the prior probability of parameters. S.A.B.E.R. is developed with _Weibull_ family of distribution for $[chl], a_\mathrm{dg}(443)$ and $H$ following the assumption that the values can never be negative in reality. The density function is given as whereas $R_\mathrm{B}$, which is expressed as a linear mixture of fractions of possible bottom class, is assumed to be _Uniform_ distribution in nature varying between 0-1. $\mathbb{P}(R_\mathrm{rs}|par)$ is the log-likelihood of the forward model which actually infers the model noise which is found to be Gaussian, thus the log-likelihood can be expressed as:
+Where $\mathbb{P}(par)$ is the prior probability of parameters. S.A.B.E.R. is developed with _Weibull_ family of distribution for $[chl], a_\mathrm{dg}(443)$ and $H$ following the assumption that the values can never be negative in reality. The density function is given as: $\{ f(x; \lambda, k) = \frac {k} {\lambda} \left(\frac {x} {\lambda}\right)^{k-1}\exp{(\frac {-x} {\lambda})^k} \} \exists \{ x \geq 0 \}$ where,$\lambda,k$ are the scale and shape parameter of the density function. For shallow water parameter $R_\mathrm{B}$, which is expressed as a linear mixture of fractions of possible bottom class, is assumed to be _Uniform_ distribution in nature varying between 0-1. The density function is given as: $\{f(x)=\frac {1}{b-a} \} \exists \{ a \leq x \geq \forall a=0, b=1 \}$ where $\mathbb{P}(R_\mathrm{rs}|par)$ is the log-likelihood of the forward model which actually infers the model noise which is found to be Gaussian, thus the log-likelihood can be expressed as:
 
 $$
 \log \left(\mathcal{L}\left(\mu, \sigma^2\right)\right)=-\frac{n}{2} \log \left(2 \pi \sigma^2\right)-\frac{1}{2 \sigma^2} \sum_{i-1}^n\left(x_i-\mu\right)^2
@@ -184,7 +184,7 @@ Hoz=0.300; # [cm]
 WV= 2.500; # [cm]
 ```
 
-The forward model can be called from the function `Saber_forward_final()`. The function needs some prerequisites as a bunch of conditional variable with an array of values. The user is recommended to refer to `main.R` for blocks of parametric initialization. (**NOTE: In future, the `main.R` variables will be converted into package environmental variables). As of now, The `Saber_forward_final()` takes a range of input arguements to implement the forward model. An example is shown below.
+The forward model can be called from the function `Saber_forward_final()`. The function needs the earlier mentioned global variables as prerequisites. The user is recommended to refer to `main.R` (or the block above) for blocks of parametric initialization. (**NOTE: In future, these global variables will be converted into package environmental variables). Additionally, The `Saber_forward_final()` takes a range of input arguments on IOPs, BGC variables, Fluorescence etc. to implement the forward model. An example is shown below.
 
 ```
 forward_op_am03 <- Saber_forward_final(
@@ -443,9 +443,48 @@ The output MCMC chains in `out` can also be used to track the optimization proce
 <img src="./mark_down/randomwalk_3D _v1.0.gif" width="800"/ title="MCMC steps"> 
 </center>
 
+- Spectral $R_\mathrm{B}(\lambda)$ retrieval
+
+The $R_\mathrm{B}(\lambda)$ values can be retrieved using the function `Saber_retrieve_rb_wise()` which must be provided with subsurface $R_\mathrm{rs}$ as AOP input along with coherent IOPs or BGC variables and water column depth $H$. An example of how to run the function is showed below.
+
+```
+#Retrieve spectral Rb from forward SABER generated Rrs with True IOPs
+      Rrs_bottom_est_iop = Saber_retrieve_rb_wise(
+                             use_true_IOPs = T, #TRUE if user IOPs are supplied
+                             a_non_water_path = IOP_files[idx_a_rb], #path for absorption file
+                             bb_non_water_path = IOP_files[idx_bb_rb], #path for backscatter file
+                                                  
+                             chl = bgc_params_rb$chl_invivo, #[chl] value, only if use_true_IOPs=F
+                             acdom440 =bgc_params_rb$a_cdom, #[acdom443] value, only if use_true_IOPs=F
+                             anap440 = bgc_params_rb$a_nap, #[anap443] value, only if use_true_IOPs=F
+                             bbp.550 = bgc_params_rb$bbp555, #[bbp555] value, only if use_true_IOPs=F
+                                                  
+                             slope.parametric = F, #True QAA derived spectral slope (not recomended)
+                             dg_composite = F, #True if acdom and anap should be merged
+
+                             z = iop_aop_rb$zB_COPS, #water column depth
+                                                  
+                             obs_rrs = obs_rrs #sub-surface Rrs
+                             )
+```
+An additional user specific batch option is available to retrieve spectral $R_\mathrm{B}(\lambda)$ for multiple field observations. The function can be called via `Saber_generate_rb_batch()` with `staionlist` as the function arguement which expects a vector of characters reflecting the field station names where subsequent observations of IOPs and AOPs are available. As of now, this function can work with data structure generated from `Riops::Generate.IOP.DB()` function which generates subsurface observations of IOPs in a single .csv file. In future, the function will be extended to work on general data structures. An example of the $R_\mathrm{B}(\lambda)$ retrieved from an _in situ_ station with $\sim2.5m$ depth in CDOM rich coastal waters. In this example, The model was tested with both IOP data and BGC data to see how it impacted the $R_\mathrm{B}(\lambda)$ retrieval.
+
+
+<center>
+<img src="./mark_down/Rb_spectral_station_MAN-R01.png" width="600"/ title="Rb retrieval"> 
+</center>
+
+
 # REFERENCES
 
 Albert, A., & Mobley, C. (2003). An analytical model for subsurface irradiance and remote sensing reflectance in deep and shallow case-2 waters. Optics Express, 11(22), 2873. https://doi.org/10.1364/oe.11.002873
+
+A. Gilerson, J. Zhou, S. Hlaing, I. Ioannou, J. Schalles, 
+B. Gross, F. Moshary, and S. Ahmed, "Fluorescence component in the reflectance spectra 
+from coastal waters. Dependence on water composition," Opt. Express 15, 
+15702-15721 (2007)
+
+Gregg, Watson W., Carder, K. L., (1990), A simple spectral solar irradiance model for cloudless maritime atmospheres, Limnology and Oceanography, 35, doi: 10.4319/lo.1990.35.8.1657.
 
 Lee, Z., Carder, K. L., Hawes, S. K., Steward, R. G., Peacock, T. G., & Davis, C. O. (1994). Model for the interpretation of hyperspectral remote-sensing reflectance. Applied Optics, 33(24), 5721. https://doi.org/10.1364/AO.33.005721
 
