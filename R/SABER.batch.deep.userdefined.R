@@ -86,15 +86,15 @@ for (i in startloc:dim(rrs.forward.SABER)[1]) {
                                                                   inverse_output[[1]]$`sd(+/-)`[1:3]))
   cat(paste0("\033[0;32m","###############Calculate analytical Jacobian for each parameter for each wavelength################","\033[0m","\n"))
   
-  test = saber.forward.jacobian.analytical(chl = synthetic_data_shallow$C_ph[i],
-                                           acdom.440 = synthetic_data_shallow$a_cdom.440[i], 
-                                           anap.440 = synthetic_data_shallow$a.nap.440[i],
-                                           wavelength = wlrange, verbose = F)
-  
-  write.csv(test, file = paste0("./Jacobian/deep/jacobian_chl-",synthetic_data_shallow$C_ph[i], "_cdom-", synthetic_data_shallow$a_cdom.440[i], "_nap-",synthetic_data_shallow$a.nap.440[i],".csv"),
-            row.names = F, quote = F, sep = ",")
-  
-  cat(paste0("\033[0;32m","###############analytical Jacobian for each parameter is saved to disc################","\033[0m","\n"))
+  # test = saber.forward.jacobian.analytical(chl = synthetic_data_shallow$C_ph[i],
+  #                                          acdom.440 = synthetic_data_shallow$a_cdom.440[i], 
+  #                                          anap.440 = synthetic_data_shallow$a.nap.440[i],
+  #                                          wavelength = wlrange, verbose = F)
+  # 
+  # write.csv(test, file = paste0("./Jacobian/deep/jacobian_chl-",synthetic_data_shallow$C_ph[i], "_cdom-", synthetic_data_shallow$a_cdom.440[i], "_nap-",synthetic_data_shallow$a.nap.440[i],".csv"),
+  #           row.names = F, quote = F, sep = ",")
+  # 
+  # cat(paste0("\033[0;32m","###############analytical Jacobian for each parameter is saved to disc################","\033[0m","\n"))
   
   cat(paste0("\033[0;34m","############### INVERSION FINISHED for ", i, " number spectra ################","\033[0m","\n"))
 }

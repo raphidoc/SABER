@@ -24,12 +24,14 @@ require(ggplot2)
 #--------------------------------------------------------------------------
 setwd("/home/musk0001/R_inverse_wasi")
 
-surface_rrs_translate <-  function(Rrs) { #Function to translate Rrs0+ to Rrs0-
+#Function to translate Rrs0+ to Rrs0-
+surface_rrs_translate <-  function(Rrs) { 
   rrs = Rrs / (0.52 + 1.7*Rrs)
   return(rrs)
 }
 
-snell_law <- function(view,sun){#Function to convert above water to under water geometry
+#Function to convert above water to under water geometry
+snell_law <- function(view,sun){
   
   # Index of refrations (real)
   n_air= 1;  # air index of refration (real part)
@@ -55,34 +57,49 @@ snell_law <- function(view,sun){#Function to convert above water to under water 
 demo.rrs = read.csv("./data/input-spectra/demo_rrs_Om.csv", header = T)
 
 Saber_forward_final <-  function(use_true_IOPs = T,
-                                           a_non_water_path = "./data/rb_retrieve_demo_a.csv", 
-                                           bb_non_water_path = "./data/rb_retrieve_demo_bb.csv",
+                                a_non_water_path = "./data/rb_retrieve_demo_a.csv", 
+                                bb_non_water_path = "./data/rb_retrieve_demo_bb.csv",
                                            
-                                           chl=4.96, acdom440=NULL, anap440=NULL, 
-                                           a_dg = 1, bbp.550=0.00726002, 
                                            
-                                           dg_composite = TRUE,
-                                           slope.parametric = TRUE, #Note, iff dg_composite = TRUE 
-                                           use_spectral_shape_chl = FALSE,
-                                           use_spectral_shape_dg = TRUE,
+                                chl=4.96, #must be input if SICF=TRUE
+                                dg_composite = TRUE, #Set TRUE if a_dg is provided together, if set 
                                            
-                                           z=2, 
-                                           rb.fraction = fA.set,
-                                           use_spectral_rb = F,
-                                           spectral_rb_path = "./Outputs/Bottom_ref/Rb_spectral_data_MAN-R01.csv",
+                                acdom440=NULL, anap440=NULL, 
+                                a_dg = 1, bbp.550=0.00726002, 
                                            
-                                           sicf = TRUE, q_phi=0.02,
+                                slope.parametric = TRUE, #Note, only possible if dg_composite = TRUE 
+                                
+                                use_spectral_shape_chl = FALSE, #Spectral shape normalization of a_phi
+                                use_spectral_shape_dg = TRUE,   #Spectral shape normalization of a_dg
                                            
-                                           fDOM = TRUE, use_analytic_Ed = TRUE,
-                                           sunzen_Ed = 60, lat_Ed = 49, lon_Ed = -68,
-                                           date_time_Ed = "2019-08-18 20:50 GMT", 
-                                           #hr_GMT_Ed = "2019-08-18 20:50 GMT",
-                                           Ed_fDOM_path = "./data/input-spectra/Ed_HL.csv",
-                                           use_fDOM_rad = F,
                                            
-                                           plot = FALSE, verbose = FALSE,
-                                           realdata = demo.rrs$rrs.demo, 
-                                           realdata.exist = TRUE){
+                                use_manual_slope = FALSE, #use manual spectral slopes
+                                manual_slope = c("s_g"=0.015, "s_d"=0.01160, "gamma"=1),
+                                 
+                                 
+                                z=2, #bottom depth
+                                rb.fraction = fA.set, #aerial fraction of bottom types
+                                
+                                use_spectral_rb = F, #use Spectral R_b instead of aerial fraction
+                                spectral_rb_path = "./Outputs/Bottom_ref/Rb_spectral_data_MAN-R01.csv",
+                                
+                                           
+                                sicf = TRUE, q_phi=0.02, #sicf rrs and quantum yield
+                                
+                                fDOM = TRUE, #fdom rrs
+                                
+                                use_analytic_Ed = TRUE, #calculate Ed analytically from geometry
+                                
+                                sunzen_Ed = 60, #Sun Zenih at location, if avaiable, unless set -99
+                                lat_Ed = 49, lon_Ed = -68, #Lat & Lon
+                                date_time_Ed = "2019-08-18 20:50 GMT", #Date time in UTC
+                        
+                                Ed_fDOM_path = "./data/input-spectra/Ed_HL.csv", #Path for user supplied Ed file
+                                use_fDOM_rad = F, #fDOM radiance is expected instead of reflectance
+                                           
+                                plot = FALSE, verbose = FALSE, #plot diagnostics and console output
+                                realdata = demo.rrs$rrs.demo, 
+                                realdata.exist = TRUE){
   
   ## OAC and IOP initialization
   
@@ -94,10 +111,14 @@ Saber_forward_final <-  function(use_true_IOPs = T,
   base.bbp <- bbp.550   # particulate backscatter at 550nm [m^-1]
   lambda <- wavelength  #Desired spectral range for simulation
   
-  cat(paste0("\033[0;36m","=====================================================================================================","\033[0m","\n"))
-  cat(paste0("\033[0;36m","######################################### SIMULATION BEGINS #########################################","\033[0m","\n"))
-  cat(paste0("\033[0;36m","=====================================================================================================","\033[0m","\n"))
-  
+  if (verbose == T) {
+    
+    cat(paste0("\033[0;36m","=====================================================================================================","\033[0m","\n"))
+    cat(paste0("\033[0;36m","######################################### SIMULATION BEGINS #########################################","\033[0m","\n"))
+    cat(paste0("\033[0;36m","=====================================================================================================","\033[0m","\n"))
+    
+  }
+    
   if (dg_composite == FALSE & slope.parametric == TRUE) {
     stop("QAA based paramteric derivation of absorption spectral slope can ONLY be calculated if dg_composite = TRUE")
   }
@@ -106,13 +127,23 @@ Saber_forward_final <-  function(use_true_IOPs = T,
   if (use_true_IOPs == FALSE) {
     if (is.null(base.CDOM) & is.null(base.NAP)) {
       
-      print("absorption of CDOM and NAP will be combined using QAAv5/user-given spectral slopes")
+      if (verbose == T) {
+        print("Absorption of CDOM and NAP are read from a_dg argument")
+      }
+     
       base_CDM = a_dg
       
     } else {
+      if (!is.null(a_dg)) {
+        stop("Cannot run with values from both a_dg and acdom440, anap440; Set one set to NULL")
+      } else {
+        if (verbose == T) {
+          print("absorption of CDOM and NAP are read from acdom440 and anap440 arguements")
+        }
+        
+        base_CDM <- base.NAP + base.CDOM
+      }
       
-      print("absorption of CDOM and NAP will be read from user inputs")
-      base_CDM <- base.NAP + base.CDOM
     }
   }
   
@@ -133,7 +164,7 @@ Saber_forward_final <-  function(use_true_IOPs = T,
         bb_non_water_wave = bb_non_water_df$wave
         
       } else {
-        print("The IOPs must be provided as data frames with <<wave>> as wavelength & <<a/bb>> as value")
+        stop("The IOPs must be provided as data frames with <<wave>> as wavelength & <<a/bb>> as value")
       }
       
     }
@@ -196,7 +227,10 @@ Saber_forward_final <-  function(use_true_IOPs = T,
   #--------------------------------------------------------------------------
   
   if (use_true_IOPs == FALSE) {
-    print(paste0("Full spectral IOPs not provided, bio-optical models are used"))
+    
+    if (verbose == TRUE) {
+      print(paste0("Full spectral IOPs not provided, bio-optical models are used"))
+    }
     
     ## Plankthon absorption (1/m)
     
@@ -230,7 +264,10 @@ Saber_forward_final <-  function(use_true_IOPs = T,
       abs_ph = C_ph_norm*abs_ph_norm
       abs_ph[abs_ph < 0] <- 0
       
-      print("Planktonic absorption calculated using spectral shape scaled [chl]")
+      if (verbose == T) {
+        print("Planktonic absorption calculated using spectral shape scaled [chl]")
+      }
+      
       
     } else {
       
@@ -244,8 +281,10 @@ Saber_forward_final <-  function(use_true_IOPs = T,
         
       }
       abs_ph[abs_ph < 0] <- 0
+      if (verbose == T) {
+        print("Planktonic absorption calculated using absolute values of [chl]")
+      }
       
-      print("Planktonic absorption calculated using absolute values of [chl]")
     }
     
     
@@ -267,18 +306,37 @@ Saber_forward_final <-  function(use_true_IOPs = T,
             
             #parametric formula to retrieve spectral slope of CDOM + NAP
             S_CDM = 0.015 + (0.002/(0.6 + (Rrs_obs.interp[which.min(abs(lambda - 443))]/Rrs_obs.interp[which.min(abs(lambda - 555))])))
-            print(paste0("The spectral slope for CDOM + NAP is calculated as:", S_CDM))
+            
+            if (verbose == T) {
+              print(paste0("The spectral slope for CDOM + NAP is calculated as:", S_CDM))
+            }
+            
             
           } else {
+            if (verbose == T) {
+              print("Shallow water type, QAA will derive wrong s_CDM, replaced with constant 0.017")
+            }
             
-            print("Shallow water type, QAA will derive wrong s_CDM, replaced with constant 0.017")
-            S_CDM <- 0.017 #<< USER INPUT >>
+            S_CDM <- 0.017 #<< HARD-CODED >>
           }
           
           
         } else {
-          S_CDM <- 0.017 #<< USER INPUT >>
-          print(paste0("The spectral slope for CDOM + NAP is kept constant as:", S_CDM))
+          if (use_manual_slope  == TRUE) {
+            S_CDM = as.numeric(manual_slope["s_g"] + manual_slope["s_d"])
+            
+            if (verbose == T) {
+              print(paste0("The spectral slope for CDOM + NAP is supplied by user as:", S_CDM))
+            }
+            
+          } else {
+            S_CDM <- 0.017 #<< Model Default >>
+            if (verbose == T) {
+              print(paste0("The spectral slope for CDOM + NAP is kept constant as:", S_CDM))
+            }
+            
+          }
+          
         }
         
         abs_CDM_440 <-  1 # [1/m], CDOM abs. coeff. at 440 [nm] normalized
@@ -292,7 +350,10 @@ Saber_forward_final <-  function(use_true_IOPs = T,
         }
         abs_CDM = Ga_CDOM*abs_CDM_norm
         
-        print(paste0("CDOM+NAP absorption calculated using spectral shape from ", min(lambda), " nm to ", max(lambda), " nm."))
+        if (verbose == T) {
+          print(paste0("CDOM+NAP absorption calculated using spectral shape from ", min(lambda), " nm to ", max(lambda), " nm."))
+        }
+        
         
       } else {
         
@@ -306,17 +367,40 @@ Saber_forward_final <-  function(use_true_IOPs = T,
           if (type_Rrs_below == "deep") {
             #parametric formula to retrieve spectral slope of CDOM + NAP
             S_CDM = 0.015 + (0.002/(0.6 + (Rrs_obs.interp[which.min(abs(lambda - 443))]/Rrs_obs.interp[which.min(abs(lambda - 555))])))
-            print(paste0("The spectral slope for CDOM + NAP is calculated as:", S_CDM))
+            
+            if (verbose == T) {
+              print(paste0("The spectral slope for CDOM + NAP is calculated as:", S_CDM))
+            }
+            
             
           } else {
-            print("Shallow water type, QAA will derive wrong s_CDM, replaced with constant 0.017")
-            S_CDM <- 0.017 #<< USER INPUT >>
+            
+            if (verbose == T) {
+              print("Shallow water type, QAA will derive wrong s_CDM, replaced with constant 0.017")
+            }
+            
+            S_CDM <- 0.017 #<< HARD CODED>>
             
           }
           
           
         } else {
-          S_CDM <- 0.017 #<< USER INPUT >>
+          if (use_manual_slope  == TRUE) {
+            S_CDM = as.numeric(manual_slope["s_g"] + manual_slope["s_d"])
+            
+            if (verbose == T) {
+              print(paste0("The spectral slope for CDOM + NAP is supplied by user as:", S_CDM))
+            }
+            
+          } else {
+            S_CDM <- 0.017 #<< Model Default >>
+            
+            if (verbose == T) {
+              print(paste0("The spectral slope for CDOM + NAP is kept constant as:", S_CDM))
+            }
+            
+          }
+          
         }
         
         abs_CDM <- rep(0,length(lambda))
@@ -327,8 +411,10 @@ Saber_forward_final <-  function(use_true_IOPs = T,
           
         }
         
+        if (verbose == T) {
+          print(paste0("CDOM+NAP absorption calculated using absolute values from ", min(lambda), " nm to ", max(lambda), " nm."))
+        }
         
-        print(paste0("CDOM+NAP absorption calculated using absolute values from ", min(lambda), " nm to ", max(lambda), " nm."))
         
       }
     } else {
@@ -336,7 +422,22 @@ Saber_forward_final <-  function(use_true_IOPs = T,
       
       Ga_CDOM <- 1# [m^2/mg]
       Oa_CDOM <- 0
-      S_CDOM <- 0.014
+      
+      if (use_manual_slope  == TRUE) {
+        S_CDOM = as.numeric(manual_slope["s_g"])
+        
+        if (verbose == T) {
+          print(paste0("The spectral slope for CDOM is supplied by user as:", S_CDOM))
+        }
+        
+      } else {
+        S_CDOM <- 0.014 #<< Model Default >>
+        if (verbose == T) {
+          print(paste0("The spectral slope for CDOM NAP is kept constant as:", S_CDOM))
+        }
+        
+      }
+      
       abs_CDOM_440 <-  (Ga_CDOM*base.CDOM)+Oa_CDOM# [1/m], CDOM abs. coeff. at 440 [nm]
       
       abs_CDOM <- rep(0,length(lambda))
@@ -355,7 +456,24 @@ Saber_forward_final <-  function(use_true_IOPs = T,
       
       Ga_X <- 1# [m^2/mg]
       Oa_X <- 0
-      S_X <- 0.01160
+      
+      
+      if (use_manual_slope  == TRUE) {
+        S_X = as.numeric(manual_slope["s_d"])
+        
+        if (verbose == T) {
+          print(paste0("The spectral slope for NAP is supplied by user as:", S_X))
+        }
+        
+      } else {
+        S_X <- 0.01160 #<< Model Default >>
+        
+        if (verbose == T) {
+          print(paste0("The spectral slope for NAP is kept constant as:", S_X))
+        }
+        
+      }
+      
       abs_X_440 <-  (Ga_X*base.NAP)+Oa_X# [1/m], SPM abs. coeff. at 440 [nm]
       
       abs_X <- rep(0,length(lambda))
@@ -441,16 +559,53 @@ Saber_forward_final <-  function(use_true_IOPs = T,
       if (type_Rrs_below == "deep") {
         #parametric formula to retrieve spectral slope of bbp using QAAv5
         refexponent = 2*(1-(1.2*exp(-0.9 * (Rrs_obs.interp[which.min(abs(lambda - 443))]/Rrs_obs.interp[which.min(abs(lambda - 555))]))))
-        print(paste0("The spectral slope for bbp is calculated as:", refexponent))
+        
+        if (verbose == T) {
+          print(paste0("The spectral slope for bbp is calculated as:", refexponent))
+        }
+        
         
       } else {
-        print("Shallow water type, QAA will derive wrong eta_bbp, replaced with constant 0.")
-        refexponent <- 0.46 # << USER INPUT >>
+        if (verbose == T) {
+          print("Shallow water type, QAA will derive wrong spectral slope, manual slope will be used")
+        }
+        
+        if (use_manual_slope  == TRUE) {
+          refexponent = as.numeric(manual_slope["gamma"])
+          
+          if (verbose == T) {
+            print(paste0("The spectral slope for bbp is supplied by user as:", refexponent))
+          }
+          
+        } else {
+          refexponent <- 0.46 #<< Model Default >>
+          
+          if (verbose == T) {
+            print(paste0("The spectral slope for bbp is kept constant as:", refexponent))
+          }
+          
+        }
         
       }
       
     } else {
-      refexponent <- 0.46 # << USER INPUT >>
+      
+      if (use_manual_slope  == TRUE) {
+        refexponent = as.numeric(manual_slope["gamma"])
+        
+        if (verbose == T) {
+          print(paste0("The spectral slope for bbp is supplied by user as:", refexponent))
+        }
+        
+      } else {
+        refexponent <- 0.46 #<< Model Default >>
+        
+        if (verbose == T) {
+          print(paste0("The spectral slope for bbp is kept constant as:", refexponent))
+        }
+        
+      }
+    
     }
     
     
@@ -662,7 +817,11 @@ Saber_forward_final <-  function(use_true_IOPs = T,
       
       #Bottom Contribution
       if (use_spectral_rb == FALSE) {
-        print("Bottom reflectance is assumed as LMM of user defined pure-spectra")
+        
+        if (verbose == T) {
+          print("Bottom reflectance is assumed as LMM of user defined pure-spectra")
+        }
+    
         # Reflection factors of bottom surface [1/sr]
         #B0 <- 1/pi; 
         B1 <- 1/pi; B2 <- 1/pi; B3 <- 1/pi; B4 <- 1/pi; B5 <- 1/pi; 
@@ -732,7 +891,11 @@ Saber_forward_final <-  function(use_true_IOPs = T,
         Rrs_Bottom <- colSums(Rrs_Bottom)# [1/sr]
         
       } else {
-        print("Bottom reflectance is read from user-defined bottom reflectance file")
+        
+        if (verbose == T) {
+          print("Bottom reflectance is read from user-defined bottom reflectance file")
+        }
+        
         rb_bottom = read.csv(spectral_rb_path, header = T)
         rb_bottom_wave = rb_bottom$wave
         rb_bottom_rb = rb_bottom$rb_est_iop
@@ -790,6 +953,9 @@ Saber_forward_final <-  function(use_true_IOPs = T,
   #Calculate [chl] Fluorescence equivalent Rrs
   #===============================================================
   if (sicf == TRUE & dg_composite == FALSE) {
+    if (is.null(C_ph)) {
+      stop("Chl concentration must be provided to calculate SICF")
+    }
     rrs_sicf = Rrs_Fluorescence(c_chl = C_ph,  
                                 #c_chl = Fit.input$chl,
                                 dg_comsposite = FALSE,  
@@ -801,12 +967,18 @@ Saber_forward_final <-  function(use_true_IOPs = T,
                                 
                                 abs_cdom_443 = base.CDOM,
                                 abs_nap_443 = base.NAP, phi_f = q_phi)
-    print(paste0("SICF: Absorption of CDOM and NAP is user defined inputs"))
-    print(paste0("Subsurface (0^-) Rrs equivalent to SICF calculated with quantum yield of ", q_phi))
+    if (verbose == T) {
+      print(paste0("SICF: Absorption of CDOM and NAP is user defined inputs"))
+      print(paste0("Subsurface (0^-) Rrs equivalent to SICF calculated with quantum yield of ", q_phi))
+    }
+    
     Rrs_below = Rrs_below + rrs_sicf
   }
   
   if (sicf == TRUE & dg_composite == TRUE) {
+    if (is.null(C_ph)) {
+      stop("Chl concentration must be provided to calculate SICF")
+    }
     qaa_op = QAA.v5(waves = lambda, Rrs = Rrs_obs.interp)
     rrs_sicf = Rrs_Fluorescence(c_chl = C_ph,  
                                 #c_chl = Fit.input$chl,
@@ -819,8 +991,11 @@ Saber_forward_final <-  function(use_true_IOPs = T,
                                 dg_443 = qaa_op$a_dg_443,
                                 abs_cdom_443 = base.CDOM,
                                 abs_nap_443 = base.NAP, phi_f = q_phi)
-    print(paste0("SICF: Absorption of CDOM and NAP is calculated from QAA"))
-    print(paste0("Subsurface (0^-) Rrs equivalent to SICF calculated with quantum yield of ", q_phi))
+    if (verbose == T) {
+      print(paste0("SICF: Absorption of CDOM and NAP is calculated from QAA"))
+      print(paste0("Subsurface (0^-) Rrs equivalent to SICF calculated with quantum yield of ", q_phi))
+    }
+    
     Rrs_below = Rrs_below + rrs_sicf
   }
   
@@ -958,10 +1133,22 @@ Saber_forward_final <-  function(use_true_IOPs = T,
       abs_CDM_440 =  qaa_op$a_dg_443
       
       if (type_Rrs_below == "deep") {
+        if (slope.parametric == TRUE) {
+          #parametric formula to retrieve spectral slope of CDOM + NAP
+          S_CDM = 0.015 + (0.002/(0.6 + (Rrs_obs.interp[which.min(abs(lambda - 443))]/Rrs_obs.interp[which.min(abs(lambda - 555))])))
+          print(paste0("fDOM: The spectral slope for CDOM + NAP is calculated as:", S_CDM))
+        } else{
+          
+          if (use_manual_slope  == TRUE) {
+            S_CDM = as.numeric(manual_slope["s_g"] + manual_slope["s_d"])
+            print(paste0("The spectral slope for CDOM + NAP is supplied by user as:", S_CDM))
+          } else {
+            S_CDM <- 0.017 #<< Model Default >>
+            print(paste0("The spectral slope for CDOM + NAP is kept constant as:", S_CDM))
+          }
+          
+        }
         
-        #parametric formula to retrieve spectral slope of CDOM + NAP
-        S_CDM = 0.015 + (0.002/(0.6 + (Rrs_obs.interp[which.min(abs(lambda - 443))]/Rrs_obs.interp[which.min(abs(lambda - 555))])))
-        print(paste0("fDOM: The spectral slope for CDOM + NAP is calculated as:", S_CDM))
         
       } else {
         print("fDOM: The water type is shallow, QAA will obtain wrong s_CDOM, thus const. 0.017 is used")
@@ -1157,9 +1344,12 @@ Saber_forward_final <-  function(use_true_IOPs = T,
       }
     }
   }
-  cat(paste0("\033[0;32m","=====================================================================================================","\033[0m","\n"))
-  cat(paste0("\033[0;32m","######################################### SIMULATION ENDS #########################################","\033[0m","\n"))
-  cat(paste0("\033[0;32m","=====================================================================================================","\033[0m","\n"))
+  if (verbose == T) {
+    cat(paste0("\033[0;32m","=====================================================================================================","\033[0m","\n"))
+    cat(paste0("\033[0;32m","######################################### SIMULATION ENDS #########################################","\033[0m","\n"))
+    cat(paste0("\033[0;32m","=====================================================================================================","\033[0m","\n"))
+  }
+  
   
   #Compare actual vs modelled Rrs
   #Rrs_obs.interp <- Hmisc::approxExtrap(Rrs_obs_wl, Rrs_obs, xout = lambda, method = "linear")$y
@@ -1233,8 +1423,17 @@ Saber_forward_final <-  function(use_true_IOPs = T,
     
     #Calculate residual as function of wavelength
     Res.spectral <- (Rrs - Rrs_obs.interp)*100/Rrs_obs.interp
-    return(list(data.frame("wavelength"=lambda, "Rrs"=Rrs, "Rrs_elastic" = Rrs_elastic,
-                           "p.bias"=Res.spectral),"ss.residual"=Res,"method"=c("SSR eucledian")))
+    
+    if (use_true_IOPs == F) {
+      return(list(data.frame("wavelength"=lambda, "Rrs"=Rrs, "Rrs_elastic" = Rrs_elastic,
+                             "p.bias"=Res.spectral),"abs_comp"=plotframe.abs, 
+                  "ss.residual"=Res,"method"=c("SSR eucledian")))
+    } else {
+      return(list(data.frame("wavelength"=lambda, "Rrs"=Rrs, "Rrs_elastic" = Rrs_elastic,
+                             "p.bias"=Res.spectral), 
+                  "ss.residual"=Res,"method"=c("SSR eucledian")))
+    }
+    
     #return(Res)
     
   } else {

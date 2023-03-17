@@ -126,6 +126,29 @@ NLL_nloptr_sse = function(pars, data) {
   
 }
 
+rrs_est = Gpred[[1]]$Rrs
+
+# Sum-squared residual of error (SSE)
+#sse= sum((data - rrs_est)^2)
+#return(sse)
+
+#The Spectral error index from Lee 1999
+# Define the spectral regions
+region1 <- which(wavelength >= 400 & wavelength <= 675)
+region2 <- which(wavelength >= 750 & wavelength <= 830)
+
+# Calculate the numerator of the error index
+numerator <- sqrt(sum((data[region1] - rrs_est[region1])^2) + 
+                    sum((data[region2] - rrs_est[region2])^2))
+
+# Calculate the denominator of the error index
+denominator <- sum(rrs_est[region1]) + sum(rrs_est[region2])
+
+# Calculate the error index
+err <- numerator / denominator
+
+return(err)
+
 #Constrained
 #Try optimization with nloptr
 NLL_nloptr_sse_constr = function(pars, data) {
