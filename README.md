@@ -17,8 +17,9 @@ $$R_{r s}^{e, m}(\lambda)=R_{r s, \infty} \cdot[1-\exp {-(K_d+\frac{K_{u, W}}{\c
 
 $$R_{r s, \infty}=f^{\uparrow}\left(\omega_b, \theta_s, u, \theta_v\right) \cdot \omega_b=$$
 
-$$f^{\uparrow}\left(\omega_b\right) \cdot f^{\uparrow}\left(\theta_s\right) \cdot f^{\uparrow}(u) \cdot f^{\uparrow}\left(\theta_v\right) \cdot \omega_b= \\
-P_{r s, 1} \cdot\left(1+P_{r s, 2} \cdot \omega_b+P_{r s, 3} \cdot \omega_b^2+P_{r s, 4} \cdot \omega_b^3\right) \cdot\left(1+P_{r s, 5} \cdot \frac{1}{\cos \theta_s}\right) \cdot(1 \\
+$$f^{\uparrow}\left(\omega_b\right) \cdot f^{\uparrow}\left(\theta_s\right) \cdot f^{\uparrow}(u) \cdot f^{\uparrow}\left(\theta_v\right) \cdot \omega_b= \\$$
+
+$$P_{r s, 1} \cdot\left(1+P_{r s, 2} \cdot \omega_b+P_{r s, 3} \cdot \omega_b^2+P_{r s, 4} \cdot \omega_b^3\right) \cdot\left(1+P_{r s, 5} \cdot \frac{1}{\cos \theta_s}\right) \cdot(1 \\
 \left.+P_{r s, 6} \cdot u\right) \cdot\left(1+P_{r s, 7} \cdot \frac{1}{\cos \theta_v}\right) \cdot \omega_b$$
 
 + Where, $u$ is wind speed at water surface, $\omega_\mathrm{b}$ is the single-scattering albedo calculated as $\frac{b_\mathrm{b}}{a +b_\mathrm{b}}$ and $P_{r s, 1-7}$ are parametric coefficients. 

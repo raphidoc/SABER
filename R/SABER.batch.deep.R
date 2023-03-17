@@ -11,6 +11,8 @@ require(Cops)
 
 setwd("/home/musk0001/R_inverse_wasi")
 
+duplicate_simulation = FALSE
+preFit = FALSE
 
 #Load IOP and AOP data
 
@@ -152,7 +154,10 @@ for (j in 1:dim(rrs.HL)[1]) {
                                 
                                 obsdata = rrs.HL[j,],
                                 
-                                sa.model = "am03", obj.fn =obj.run ,
+                                sa.model = "am03", 
+                                
+                                obj.fn =obj.run ,
+                                obj.fn ="obj_L98",
                                 
                                 auto_spectral_slope = F,
                                 manual_spectral_slope = T, 
@@ -175,8 +180,8 @@ write.csv(file = "./Outputs/inv_param_IOCCG.csv", x=Fit.optimized.ssobj.batch, s
           row.names = F, col.names = T)
 
 
-acos((sum(sum(rrs.forward.am.param.conc.dg_comp_sicf_fdom*rrs.forward.am)))/
-       ((sum(rrs.forward.am.param.conc.dg_comp_sicf_fdom^2)^0.5)*(sum(rrs.forward.am^2)^0.5)))
+# acos((sum(sum(rrs.forward.am.param.conc.dg_comp_sicf_fdom*rrs.forward.am)))/
+#        ((sum(rrs.forward.am.param.conc.dg_comp_sicf_fdom^2)^0.5)*(sum(rrs.forward.am^2)^0.5)))
 
 #Validate inversion parameters
 par(mfrow=c(1,3))
