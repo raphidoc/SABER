@@ -268,7 +268,8 @@ Fit.optimized.mcmc <- data.frame("chl"=mean(chain[,1]),
                                  "anap.440"=mean(chain[,3]))
 
 # Example: plot the likelihood profile of a single parameter among the fit vector
-slopevalues = function(x){return(likelihood(pars = c(x,as.numeric(Fit.optimized.ssobj[-1])), dataobs = rrs.forward.am))}
+slopevalues = function(x){return(likelihood(pars = c(x,as.numeric(Fit.optimized.ssobj[-1])), 
+                                            dataobs = rrs.forward.am))}
 slopelikelihoods = lapply(seq(1, 10, by=.05), slopevalues )
 plot (seq(1, 10, by=.05), slopelikelihoods , type="l", xlab = "values of chl", ylab = "Log likelihood")
 abline(v=seq(1, 10, by=.05)[which.max(slopelikelihoods)])
@@ -279,7 +280,8 @@ abline(v=seq(1, 10, by=.05)[which.max(slopelikelihoods)])
 
 
 log_like_graph <- function(chl, acdom440){
-  loglik = likelihood(pars = c(chl,acdom440,as.numeric(Fit.optimized.ssobj[-(1:2)])), dataobs = rrs.forward.am)
+  loglik = likelihood(pars = c(chl,acdom440,as.numeric(Fit.optimized.ssobj[-(1:2)])), 
+                      dataobs = rrs.forward.am)
   return(loglik)
 }
 log_like_graph <- Vectorize(log_like_graph)

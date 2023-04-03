@@ -383,7 +383,8 @@ for(i in iterationlist) {
   if (i == max(iterationlist)) {
     
     #@@@@ Add the surfaces of actual and predicted@@@@@@@@@ 
-    rect3D(x0 = min(chain$chl), y0 = MAP(out)[[1]][2], z0 = min(chain$anap440), x1 = MAP(out)[[1]][1],z1 = MAP(out)[[1]][3], 
+    rect3D(x0 = min(chain$chl), y0 = MAP(out)[[1]][2], z0 = min(chain$anap440), x1 = MAP(out)[[1]][1],
+           z1 = MAP(out)[[1]][3], 
            #ylim = c(0, 1), 
            bty = "g", facets = TRUE, 
            border = "blue", col ="red", alpha=0.5,

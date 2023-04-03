@@ -24,12 +24,6 @@ require(ggplot2)
 #--------------------------------------------------------------------------
 setwd("/home/musk0001/R_inverse_wasi")
 
-#Function to translate Rrs0+ to Rrs0-
-surface_rrs_translate <-  function(Rrs) { 
-  rrs = Rrs / (0.52 + 1.7*Rrs)
-  return(rrs)
-}
-
 #Function to convert above water to under water geometry
 snell_law <- function(view,sun){
   
@@ -56,16 +50,22 @@ snell_law <- function(view,sun){
 #Read default test data
 demo.rrs = read.csv("./data/input-spectra/demo_rrs_Om.csv", header = T)
 
-Saber_forward_final <-  function(use_true_IOPs = T,
-                                a_non_water_path = "./data/rb_retrieve_demo_a.csv", 
-                                bb_non_water_path = "./data/rb_retrieve_demo_bb.csv",
+Saber_forward_final <-  function(use_true_IOPs = T, #Set TRUE if actual spectral IOPs exist
+                                a_non_water_path = "./data/rb_retrieve_demo_a.csv", #a path
+                                bb_non_water_path = "./data/rb_retrieve_demo_bb.csv", #bb path
                                            
                                            
-                                chl=4.96, #must be input if SICF=TRUE
-                                dg_composite = TRUE, #Set TRUE if a_dg is provided together, if set 
+                                chl=4.96, #must be input if SICF=TRUE and use_true_IOPs = F
+                                dg_composite = TRUE, #Set TRUE if a_dg is provided together 
+                                #when use_true_IOPs = F
                                            
-                                acdom440=NULL, anap440=NULL, 
-                                a_dg = 1, bbp.550=0.00726002, 
+                                acdom440=NULL, anap440=NULL, #if dg_composite = F, provide value of
+                                # acdom440/443 (ag443) and anap440/443 (ad443)
+                                
+                                a_dg = 1,  #if dg_composite = T, provide value of
+                                # acdom440/443 + anap440/443 (adg443)
+                                
+                                bbp.550=0.00726002, #bbp value at 550/555 nm
                                            
                                 slope.parametric = TRUE, #Note, only possible if dg_composite = TRUE 
                                 
@@ -74,14 +74,16 @@ Saber_forward_final <-  function(use_true_IOPs = T,
                                            
                                            
                                 use_manual_slope = FALSE, #use manual spectral slopes
-                                manual_slope = c("s_g"=0.015, "s_d"=0.01160, "gamma"=1),
+                                manual_slope = c("s_g"=0.015, "s_d"=0.01160, "gamma"=1), #Values of
+                                #manual spectral slopes. must be provided in a named vector as shown
                                  
                                  
                                 z=2, #bottom depth
                                 rb.fraction = fA.set, #aerial fraction of bottom types
                                 
                                 use_spectral_rb = F, #use Spectral R_b instead of aerial fraction
-                                spectral_rb_path = "./Outputs/Bottom_ref/Rb_spectral_data_MAN-R01.csv",
+                                spectral_rb_path = "./Outputs/Bottom_ref/Rb_spectral_data_MAN-R01.csv", #path
+                                #for user-supplied bottom reflectance
                                 
                                            
                                 sicf = TRUE, q_phi=0.02, #sicf rrs and quantum yield
@@ -98,8 +100,22 @@ Saber_forward_final <-  function(use_true_IOPs = T,
                                 use_fDOM_rad = F, #fDOM radiance is expected instead of reflectance
                                            
                                 plot = FALSE, verbose = FALSE, #plot diagnostics and console output
-                                realdata = demo.rrs$rrs.demo, 
-                                realdata.exist = TRUE){
+                                
+                                
+                                realdata.exist = TRUE, #Set TRUE if in situ observation of rrs for which user wants
+                                #to simulate, if such observation exists.
+                                
+                                realdata = demo.rrs$rrs.demo, # vector of realdata if realdata.exist = TRUE
+                                # Note, The slope.parametric=T only works if valid data is 
+                                # provided in realdata
+                                
+                                realdata_wave = seq(400,800,10) #wavelength of realdata if exists
+                                
+                                ){
+  
+  if (slope.parametric == TRUE & use_manual_slope == TRUE) {
+    stop("both automatic and manual slope can't be set TRUE")
+  }
   
   ## OAC and IOP initialization
   
@@ -174,7 +190,23 @@ Saber_forward_final <-  function(use_true_IOPs = T,
   fA <- rb.fraction     #Aerial fraction of bottom albedo
   zB <- z               #bottom depth
   
-  Rrs_obs.interp <- realdata #Actual AOP data for which we try to simulate the forward model
+  #Actual AOP data for which we try to simulate the forward model
+  if (!(all(length(realdata) == length(lambda)) && all(realdata_wave == lambda))) {
+    
+    if (verbose == TRUE) {
+      print("Simulation wavelength and user-given wavelength of observed Rrs are different, data will be interpolated")
+    }
+    
+    realdata_interp = Hmisc::approxExtrap(x= realdata_wave, y = realdata,
+                                xout = lambda, method = "linear")$y
+    
+    realdata_interp[is.na(realdata_interp)] = 0
+    Rrs_obs.interp <- realdata_interp 
+    
+  } else {
+    
+    Rrs_obs.interp <- realdata 
+  }
   #lambda <- wavelength
   
   if (verbose == TRUE) {
@@ -1427,10 +1459,12 @@ Saber_forward_final <-  function(use_true_IOPs = T,
     if (use_true_IOPs == F) {
       return(list(data.frame("wavelength"=lambda, "Rrs"=Rrs, "Rrs_elastic" = Rrs_elastic,
                              "p.bias"=Res.spectral),"abs_comp"=plotframe.abs, 
+                  "bbp"= bb_x, 
                   "ss.residual"=Res,"method"=c("SSR eucledian")))
     } else {
       return(list(data.frame("wavelength"=lambda, "Rrs"=Rrs, "Rrs_elastic" = Rrs_elastic,
-                             "p.bias"=Res.spectral), 
+                             "p.bias"=Res.spectral),
+                  "a_t" = (abs - a_W), "bbp" = (bb - bb_W),
                   "ss.residual"=Res,"method"=c("SSR eucledian")))
     }
     

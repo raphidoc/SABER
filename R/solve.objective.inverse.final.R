@@ -1,6 +1,6 @@
 #===========================================================================
 # solve.objective.inverse.final.R solves the inverse objective function  to retrieve the water components 
-#along with bathymetry and bottom reflectance (for shallow water) given the initial vals and Rrs.
+#along with bathymetry and bottom reflectance (for shallow water) given the initial param vals and Rrs.
 
 #There are three optimization methods:
 
@@ -12,6 +12,14 @@
 
 #Author: Mr. Soham Mukherjee - PhD Student, Aquatel, UQAR
 #===========================================================================
+
+#===============================================================================================================
+#Solver for shallow waters
+#===============================================================================================================
+
+#Formula to implement SAM objective function
+# acos((sum(sum(rrs.forward.am.param.conc.dg_comp_sicf_fdom*rrs.forward.am)))/
+#        ((sum(rrs.forward.am.param.conc.dg_comp_sicf_fdom^2)^0.5)*(sum(rrs.forward.am^2)^0.5)))
 
 solve.objective.inverse.shallow.final <- function(
                                           constrained = FALSE,
@@ -166,6 +174,7 @@ solve.objective.inverse.shallow.final <- function(
       
       if (method.opt == "L-BFGS-B") {
         
+        print("L-BFGS-B Optimization will be used for inversion")
         MLE_estimates = optim(par = as.numeric(par0_constrained), fn = NLL_constr, data = obsdata, 
                               lower = as.numeric(lower.b[-(1:2)]),     # Lower bound on parameters
                               upper = as.numeric(upper.b[-{1:2}]),  # Upper bound on parameters
@@ -178,12 +187,13 @@ solve.objective.inverse.shallow.final <- function(
       } else {
         if (method.opt == "levenberg-marqardt") {
           
-          LM = marqLevAlg::marqLevAlg(b = par0, fn = NLL_constr,data = obsdata, print.info = F)
+          print("Levenberg-Marquardt Optimization will be used for inversion")
+          LM = marqLevAlg::marqLevAlg(b = par0_constrained, fn = NLL_constr,data = obsdata, print.info = F)
           MLE_estimates = data.frame("par"=LM_estimates$b)
           
         } else {
-          
-          MLE_estimates = optim(par = par0, fn = NLL_constr, data = obsdata, 
+          print("Simplex based Optimization will be used for inversion")
+          MLE_estimates = optim(par = par0_constrained, fn = NLL_constr, data = obsdata, 
                                 #lower = c(0, 0, 0),     # Lower bound on parameters
                                 #upper = c(10, 2, 0.3),  # Upper bound on parameters
                                 method = method.opt,
@@ -193,16 +203,105 @@ solve.objective.inverse.shallow.final <- function(
         
       }
       
+      if (method.opt == "auglag") {
+        print("Augmented Lagriangian with equality constraints will be used for inversion")
+        
+        if (pop.sd == TRUE) {
+          fheq <- function(pars,data) sum(pars[2:(length(pars))]) - 1
+          
+          fhin <- function(pars,data) c(#bounds for [chl]
+            # 0.5 - pars[1],
+            # pars[1] - 10,
+            # 
+            # #bounds for adg443
+            # 0.1 - pars[2],
+            # pars[2] - 10,
+            # 
+            # #bounds for bbp555
+            # 0.0001 - pars[3],
+            # pars[3] - 0.05,
+            # 
+            # #bounds for zB
+            # 0.1 - pars[4],
+            # pars[4] - 10,
+            
+            #bounds for aerial fractions
+            pars[2:(length(pars))]
+            #,
+            
+            # #bounds for zB
+            # 0.0001 - pars[10],
+            # pars[10] - 1
+            
+          )
+          
+        } else {
+          fheq <- function(pars,data) sum(pars[2:(length(pars)-1)]) - 1
+          
+          fhin <- function(pars,data) c(
+            #bounds for [chl]
+            # 0.5 - pars[1],
+            # pars[1] - 10,
+            # 
+            # #bounds for adg443
+            # 0.1 - pars[2],
+            # pars[2] - 10,
+            # 
+            # #bounds for bbp555
+            # 0.0001 - pars[3],
+            # pars[3] - 0.05,
+            # 
+            # #bounds for zB
+            # 0.1 - pars[4],
+            # pars[4] - 10,
+            
+            #bounds for aerial fractions
+            pars[2:(length(pars)-1)]
+            #,
+            
+            # #bounds for pop sd
+            # 0.0001 - pars[10],
+            # pars[10] - 1
+            
+          )
+        }
+        
+        
+        MLE_estimates <- alabama::auglag(fn = NLL_constr,par = par0_constrained, 
+                                         #gr = pracma::grad(NLL_unconstr, x0 = par, data= obsdata),
+                                                  heq = fheq,
+                                                  hin = fhin,
+                                                  #lower = lower.bound,
+                                                  #upper = upper.bound,
+                                                  #data=surface_rrs_translate(insitu.data),
+                                                  data = obsdata,
+                                                  control.outer = list(trace = F, method = "nlminb")
+                                            )
+        
+        
+        #print(inverse_output_fmincon$par, digits=3)
+        
+        #print(sum(inverse_output_fmincon$par[5:9]))
+        
+        #sprintf("%.5f", inverse_output_fmincon$par)
+        
+      }
+      
       
       cat(paste0("\033[0;46m","#################### OPTIMIZATION ENDS #########################","\033[0m","\n"))
       
       #print(MLE_estimates$par)
       
       cat(paste0("\033[0;41m","#################### CALCULATE UNCERTAINITY: START #########################","\033[0m","\n"))
-      Sys.sleep(2)
+      Sys.sleep(1)
       
       #Calculate hessian matrix for var-covar matrix
-      hessian.inverse <- numDeriv::hessian(x =MLE_estimates$par, func = NLL_constr, data=obsdata)
+      if (method.opt == "auglag") {
+        hessian.inverse <- MLE_estimates$hessian 
+      } else {
+        hessian.inverse <- numDeriv::hessian(x =MLE_estimates$par, func = NLL_constr, data=obsdata)
+      }
+      
       rownames(hessian.inverse) <- names(par0_constrained)
       colnames(hessian.inverse) <- names(par0_constrained)
       cat(paste0("\033[0;32m","#################### VAR-COV HESSIAN MATRIX #########################","\033[0m","\n"))
@@ -379,7 +478,7 @@ solve.objective.inverse.shallow.final <- function(
         } else {
           if (method.opt == "levenberg-marqardt") {
             
-            LM = marqLevAlg::marqLevAlg(b = par0, fn = NLL_constr,data = obsdata, print.info = F)
+            LM = marqLevAlg::marqLevAlg(b = par0, fn = NLL_constr,data = obsdata, print.info = F, minimize = T)
             MLE_estimates = data.frame("par"=LM_estimates$b)
             
           } else {
@@ -394,7 +493,88 @@ solve.objective.inverse.shallow.final <- function(
           
         }
         
-        
+        if (method.opt == "auglag") {
+          print("Augmented Lagriangian with equality constraints will be used for inversion")
+          
+          if (pop.sd == TRUE) {
+            fheq <- function(pars,data) sum(pars[2:(length(pars))]) - 1
+            
+            fhin <- function(pars,data) c(#bounds for [chl]
+              # 0.5 - pars[1],
+              # pars[1] - 10,
+              # 
+              # #bounds for adg443
+              # 0.1 - pars[2],
+              # pars[2] - 10,
+              # 
+              # #bounds for bbp555
+              # 0.0001 - pars[3],
+              # pars[3] - 0.05,
+              # 
+              # #bounds for zB
+              # 0.1 - pars[4],
+              # pars[4] - 10,
+              
+              #bounds for aerial fractions
+              pars[2:(length(pars))]
+              #,
+              
+              # #bounds for zB
+              # 0.0001 - pars[10],
+              # pars[10] - 1
+              
+            )
+            
+          } else {
+            fheq <- function(pars,data) sum(pars[2:(length(pars)-1)]) - 1
+            
+            fhin <- function(pars,data) c(#bounds for [chl]
+              # 0.5 - pars[1],
+              # pars[1] - 10,
+              # 
+              # #bounds for adg443
+              # 0.1 - pars[2],
+              # pars[2] - 10,
+              # 
+              # #bounds for bbp555
+              # 0.0001 - pars[3],
+              # pars[3] - 0.05,
+              # 
+              # #bounds for zB
+              # 0.1 - pars[4],
+              # pars[4] - 10,
+              
+              #bounds for aerial fractions
+              pars[2:(length(pars)-1)]
+              #,
+              
+              # #bounds for zB
+              # 0.0001 - pars[10],
+              # pars[10] - 1
+              
+            )
+          }
+          
+          
+          MLE_estimates <- alabama::auglag(fn = NLL_constr,par = par0[-length(par0)], 
+                                           #gr = pracma::grad(NLL_unconstr, x0 = par, data= obsdata),
+                                           heq = fheq,
+                                           hin = fhin,
+                                           #lower = lower.bound,
+                                           #upper = upper.bound,
+                                           #data=surface_rrs_translate(insitu.data),
+                                           data = obsdata,
+                                           control.outer = list(trace = F, method = "nlminb")
+          )
+          
+          
+          #print(MLE_estimates$par, digits=3)
+          
+          #print(sum(MLE_estimates$par[5:9]))
+          
+          #sprintf("%.5f", MLE_estimates$par)
+          
+        }
         cat(paste0("\033[0;46m","#################### OPTIMIZATION ENDS #########################","\033[0m","\n"))
         
         #print(MLE_estimates$par)
@@ -403,7 +583,12 @@ solve.objective.inverse.shallow.final <- function(
         Sys.sleep(2)
         
         #Calculate hessian matrix for var-covar matrix
-        hessian.inverse <- numDeriv::hessian(x =MLE_estimates$par, func = NLL_constr, data=obsdata)
+        if (method.opt == "auglag") {
+          hessian.inverse <- MLE_estimates$hessian 
+        } else {
+          hessian.inverse <- numDeriv::hessian(x =MLE_estimates$par, func = NLL_constr, data=obsdata)
+        }
+        #hessian.inverse <- numDeriv::hessian(x =MLE_estimates$par, func = NLL_constr, data=obsdata)
         rownames(hessian.inverse) <- names(par0_constrained)
         colnames(hessian.inverse) <- names(par0_constrained)
         cat(paste0("\033[0;32m","#################### VAR-COV HESSIAN MATRIX #########################","\033[0m","\n"))
@@ -630,22 +815,103 @@ solve.objective.inverse.shallow.final <- function(
                                 parscale = abs(par0)),
                               #hessian = TRUE
         )
-      } else {
-        if (method.opt == "levenberg-marqardt") {
+      } 
+      if (method.opt == "levenberg-marqardt") {
+        
+        LM = marqLevAlg::marqLevAlg(b = par0, fn = NLL_unconstr,data = obsdata, print.info = F)
+        MLE_estimates = data.frame("par"=LM_estimates$b)
+        
+      } 
+      
+      if (method.opt == "auglag") {
+        print("Augmented Lagriangian with equality constraints will be used for inversion")
+        
+        if (pop.sd == TRUE) {
+          fheq <- function(pars,data) sum(par0[5:(length(pars))]) - 1
           
-          LM = marqLevAlg::marqLevAlg(b = par0, fn = NLL_unconstr,data = obsdata, print.info = F)
-          MLE_estimates = data.frame("par"=LM_estimates$b)
+          fhin <- function(pars,data) c(#bounds for [chl]
+            # 0.5 - pars[1],
+            # pars[1] - 10,
+            # 
+            # #bounds for adg443
+            # 0.1 - pars[2],
+            # pars[2] - 10,
+            # 
+            # #bounds for bbp555
+            # 0.0001 - pars[3],
+            # pars[3] - 0.05,
+            # 
+            # #bounds for zB
+            # 0.1 - pars[4],
+            # pars[4] - 10,
+            
+            #bounds for aerial fractions
+            pars[5:(length(pars))]
+            #,
+            
+            # #bounds for zB
+            # 0.0001 - pars[10],
+            # pars[10] - 1
+            
+          )
           
         } else {
+          fheq <- function(pars,data) sum(pars[5:(length(pars)-1)]) - 1
           
-          MLE_estimates = optim(par = par0, fn = NLL_unconstr, data = obsdata, 
-                                #lower = c(0, 0, 0),     # Lower bound on parameters
-                                #upper = c(10, 2, 0.3),  # Upper bound on parameters
-                                method = method.opt,
-                                control = list(parscale = abs(par0)),
-                                hessian = FALSE)
+          fhin <- function(pars,data) c(#bounds for [chl]
+            # 0.5 - pars[1],
+            # pars[1] - 10,
+            # 
+            # #bounds for adg443
+            # 0.1 - pars[2],
+            # pars[2] - 10,
+            # 
+            # #bounds for bbp555
+            # 0.0001 - pars[3],
+            # pars[3] - 0.05,
+            # 
+            # #bounds for zB
+            # 0.1 - pars[4],
+            # pars[4] - 10,
+            
+            #bounds for aerial fractions
+            pars[5:(length(pars)-1)]
+            #,
+            
+            # #bounds for zB
+            # 0.0001 - pars[10],
+            # pars[10] - 1
+            
+          )
         }
         
+        
+        MLE_estimates <- alabama::auglag(fn = NLL_unconstr,par = par0, 
+                                         #gr = pracma::grad(NLL_unconstr, x0 = par, data= obsdata),
+                                         heq = fheq,
+                                         hin = fhin,
+                                         #lower = lower.bound,
+                                         #upper = upper.bound,
+                                         #data=surface_rrs_translate(insitu.data),
+                                         data = obsdata,
+                                         control.outer = list(trace = F, method = "nlminb")
+        )
+        
+        
+        #print(MLE_estimates$par, digits=3)
+        
+        #print(sum(MLE_estimates$par[5:9]))
+        
+        #sprintf("%.5f", MLE_estimates$par)
+        
+      } else {
+        
+        MLE_estimates = optim(par = par0, fn = NLL_unconstr, data = obsdata, 
+                              #lower = c(0, 0, 0),     # Lower bound on parameters
+                              #upper = c(10, 2, 0.3),  # Upper bound on parameters
+                              method = method.opt,
+                              control = list(parscale = abs(par0)),
+                              hessian = FALSE)
       }
       
       
@@ -656,7 +922,12 @@ solve.objective.inverse.shallow.final <- function(
       cat(paste0("\033[0;41m","#################### CALCULATE UNCERTAINITY: START #########################","\033[0m","\n"))
       
       #Calculate hessian matrix for var-covar matrix
-      hessian.inverse <- numDeriv::hessian(x =MLE_estimates$par, func = NLL_unconstr, data=obsdata)
+      if (method.opt == "auglag") {
+        hessian.inverse <- MLE_estimates$hessian 
+      } else {
+        hessian.inverse <- numDeriv::hessian(x =MLE_estimates$par, func = NLL_unconstr, data=obsdata)
+      }
+      #hessian.inverse <- numDeriv::hessian(x =MLE_estimates$par, func = NLL_unconstr, data=obsdata)
       rownames(hessian.inverse) <- names(par0)
       colnames(hessian.inverse) <- names(par0)
       cat(paste0("\033[0;32m","#################### VAR-COV HESSIAN MATRIX #########################","\033[0m","\n"))
@@ -825,13 +1096,96 @@ solve.objective.inverse.shallow.final <- function(
                                   parscale = abs(par0)),
                                 #hessian = TRUE
           )
-        } else {
-          if (method.opt == "levenberg-marqardt") {
+        } 
+        if (method.opt == "levenberg-marqardt") {
             
-            LM = marqLevAlg::marqLevAlg(b = par0, fn = NLL_unconstr,data = obsdata, print.info = F)
-            MLE_estimates = data.frame("par"=LM_estimates$b)
+          LM = marqLevAlg::marqLevAlg(b = par0, fn = NLL_unconstr,data = obsdata, print.info = F)
+          MLE_estimates = data.frame("par"=LM_estimates$b)
+            
+          } 
+        
+        if (method.opt == "auglag") {
+          print("Augmented Lagriangian with equality constraints will be used for inversion")
+          
+          if (pop.sd == TRUE) {
+            fheq <- function(pars,data) sum(par0[5:(length(pars))]) - 1
+            
+            fhin <- function(pars,data) c(#bounds for [chl]
+              # 0.5 - pars[1],
+              # pars[1] - 10,
+              # 
+              # #bounds for adg443
+              # 0.1 - pars[2],
+              # pars[2] - 10,
+              # 
+              # #bounds for bbp555
+              # 0.0001 - pars[3],
+              # pars[3] - 0.05,
+              # 
+              # #bounds for zB
+              # 0.1 - pars[4],
+              # pars[4] - 10,
+              
+              #bounds for aerial fractions
+              pars[5:(length(pars))]
+              #,
+              
+              # #bounds for zB
+              # 0.0001 - pars[10],
+              # pars[10] - 1
+              
+            )
             
           } else {
+            fheq <- function(pars,data) sum(pars[5:(length(pars)-1)]) - 1
+            
+            fhin <- function(pars,data) c(#bounds for [chl]
+              # 0.5 - pars[1],
+              # pars[1] - 10,
+              # 
+              # #bounds for adg443
+              # 0.1 - pars[2],
+              # pars[2] - 10,
+              # 
+              # #bounds for bbp555
+              # 0.0001 - pars[3],
+              # pars[3] - 0.05,
+              # 
+              # #bounds for zB
+              # 0.1 - pars[4],
+              # pars[4] - 10,
+              
+              #bounds for aerial fractions
+              pars[5:(length(pars)-1)]
+              #,
+              
+              # #bounds for zB
+              # 0.0001 - pars[10],
+              # pars[10] - 1
+              
+            )
+          }
+          
+          
+          MLE_estimates <- alabama::auglag(fn = NLL_unconstr,par = par0, 
+                                           #gr = pracma::grad(NLL_unconstr, x0 = par, data= obsdata),
+                                           heq = fheq,
+                                           hin = fhin,
+                                           #lower = lower.bound,
+                                           #upper = upper.bound,
+                                           #data=surface_rrs_translate(insitu.data),
+                                           data = obsdata,
+                                           control.outer = list(trace = F, method = "nlminb")
+          )
+          
+          
+          #print(MLE_estimates$par, digits=3)
+          
+          #print(sum(MLE_estimates$par[5:9]))
+          
+          #sprintf("%.5f", MLE_estimates$par)
+          
+        } else {
             
             MLE_estimates = optim(par = par0, fn = NLL_unconstr, data = obsdata, 
                                   #lower = c(0, 0, 0),     # Lower bound on parameters
@@ -841,17 +1195,20 @@ solve.objective.inverse.shallow.final <- function(
                                   hessian = FALSE)
           }
           
-        }
-        
-        
-        cat(paste0("\033[0;46m","#################### OPTIMIZATION ENDS #########################","\033[0m","\n"))
-        
-        #print(MLE_estimates$par)
-        
-        cat(paste0("\033[0;41m","#################### CALCULATE UNCERTAINITY: START #########################","\033[0m","\n"))
-        
-        #Calculate hessian matrix for var-covar matrix
+
+      
+      cat(paste0("\033[0;46m","#################### OPTIMIZATION ENDS #########################","\033[0m","\n"))
+      
+      #print(MLE_estimates$par)
+      
+      cat(paste0("\033[0;41m","#################### CALCULATE UNCERTAINITY: START #########################","\033[0m","\n"))
+      
+      #Calculate hessian matrix for var-covar matrix
+      if (method.opt == "auglag") {
+        hessian.inverse <- MLE_estimates$hessian 
+      } else {
         hessian.inverse <- numDeriv::hessian(x =MLE_estimates$par, func = NLL_unconstr, data=obsdata)
+      }
         rownames(hessian.inverse) <- names(par0)
         colnames(hessian.inverse) <- names(par0)
         cat(paste0("\033[0;32m","#################### VAR-COV HESSIAN MATRIX #########################","\033[0m","\n"))
@@ -948,7 +1305,9 @@ solve.objective.inverse.shallow.final <- function(
   
 }
 
-#=====================================================================================
+#===============================================================================================================
+#Solver for deep waters
+#===============================================================================================================
 solve.objective.inverse.deep.final <- function(
                                       bbp.constrain = F,
                                       bbp.550 =0.05,
@@ -1031,7 +1390,7 @@ solve.objective.inverse.deep.final <- function(
           }
         } else {
           if (batch == TRUE | batch == FALSE) {
-            
+            #browser()
             #ON for unknown sigma
             smull = -sum(dnorm(x = 10000*data, mean = 10000*Gpred[[1]]$Rrs, sd = pars[3], log = TRUE)) 
             
@@ -1099,9 +1458,9 @@ solve.objective.inverse.deep.final <- function(
           }
         } else {
           if (batch == TRUE | batch == FALSE) {
-            
+            #browser()
             #ON for unknown sigma
-            smull = -sum(dnorm(x = 10000*data, mean = 10000*Gpred[[1]]$Rrs, sd = pars[4], log = TRUE)) 
+            smull = -sum(dnorm(x = 10000*data, mean = 10000*Gpred[[1]]$Rrs, sd = pars[length(pars)], log = TRUE)) 
             
           }
           
@@ -1159,7 +1518,7 @@ solve.objective.inverse.deep.final <- function(
     }
     
     if (method.opt == "L-BFGS-B") {
-      
+      #browser()
       MLE_estimates = optim(par = par0, fn = NLL_deep, data = obsdata, 
                             lower = lower.b,     # Lower bound on parameters
                             upper = upper.b,  # Upper bound on parameters

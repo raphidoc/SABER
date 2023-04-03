@@ -126,28 +126,6 @@ NLL_nloptr_sse = function(pars, data) {
   
 }
 
-rrs_est = Gpred[[1]]$Rrs
-
-# Sum-squared residual of error (SSE)
-#sse= sum((data - rrs_est)^2)
-#return(sse)
-
-#The Spectral error index from Lee 1999
-# Define the spectral regions
-region1 <- which(wavelength >= 400 & wavelength <= 675)
-region2 <- which(wavelength >= 750 & wavelength <= 830)
-
-# Calculate the numerator of the error index
-numerator <- sqrt(sum((data[region1] - rrs_est[region1])^2) + 
-                    sum((data[region2] - rrs_est[region2])^2))
-
-# Calculate the denominator of the error index
-denominator <- sum(rrs_est[region1]) + sum(rrs_est[region2])
-
-# Calculate the error index
-err <- numerator / denominator
-
-return(err)
 
 #Constrained
 #Try optimization with nloptr
@@ -286,7 +264,7 @@ eval_grad_f_constr <- function(pars,data) {
 # Equality constraints
 eval_g_eq <- function(pars,data)
 {
-  return ( pars[4] + pars[5] +pars[6] + pars[7] + pars[8] - 1 )
+  return ( pars[5] + pars[6] +pars[7] + pars[8] + pars[9] - 1 )
 }
 
 # Equality constraints on constrained inversion
@@ -295,85 +273,53 @@ eval_g_eq_constr <- function(pars,data)
   return ( pars[2] + pars[3] +pars[4] + pars[5] + pars[6] - 1 )
 }
 
-# Lower and upper bounds
-par0 = c(chl = 8, 
-         a_dg = 1.5,
-         #acdom440 = 0.8,
-         #anap440 = 0.05,
+par0 = c(chl = 2, adg440 = 0.8,
+         bbp550 = 0.005,
          z = 2.5, 
          #rb.0 = 0.1,
          rb.1 = 0.5,
          rb.2 = 0.5,
          rb.3 = 0.5,
          rb.4 = 0.5,
-         rb.5 = 0.5)
-         #,population.sd = 0.1)
-
-par0_constr = c(
-         z = 2.5, 
-         #rb.0 = 0.1,
-         rb.1 = 0.5,
-         rb.2 = 0.5,
-         rb.3 = 0.5,
-         rb.4 = 0.5,
-         rb.5 = 0.5)
-#,population.sd = 0.1)
+         rb.5 = 0.5,
+         population.sd = 0.05)
 
 #Autoscale Intital values from pre-Ft
 increament.scale <- 1
 
-lower.bound <- c((par0[1:2] - 0.8*par0[1:2]),z = 0.1,
+lower.bound <- c((par0[1:3] - 0.8*par0[1:3]),z = 0.1,
                  #rb.0 = 0.1,
                  rb.1 = 0,
                  rb.2 = 0,
                  rb.3 = 0,
                  rb.4 = 0,
-                 rb.5 = 0)
-                # ,population.sd = 0.0001)
+                 rb.5 = 0,
+                 population.sd = 0.0001)
 
-upper.bound <- c((par0[1:2] + 5*par0[1:2]),z = 10,
+upper.bound <- c((par0[1:3] + 5*par0[1:3]),z = 10,
                  #rb.0 = 1,
                  rb.1 = 1,
                  rb.2 = 1,
                  rb.3 = 1,
                  rb.4 = 1,
-                 rb.5 = 1)
-                 #,population.sd = 1)
-
-lower.bound_constr <- c(z = 1,
-                 #rb.0 = 0.1,
-                 rb.1 = 0,
-                 rb.2 = 0,
-                 rb.3 = 0,
-                 rb.4 = 0,
-                 rb.5 = 0)
-# ,population.sd = 0.0001)
-
-upper.bound_constr <- c(z = 10,
-                 #rb.0 = 1,
-                 rb.1 = 1,
-                 rb.2 = 1,
-                 rb.3 = 1,
-                 rb.4 = 1,
-                 rb.5 = 1)
-#,population.sd = 1)
-
+                 rb.5 = 1,
+                 population.sd = 1)
 
 # Set optimization options.
 local_opts <- list( "algorithm" = "NLOPT_LD_MMA", "xtol_rel" = 1.0e-5 )
 
 opts <- list( "algorithm"= "NLOPT_GN_ISRES",
-              "xtol_rel"= 1.0e-5,
-              "maxeval"= 20000,
+              "xtol_rel"= 1.0e-2,
+              "maxeval"= 5000,
               "local_opts" = local_opts,
-              "print_level" = 0 )
+              "print_level" = 3 )
 
 #optimization with gradient
-opts <- list("algorithm"="NLOPT_LD_LBFGS",
-             "xtol_rel"=1.0e-8)
+# opts <- list("algorithm"="NLOPT_LD_LBFGS",
+#              "xtol_rel"=1.0e-8)
 
 res <- nloptr::nloptr ( x0 = par0,
-                eval_f = NLL_nloptr_sse,
+                eval_f = NLL_unconstr,
                 #eval_grad_f = eval_grad_f,
                 data = obsdata,
                 lb = lower.bound,
@@ -397,22 +343,26 @@ res_constr <- nloptr::nloptr ( x0 = par0_constr,
 print(res_constr)
 
 solution_nloptr = data.frame(t(res$solution))
-names(solution_nloptr) = c("chl", "a_dg", "z", "rb1", "rb2", "rb3", "rb4", "rb5")
+names(solution_nloptr) = c("chl", "a_dg", "bbp550","z", "rb1", "rb2", "rb3", "rb4", "rb5","sd")
 
-saber_forward_param_nloptr = Saber_forward_paramteric_conc(chl = solution_nloptr$chl, 
+saber_forward_param_nloptr = Saber_forward_final(
+                            use_true_IOPs = F,
+                            chl = solution_nloptr$chl, 
                               acdom440 =NULL, 
                               anap440 =NULL , 
                               a_dg = solution_nloptr$a_dg,
-                              bbp.550 = Fit.input$bbp.550,
+                              bbp.550 = solution_nloptr$bbp550,
                               z =solution_nloptr$z,
-                              realdata = rrs.forward.am,
+                              realdata = obsdata,
                               #realdata = insitu.data,
                               slope.parametric = T,
                               dg_composite = T,
                               use_spectral_shape_chl = F,
                               use_spectral_shape_dg = T,
                               sicf = F, q_phi = 0.02,
-                              rb.fraction = as.numeric(solution_nloptr[4:(length(solution_nloptr))]),
+                            fDOM = F,
+                            use_spectral_rb = F,
+                              rb.fraction = as.numeric(solution_nloptr[5:(length(solution_nloptr)-1)]),
                               verbose = F, plot = F)
 plot(wavelength, obsdata)
 lines(wavelength, saber_forward_param_nloptr[[1]]$Rrs)
@@ -586,4 +536,92 @@ nll_gradient(pars = c(10,5,1,0.01), data = obs.data)
 
 inverse_output <- pracma::fminunc(x0 = par0, fn = NLL,data=obsdata)
 
+#===================================================================================
+
+binreg<- function(X,y,method="BFGS"){
+  #X<- cbind(1,X)
+  negLL<- function(b,X,y){  # b = betas
+    p<-as.vector(1/(1+exp(-X %*% b)))  # "standard logistic function"; 1/1+exp(-X)
+    - sum(y*log(p) + (1-y)*log(1-p))   # cost function; y-hat = (p)
+  }
+  
+  gradient<- function(b,X,y){
+    p <- as.vector(1/(1+exp(-X %*% b)))
+    -apply(((y - p)*X),2,sum) # derivative of cost function: (p) = y-hat
+    
+  }
+  
+  results<- optim (rep(0,ncol(X)),negLL,gr=gradient,
+                   hessian=T,method=method,X=X,y=y, control=list(trace=1, REPORT=1))
+  list(coefficients=results$par,var=solve(results$hessian),
+       deviance=2*results$value,
+       converged=results$convergence==0)
+  
+}
+mlebin.fit<-binreg(X=c(10,20,30),y=300)
+#results
+round(mlebin.fit$coefficients,2)
+
+
+############################################################
+# Define the negative log-likelihood function
+negloglik <- function(beta, x, y) {
+  n <- length(y)
+  mu <- x %*% beta
+  sigma <- exp(beta[3])
+  -sum(dnorm(y, mean = mu, sd = sigma, log = TRUE))
+}
+
+# Define the gradient function
+grad_negloglik <- function(beta, x, y) {
+  n <- length(y)
+  mu <- x %*% beta
+  sigma <- exp(beta[3])
+  e <- y - mu
+  g1 <- -t(x) %*% (e / sigma)
+  g2 <- -t(x) %*% (e^2 / sigma^2 - 1) / 2
+  g3 <- -sum(e^2 / sigma^2 - 1) / 2
+  return(c(g1, g2, g3))
+}
+
+# Define the Hessian function
+hess_negloglik <- function(beta, x, y) {
+  n <- length(y)
+  mu <- x %*% beta
+  sigma <- exp(beta[3])
+  e <- y - mu
+  X1 <- -t(x) / sigma
+  X2 <- -t(x) %*% (e / sigma^2)
+  X3 <- -t(x) %*% (e^2 / sigma^3 - 1/sigma)
+  H11 <- t(X1) %*% X1
+  H12 <- t(X1) %*% X2
+  H13 <- t(X1) %*% X3
+  H22 <- t(X2) %*% X2
+  H23 <- t(X2) %*% X3
+  H33 <- t(X3) %*% X3
+  Hessian <- matrix(0, ncol = length(beta), nrow = length(beta))
+  Hessian[1:2, 1:2] <- H11
+  Hessian[1:2, 3] <- H12
+  Hessian[3, 1:2] <- H12
+  Hessian[3, 3] <- H22 + H23 + H33
+  return(-Hessian)
+}
+
+set.seed(123)
+n <- 100
+beta_true <- c(2, 0.5, log(1))
+x <- matrix(rnorm(n * length(beta_true)), ncol = length(beta_true))
+y <- x %*% beta_true + rnorm(n, sd = exp(beta_true[3]))
+
+# Estimate the parameters using MLE
+start <- c(1, 1, 0)
+fit <- optim(par = start, fn = negloglik, gr = grad_negloglik, x = x, y = y, hessian = TRUE)
+
+# Print the estimated parameters
+cat("Estimated parameters:\n")
+print(fit$par)
+
+# Print the estimated standard errors
+cat("\nStandard errors:\n")
+print(sqrt(diag(solve(fit$hessian))))
 

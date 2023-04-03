@@ -134,6 +134,30 @@ sunzen_below = function(sun_zen_aove=45){
   sun_zen_below_deg = sun_zen_below_rad*(180/pi)
   return(sun_zen_below_deg)
 }
+
+#Function to translate Rrs0+ to Rrs0-
+surface_rrs_translate <-  function(Rrs) { 
+  rrs = Rrs / (0.52 + 1.7*Rrs)
+  return(rrs)
+}
+
+#Function to estimate [chl] from O'Rilley algo
+estimate_chl_oriley <- function(wave, rrs, a=-0.92160, b=-3.17884,
+                                c=-2.39690, d=-1.30318) {
+  
+  # Find indices of Rrs values closest to 490, 510, and 555 nm
+  idx490 <- which.min(abs(wave - 490))
+  idx510 <- which.min(abs(wave - 510))
+  idx555 <- which.min(abs(wave - 555))
+  
+  # Calculate logarithms of Rrs values
+  log_rrs <- log10(max(rrs[idx490], rrs[idx510])/ rrs[idx555])
+  
+  # Calculate chlorophyll concentration using OC3 algorithm
+  chl <- 10^(a + b * (log_rrs) + c * (log_rrs^2) + d * (log_rrs^3))
+  return(chl)
+}
+
 #--------------------------------------------------------------------------
 ## 1. Inputs
 #--------------------------------------------------------------------------
@@ -428,28 +452,9 @@ idx_bb = grep(IOP_files, pattern = paste0("bb_surf_",statname, ".csv$"))
 Rb_files = list.files("./Outputs/Bottom_ref/", pattern = "*.csv", full.names = T)
 idx_rb = grep(Rb_files, pattern = paste0("Rb_spectral_data_",statname, ".csv$"))
 
-estimate_chl_oriley <- function(wave, rrs, a, b, c, d) {
-  # Find indices of Rrs values closest to 490, 510, and 555 nm
-  idx490 <- which.min(abs(wave - 490))
-  idx510 <- which.min(abs(wave - 510))
-  idx555 <- which.min(abs(wave - 555))
-  
-  # Calculate logarithms of Rrs values
-  log_rrs <- log10(max(rrs[idx490], rrs[idx510])/ rrs[idx555])
-  
-  # Calculate chlorophyll concentration using OC3 algorithm
-  chl <- 10^(a + b * (log_rrs) + c * (log_rrs^2) + d * (log_rrs^3))
-  return(chl)
-}
-
-#usage
+#Estimate [chl] from O'Rilley
 # rrs <- insitu.data
-# 
-# a <- -0.92160
-# b <- -3.17884
-# c <- -2.39690
-# d <- -1.30318
-# 
+
 # chl <- estimate_chl_oriley(wave = wavelength, rrs, a, b, c, d)
 # print(paste("Estimated chlorophyll concentration:", chl, "mg/m^3"))
 
@@ -637,7 +642,7 @@ forward.op.am.param.conc.true_iop_sicf_fDOM <- Saber_forward_final(
                                               Ed_fDOM_path = "./data/input-spectra/Ed_HL.csv",
                                               use_fDOM_rad = F,
                                             
-                                            verbose = F, plot = F)
+                                            verbose = T, plot = F)
 
 rrs.forward.am.param.conc.true_iop_sicf_fdom <- forward.op.am.param.conc.true_iop_sicf_fDOM[[1]]$Rrs #Extract AM03 modeled Rrs
 
@@ -935,12 +940,15 @@ if (pop.sd == "unknown" & type_Rrs_below == "deep" & manual_par0 == TRUE & const
 }
 
 #Set bounds (Instead of flat multiplier, implement range as a function  #of parameter sensitivity)
-if (manual_par0 == FALSE) {
+if (type_Rrs_below == "deep" & manual_par0 == FALSE) {
   upper.bound <- par0 + 5*par0  
   lower.bound <- par0 - 0.8*par0
 } else {
-  upper.bound <- c(30,10,0.5,0.01)  
-  lower.bound <- c(0.01, 0.01, 0.001, 0.0001)
+  if (type_Rrs_below == "deep" & manual_par0 == FALSE) {
+    upper.bound <- c(30,10,0.5,0.01)  
+    lower.bound <- c(0.01, 0.01, 0.001, 0.0001)
+  }
+  
 }                                         
 
 
@@ -1023,6 +1031,9 @@ if (pop.sd == "unknown" & type_Rrs_below == "shallow" & constrain.shallow == "FA
 forward.op.am.param.conc.dg_comp_sicf_fdom <- Saber_forward_final( 
                                 use_true_IOPs = F,
                                 
+                                a_non_water_path = IOP_files[idx_a],
+                                bb_non_water_path = IOP_files[idx_bb],
+                                
                                 chl = Fit.input$chl, 
                                 acdom440 = Fit.input$acdom.440, 
                                 anap440 = Fit.input$anap.440, 
@@ -1045,6 +1056,7 @@ forward.op.am.param.conc.dg_comp_sicf_fdom <- Saber_forward_final(
                                 use_spectral_shape_chl = F,
                                 use_spectral_shape_dg = T,
                                 
+                                
                                 use_manual_slope =F,
                                 manual_slope = c("s_g"=0.016, "s_d"=0.01160, "gamma"=0.5),
                                 
@@ -1057,16 +1069,16 @@ forward.op.am.param.conc.dg_comp_sicf_fdom <- Saber_forward_final(
                                 Ed_fDOM_path = "./data/input-spectra/Ed_HL.csv",
                                 use_fDOM_rad = F,
                                 
-                                verbose = T, plot = F)
+                                verbose = T, plot = F, realdata.exist = T)
 
 rrs.forward.am.param.conc.dg_comp_sicf_fdom <- forward.op.am.param.conc.dg_comp_sicf_fdom[[1]]$Rrs #Extract AM03 modeled Rrs
 obsdata = rrs.forward.am.param.conc.dg_comp_sicf_fdom
 ########
 
-obj = c("log-LL", "SSR", "obj_L98"); obj.run <- obj[1]
+obj = c("log-LL", "SSR", "obj_L98")
 
 methods.opt <- c("Nelder-Mead", "BFGS", "CG", "L-BFGS-B", "SANN", 
-                 "Brent","levenberg-marqardt")
+                 "Brent","levenberg-marqardt", "auglag")
 
 if (type_Rrs_below == "deep" & constrain.bbp == "TRUE") {
   # inverse_output <- suppressWarnings(solve.objective.inverse(initial = par0, 
@@ -1085,15 +1097,14 @@ if (type_Rrs_below == "deep" & constrain.bbp == "TRUE") {
                                       obsdata = obsdata,
                                       
                                       sa.model = "am03", 
-                                      #obj.fn =obj.run , 
-                                      obj.fn = "obj_L98",
+                                      obj.fn = obj[1],
                                       
                                       auto_spectral_slope = T,
                                       manual_spectral_slope = F, 
                                       
                                       manual_spectral_slope_vals = c("s_g"=0.014, "s_d"=0.01160, "gamma"=0.46),
                                       
-                                      method.opt = methods.opt[4],
+                                      method.opt = methods.opt[8],
                                       lower.b = lower.bound,
                                       upper.b = upper.bound, 
                                       batch = FALSE, pop.sd = FALSE))
@@ -1112,15 +1123,14 @@ if (type_Rrs_below == "deep" & constrain.bbp == "FALSE") {
                                       obsdata = obsdata,
                                       
                                       sa.model = "am03", 
-                                      obj.fn =obj.run , 
-                                      #obj.fn = "obj_L98",
+                                      obj.fn = obj[1],
                                       
                                       auto_spectral_slope = T,
                                       manual_spectral_slope = F, 
                                       
                                       manual_spectral_slope_vals = c("s_g"=0.014, "s_d"=0.003, "gamma"=1),
                                       
-                                      method.opt = methods.opt[4],
+                                      method.opt = methods.opt[8],
                                       lower.b = lower.bound,
                                       upper.b = upper.bound, 
                                       batch = FALSE, pop.sd = FALSE))
@@ -1146,7 +1156,7 @@ if (type_Rrs_below == "shallow" & constrain.shallow == TRUE) {
                                                  
                                                 sa.model = "am03", 
                                   #obj.fn =obj.run , 
-                                  obj.fn = "obj_L98", 
+                                  obj.fn = obj[1], 
                                                 method.opt = methods.opt[4],
                                   
                                                 lower.b = lower.bound,
@@ -1175,8 +1185,8 @@ if (type_Rrs_below == "shallow" & constrain.shallow == FALSE) {
                                                  
                                   sa.model = "am03", 
                                   #obj.fn =obj.run , 
-                                  obj.fn = "obj_L98",
-                                  method.opt = methods.opt[4],
+                                  obj.fn = obj[1],
+                                  method.opt = methods.opt[8],
                                   
                                   lower.b = lower.bound,
                                   upper.b = upper.bound, 
@@ -1231,6 +1241,13 @@ if (obj.run == "log-LL" ) {
 }
 
 fa.set.param = as.numeric(Fit.optimized.ssobj[5:9])
+
+if (type_Rrs_below == "shallow") {
+  fa.est = fa.set.param
+} else {
+  fa.est = NULL
+}
+
 forward.model.fit_param = Saber_forward_final( 
                           use_true_IOPs = F,
                           
@@ -1242,17 +1259,19 @@ forward.model.fit_param = Saber_forward_final(
                           
 
                           z=Fit.optimized.ssobj$z,
-                          rb.fraction = fa.set.param,
+                          rb.fraction = fa.est,
+                          
+                          
                           use_spectral_rb = F, 
                           spectral_rb_path = Rb_files[idx_rb],
                           
                           
                           #realdata = rrs.forward.am,
-                          realdata = rrs.forward.am.param.conc.dg_comp_sicf_fdom,
+                          realdata = obsdata,
                           
                           dg_composite = T,
                           
-                          slope.parametric = F,
+                          slope.parametric = T,
                           use_spectral_shape_chl = F,
                           use_spectral_shape_dg = T,
                           

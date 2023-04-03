@@ -39,7 +39,7 @@ QAA.v5 <- function(waves, Rrs)
   }
   
   
-  #  STEP 0 - compute RRS from below Sea Surface
+  #  STEP 0 - compute RRS to below Sea Surface
   rrs <-  Rrs / (0.52 + 1.7*Rrs)
   
   # Step 1 - Compute  bb/a+bb ratio
@@ -72,8 +72,13 @@ QAA.v5 <- function(waves, Rrs)
   a_dg_443 = ((a[ix411]-(tau_prime*a[ix443])) - (aw[ix411]-(tau_prime*aw[ix443])))/(epsilon_prime - tau_prime)
   
   a_phi = a - aw - (a_dg_443*exp(-s_cdm*(wavelength - 443)))
+  a_phi_443 = a_phi[ix443]
   
-  return(list(a=a,bb=bb, s_cdm=s_cdm, a_dg_443 = a_dg_443, a_phi= a_phi))
+  chl_est = (a_phi_443/0.06)^(1/0.65) #Estimate Chlorophyll-a
+  
+  return(list(a=a,bb=bb, s_cdm=s_cdm, a_dg_443 = a_dg_443, 
+              a_phi= a_phi, chl = chl_est,
+              b_bp_555=bbp.ref))
   
 }
 
