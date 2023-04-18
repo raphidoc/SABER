@@ -269,6 +269,9 @@ Saber_forward_final <-  function(use_true_IOPs = T, #Set TRUE if actual spectral
     # load plankton absorption data
     A0_A1_PhytoPlanc <- read.table("./data/input-spectra/A0_A1_PhytoPlanc.dat")
     
+    #Replace with the below for package environment for upper line
+    #system.file("data", "input-spectra", "A0_A1_PhytoPlanc.dat", package = "SABER")
+    
     # extract the values from the table
     lam_p <- A0_A1_PhytoPlanc$V1
     a0_p <- A0_A1_PhytoPlanc$V2

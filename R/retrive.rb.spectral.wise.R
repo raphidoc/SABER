@@ -213,51 +213,51 @@ Saber_retrieve_rb_wise <-  function(use_true_IOPs = T,
       abs_CDM = abs_CDOM + abs_X
     }
     
-    #Plot the component specific absorption
-    plotframe.abs <- data.frame("wave"=lambda,"abs.ph"= abs_ph, "abs.cdm"=abs_CDM)
-    xmin = min(plotframe.abs$wave); xmax= max(plotframe.abs$wave); xstp=100
-    ymin= 0; ymax=max(plotframe.abs$abs.cdm);ystp= signif(ymax/5, digits = 2)
-    asp_rat <- (xmax-xmin)/(ymax-ymin)
-    
-    g <- ggplot()  + geom_line(data = plotframe.abs,aes(y=abs.ph,color="xx1",x = wave),
-                               size=1.3,show.legend = TRUE) +
-      geom_line(data = plotframe.abs,aes(y=abs.cdm,x = wave,color="xx2"), 
-                size=1.3,show.legend = TRUE)+
-      
-      scale_colour_manual(labels = c(expression(paste(italic("a")[phi])),
-                                     expression(paste(italic("a")["dg"]))
-      ), 
-      values = c("green","darkgoldenrod2")) +
-      #ggtitle(paste0(stationlist[i])) +
-      scale_x_continuous(name = expression(paste("Wavelength(", lambda, ")[nm]")), limits = c(xmin, xmax), 
-                         breaks = seq(xmin, xmax, xstp))  +
-      scale_y_continuous(name =expression(paste(italic("a"),{}["t-w"],"(",lambda,",", 0^"-",")[", m^-1,"]")) , limits = c(ymin, ymax),
-                         breaks = seq(ymin, ymax, ystp))+ 
-      coord_fixed(ratio = asp_rat, xlim = c(xmin, xmax), 
-                  ylim = c(ymin, ymax), expand = FALSE, clip = "on") +
-      theme(plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
-            axis.text.x = element_text(size = 20, color = 'black', angle = 0), 
-            axis.text.y = element_text(size = 20, color = 'black', angle = 0), 
-            axis.title.x = element_text(size = 25),
-            axis.title.y = element_text(size = 25),
-            axis.ticks.length = unit(.25, "cm"),
-            legend.position=c(0.70, 0.9),
-            legend.direction = "vertical",
-            legend.title = element_blank(),
-            legend.text = element_text(colour = "black", size = 20, face = "plain"),
-            legend.background = element_rect(fill = NA, size = 0.5, 
-                                             linetype = "solid", colour = 0),
-            legend.key = element_blank(),
-            legend.justification = c("left", "top"),
-            panel.background = element_blank(),
-            panel.grid.major = element_line(colour = "grey", 
-                                            size = 0.5, linetype = "dotted"), 
-            panel.grid.minor = element_blank(),
-            #legend.spacing.y = unit(2.0, 'cm'),
-            plot.margin = unit(c(0.5,0.5,0.0,0.0), "cm"),
-            legend.text.align = 0,
-            panel.border = element_rect(colour = "black", fill = NA, size = 1.5))
-    g 
+    # #Plot the component specific absorption
+    # plotframe.abs <- data.frame("wave"=lambda,"abs.ph"= abs_ph, "abs.cdm"=abs_CDM)
+    # xmin = min(plotframe.abs$wave); xmax= max(plotframe.abs$wave); xstp=100
+    # ymin= 0; ymax=max(plotframe.abs$abs.cdm);ystp= signif(ymax/5, digits = 2)
+    # asp_rat <- (xmax-xmin)/(ymax-ymin)
+    # 
+    # g <- ggplot()  + geom_line(data = plotframe.abs,aes(y=abs.ph,color="xx1",x = wave),
+    #                            size=1.3,show.legend = TRUE) +
+    #   geom_line(data = plotframe.abs,aes(y=abs.cdm,x = wave,color="xx2"), 
+    #             size=1.3,show.legend = TRUE)+
+    #   
+    #   scale_colour_manual(labels = c(expression(paste(italic("a")[phi])),
+    #                                  expression(paste(italic("a")["dg"]))
+    #   ), 
+    #   values = c("green","darkgoldenrod2")) +
+    #   #ggtitle(paste0(stationlist[i])) +
+    #   scale_x_continuous(name = expression(paste("Wavelength(", lambda, ")[nm]")), limits = c(xmin, xmax), 
+    #                      breaks = seq(xmin, xmax, xstp))  +
+    #   scale_y_continuous(name =expression(paste(italic("a"),{}["t-w"],"(",lambda,",", 0^"-",")[", m^-1,"]")) , limits = c(ymin, ymax),
+    #                      breaks = seq(ymin, ymax, ystp))+ 
+    #   coord_fixed(ratio = asp_rat, xlim = c(xmin, xmax), 
+    #               ylim = c(ymin, ymax), expand = FALSE, clip = "on") +
+    #   theme(plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+    #         axis.text.x = element_text(size = 20, color = 'black', angle = 0), 
+    #         axis.text.y = element_text(size = 20, color = 'black', angle = 0), 
+    #         axis.title.x = element_text(size = 25),
+    #         axis.title.y = element_text(size = 25),
+    #         axis.ticks.length = unit(.25, "cm"),
+    #         legend.position=c(0.70, 0.9),
+    #         legend.direction = "vertical",
+    #         legend.title = element_blank(),
+    #         legend.text = element_text(colour = "black", size = 20, face = "plain"),
+    #         legend.background = element_rect(fill = NA, size = 0.5, 
+    #                                          linetype = "solid", colour = 0),
+    #         legend.key = element_blank(),
+    #         legend.justification = c("left", "top"),
+    #         panel.background = element_blank(),
+    #         panel.grid.major = element_line(colour = "grey", 
+    #                                         size = 0.5, linetype = "dotted"), 
+    #         panel.grid.minor = element_blank(),
+    #         #legend.spacing.y = unit(2.0, 'cm'),
+    #         plot.margin = unit(c(0.5,0.5,0.0,0.0), "cm"),
+    #         legend.text.align = 0,
+    #         panel.border = element_rect(colour = "black", fill = NA, size = 1.5))
+    # g 
     
     if (plot == "TRUE") {
       ggsave(paste0("./gfx/forward_runs/SABER.absorption.model_chl=",signif(C_ph, digits = 3) ,"_acdom440=", signif(base.CDOM, digits = 3),"_anap440=", signif(base.NAP,digits = 3), ".png"), plot = g,
@@ -316,14 +316,18 @@ Saber_retrieve_rb_wise <-  function(use_true_IOPs = T,
     #--------------------------------------------------------------------------
     ## Water system total IOPs
     #--------------------------------------------------------------------------
-    print(paste0("Actual IOPs provided"))
+    if (verbose == T) {
+      print(paste0("Actual IOPs provided"))
+    }
     
     a_non_water[a_non_water < 0] = 0
     
     ## Total Absorption Coefficient (1/m)
     if (!(all(length(a_non_water_wave) == length(lambda)) && all(a_non_water_wave == lambda))) {
+      if (verbose == T) {
+        print("Simulation wavelength and absorption wavelength are different, data will be interpolated")
+      }
       
-      print("Simulation wavelength and absorption wavelength are different, data will be interpolated")
       
       a_non_water_interp = approx(x= a_non_water_wave, y = a_non_water,
                                   xout = lambda, method = "linear")$y
@@ -351,18 +355,27 @@ Saber_retrieve_rb_wise <-  function(use_true_IOPs = T,
     
     if ( !(all(length(bb_non_water_wave) == length(lambda)) && all(bb_non_water_wave == lambda))) {
       
-      print("Simulation wavelength and backscatter wavelength are different")
+      if (verbose == T) {
+        print("Simulation wavelength and backscatter wavelength are different")
+      }
+      
       
       #### Compute bbp and bb spectral slope
       if (length(bb_non_water_wave) == 6) {
         sensor_wl = c(394, 420, 470, 532, 620, 700)
         x = 555/sensor_wl
-        print("HS-6 VSF is used")
+        if (verbose == T) {
+          print("HS-6 VSF is used")
+        }
+        
       }
       if (length(bb_non_water_wave) == 9) {
         sensor_wl = c(412, 440, 488, 510, 532, 595, 650, 676, 715)
         x = 555/sensor_wl
-        print("BB-9 VSF is used")
+        if (verbose == T) {
+          print("BB-9 VSF is used")
+        }
+        
       }
       
       #nz=length(IOP.fitted.down$Depth)
@@ -406,7 +419,10 @@ Saber_retrieve_rb_wise <-  function(use_true_IOPs = T,
         j=j+1
       }
       
-      print("bbp for simulation wavelength is obtained using power-law fitting")
+      if (verbose == T) {
+        print("bbp for simulation wavelength is obtained using power-law fitting")
+      }
+      
       bb <-  bb_W + as.vector(bbp_hs)
       
     } else {
@@ -483,8 +499,13 @@ Saber_retrieve_rb_wise <-  function(use_true_IOPs = T,
   
   
   Rrs_Bottom <- (obs_rrs - Rrs_below_deep * (1 - Ars1 * exp(-zRb * (Kd + kuW)))) / (Ars2 * exp(-zRb * (Kd + kuB)))
-  print(paste0("Bottom reflectance calculated from ", min(lambda), " nm to ", max(lambda), " nm."))
-  print("!!!! The Bottom reflectance is not scaled with pi !!!!")
+  
+  if (verbose == T) {
+    print(paste0("Bottom reflectance calculated from ", min(lambda), " nm to ", max(lambda), " nm."))
+    print("!!!! The Bottom reflectance is not scaled with pi !!!!")
+  }
+  
+  
   return(data.frame("wavelength"=lambda, "rb"=Rrs_Bottom))
 }
 

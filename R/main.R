@@ -56,6 +56,7 @@ source("./R/gregg_carder_ed.R")
 source("./R/retrive.rb.spectral.wise.R")
 source("./R/generate.rb.spectral.R")
 source("./R/read.surface.IOPs.wise.R")
+source("./R/retrieve.rb.spectral.minimal.R")
 
 #Gradient Based Inverse Functions
 source("./R/solve.objective.inverse.R")
@@ -88,6 +89,7 @@ library(limSolve)
 library(nloptr)
 library(minpack.lm)
 library(pracma)
+library(alabama)
 #-------------------------------------------------------------------------------------------
 #Function to read EXCEL sheet
 read_excel_allsheets <- function(filename, tibble = FALSE) {
@@ -164,14 +166,14 @@ estimate_chl_oriley <- function(wave, rrs, a=-0.92160, b=-3.17884,
 
 #1.1 Water type specifications
 type_case_water = 2
-type_Rrs_below = "deep"
+type_Rrs_below = "shallow"
 type_Rrs_below_rb = "shallow"
 type_Rrs_water = "below_surface"
 
 #1.2 Data and station specifications
 batch=FALSE #Set TRUE for IOCCG dataset duplication; Set FALSE for user wanted inputs
 
-insitu.present=TRUE #Set TRUE if actual in situ or simulated observations exist; 
+insitu.present=FALSE #Set TRUE if actual in situ or simulated observations exist; 
                      #else set FALSE
 statname = "OUT-F18" #if insitu.present = TRUE, set the station-name 
 
@@ -253,26 +255,27 @@ source("./R/generate.rb.spectral.R")
 
 #1.7 Atmospheric conditions
 
-# Irradiance intensities [1/sr]
-g_dd=0.05; g_dsr=0; g_dsa=0;
-
-# Intensities of light sources 
-f_dd= 1; f_ds= 1;
-
-# Angstrom exponent
-alpha = 1.317;
-
-# Atmospheric pressure 
-P = 1013.25; # [mbar]
-
-# Relative Humidity
-RH = 0.60;
-
-# Scale height for ozone
-Hoz=0.300; # [cm]
-
-# Scale height of the precipitate water in the atmosphere
-WV= 2.500; # [cm]
+  # Irradiance intensities [1/sr]
+  g_dd=0.05; g_dsr=0; g_dsa=0;
+  
+  # Intensities of light sources 
+  f_dd= 1; f_ds= 1;
+  
+  # Angstrom exponent
+  alpha = 1.317;
+  
+  # Atmospheric pressure 
+  P = 1013.25; # [mbar]
+  
+  # Relative Humidity
+  RH = 0.60;
+  
+  # Scale height for ozone
+  Hoz=0.300; # [cm]
+  
+  # Scale height of the precipitate water in the atmosphere
+  WV= 2.500; # [cm]
+  
 
 #-----------------------------------------------------------------------------------------------------
 #2. Instantiate IOPs and AOPs into working environment 
@@ -439,18 +442,21 @@ if (insitu.present == FALSE) {
   
 }
 
-#4.2 Auxiliary declarations
+#4.2 Auxiliary declarations and load relevant data
 base.bbp = Fit.input$bbp.550
 type_Rrs_below_jacobian = "deep"
 Cops::GreggCarder.data()
 
-IOP_files = list.files("./data/Rb_spectral/surface_iops/", full.names = T)
+if (insitu.present == TRUE) {
+  IOP_files = list.files("./data/Rb_spectral/surface_iops/", full.names = T)
+  
+  idx_a = grep(IOP_files, pattern = paste0("abs_surf_",statname, ".csv$"))
+  idx_bb = grep(IOP_files, pattern = paste0("bb_surf_",statname, ".csv$"))
+  
+  Rb_files = list.files("./Outputs/Bottom_ref/", pattern = "*.csv", full.names = T)
+  idx_rb = grep(Rb_files, pattern = paste0("Rb_spectral_data_",statname, ".csv$"))
+}
 
-idx_a = grep(IOP_files, pattern = paste0("abs_surf_",statname, ".csv$"))
-idx_bb = grep(IOP_files, pattern = paste0("bb_surf_",statname, ".csv$"))
-
-Rb_files = list.files("./Outputs/Bottom_ref/", pattern = "*.csv", full.names = T)
-idx_rb = grep(Rb_files, pattern = paste0("Rb_spectral_data_",statname, ".csv$"))
 
 #Estimate [chl] from O'Rilley
 # rrs <- insitu.data
@@ -468,7 +474,7 @@ forward.op.am <- Saber_forward(chl = Fit.input$chl, acdom440 = Fit.input$acdom.4
                             anap440 =Fit.input$anap.440 , bbp.550 = Fit.input$bbp.550, 
                             #realdata = insitu.data, 
                             z = zB, rb.fraction = fA.set,
-                            verbose = T, realdata.exist = TRUE,
+                            verbose = T, realdata.exist = T,
                             realdata = surface_rrs_translate(Rrs = insitu.data),
                             plot = F)
 

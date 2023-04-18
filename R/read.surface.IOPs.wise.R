@@ -4,8 +4,10 @@ read.surface.IOPs.wise <- function(absdata_kildir = "./data/Rb_spectral/absorpti
                                    bbdata_kildir = "./data/Rb_spectral/backscatter_final/Bbp.All_Kildir_surf_new.csv",
                                    bbdata_saucier = "./data/Rb_spectral/backscatter_final/Bbp.All_Saucier_surf-QC_new.csv",
                                    station.args = "OUT-F18",
+                                   cops_anc = F,
                                    verbose = T,
-                                   save_on_disc = F){
+                                   save_on_disc = F,
+                                   disc_path = "/data/soham/"){
   ###======================================================================
   # 1. READ ABSORPTION DATA
   ###======================================================================
@@ -111,38 +113,39 @@ read.surface.IOPs.wise <- function(absdata_kildir = "./data/Rb_spectral/absorpti
     print("Backscatter in long format generated")
   }
   
-  
   ###======================================================================
   # 3. READ Rrs DATA
   ###======================================================================
-  
-  #3.1 Read COP-S actual database and hyperspectral database
-  cops_db =  read.csv("./data/Rb_spectral/COPS_db.csv",header = T)
-  
-  cops_hs =  read.csv("./data/Rb_spectral/copsdata.csv",header = T)
-  
-  correct_statnames = gsub( names(cops_hs)[-1], pattern = "\\.", replacement = "-") #replace "." 
-  #by "-"
-  colnames(cops_hs) = c("wave", correct_statnames) #assign correct station-names
-  colnames(cops_db) = c("station", correct_statnames)
-  
-  #3.2 Retrieve COP-S acquired depths (CHECK b4 USE)
-  cops_db_flip = as.data.frame(t(cops_db)) 
-  colnames(cops_db_flip) = cops_db$stationID
-  cops_db_flip = cops_db_flip[-1,]
-  colnames(cops_db_flip) = cops_db$station
-  
-  #3.3 Extract shallow stations as per COP-S db 
-  #[!!May not be accurate as it uses COP-S cast depth!!]
-  cops_db_shallow_idx = !is.na(cops_db_flip$Bottom.depth)
-  cops_db_shallow_idx = which(cops_db_shallow_idx == TRUE)
-  
-  cops_db_shallow = cops_db_flip[cops_db_shallow_idx,]
-  cops_db_shallow$stationID = rownames(cops_db_shallow)
-  cops_db_hs_shallow = cops_hs[,c(1,cops_db_shallow_idx+1)]
-  
-  if (verbose == TRUE) {
-    print("Rrs in long format generated")
+  if (cops_anc == T) {
+    
+    #3.1 Read COP-S actual database and hyperspectral database
+    cops_db =  read.csv("./data/Rb_spectral/COPS_db.csv",header = T)
+    
+    cops_hs =  read.csv("./data/Rb_spectral/copsdata.csv",header = T)
+    
+    correct_statnames = gsub( names(cops_hs)[-1], pattern = "\\.", replacement = "-") #replace "." 
+    #by "-"
+    colnames(cops_hs) = c("wave", correct_statnames) #assign correct station-names
+    colnames(cops_db) = c("station", correct_statnames)
+    
+    #3.2 Retrieve COP-S acquired depths (CHECK b4 USE)
+    cops_db_flip = as.data.frame(t(cops_db)) 
+    colnames(cops_db_flip) = cops_db$stationID
+    cops_db_flip = cops_db_flip[-1,]
+    colnames(cops_db_flip) = cops_db$station
+    
+    #3.3 Extract shallow stations as per COP-S db 
+    #[!!May not be accurate as it uses COP-S cast depth!!]
+    cops_db_shallow_idx = !is.na(cops_db_flip$Bottom.depth)
+    cops_db_shallow_idx = which(cops_db_shallow_idx == TRUE)
+    
+    cops_db_shallow = cops_db_flip[cops_db_shallow_idx,]
+    cops_db_shallow$stationID = rownames(cops_db_shallow)
+    cops_db_hs_shallow = cops_hs[,c(1,cops_db_shallow_idx+1)]
+    
+    if (verbose == TRUE) {
+      print("Rrs in long format generated")
+    }
   }
   
   
@@ -167,8 +170,15 @@ read.surface.IOPs.wise <- function(absdata_kildir = "./data/Rb_spectral/absorpti
   #                            "a"= (absdata_kildir[abs_data_idx]))
   # colnames(abs_surf_temp) = c('wave','a')
   absdata_sample$at_w[absdata_sample$at_w < 0] = 0
-  write.csv(file = paste0("./data/Rb_spectral/surface_iops/abs_surf_", stationID, ".csv"), 
-            x = absdata_sample, row.names = F, quote = F)
+  #browser()
+  if (save_on_disc == FALSE) {
+    write.csv(file = paste0("./data/Rb_spectral/surface_iops/abs_surf_", stationID, ".csv"), 
+              x = absdata_sample, row.names = F, quote = F)
+  } else {
+    write.csv(file = paste0(disc_path,"surface_iops/abs_surf_", stationID, ".csv"), 
+              x = absdata_sample, row.names = F, quote = F)
+  }
+  
   
   if (verbose == TRUE) {
     print(paste0("Absorption for station ", stationID, " is exported"))
@@ -190,54 +200,65 @@ read.surface.IOPs.wise <- function(absdata_kildir = "./data/Rb_spectral/absorpti
   #                            "bb"= (bbdata_kildir[bb_data_idx]))
   # colnames(bb_surf_temp) = c('wave','bb')
   
-  write.csv(file = paste0("./data/Rb_spectral/surface_iops/bb_surf_", stationID, ".csv"), 
-            x = bbdata_sample, row.names = F, quote = F)
+  if (save_on_disc == FALSE) {
+    write.csv(file = paste0("./data/Rb_spectral/surface_iops/bb_surf_", stationID, ".csv"), 
+              x = bbdata_sample, row.names = F, quote = F)
+  } else {
+    write.csv(file = paste0(disc_path,"surface_iops/bb_surf_", stationID, ".csv"), 
+              x = bbdata_sample, row.names = F, quote = F)
+  }
   
   if (verbose == TRUE) {
     print(paste0("Backscatter for station ", stationID, " is exported"))
   }
   
-  
-  #4.4 Rrs
-  rrs_data_idx = grep(paste0("^",stationID,"$"), correct_statnames)
-  
-  if (rlang::is_empty(rrs_data_idx) == TRUE) {
-    print(paste0("!!!!Rrs for station ",stationID, " is not found in Rrs database!!!!"))
-    print(paste0("!!!!ERROR INCOMING!!!!"))
+  if (cops_anc == T) {
+    #4.4 Rrs
+    rrs_data_idx = grep(paste0("^",stationID,"$"), correct_statnames)
     
-  }
-  rrs_hs_temp = as.matrix(cops_hs[(rrs_data_idx+1)])
-  
-  #browser()
-  rrs_hs_temp_interp = approx(x=cops_hs$wave, y = rrs_hs_temp,
-                              xout = wavelength, method = "linear" )$y
-  
-  if (verbose == TRUE) {
-    print(paste0("Rrs for station ", stationID, " is exported"))
-  }
-  
-  
-  #4.5 Depth from COP-S
-  
-  cops_db_correct_statnames = rownames(cops_db_flip)
-  
-  depth_idx = grep(stationID, cops_db_correct_statnames)
-  
-  if (rlang::is_empty(depth_idx) == TRUE) {
-    print(paste0("!!!Depth for station ",stationID, " is not found in Depth database!!!"))
-    print(paste0("!!!!ERROR INCOMING!!!!"))
+    if (rlang::is_empty(rrs_data_idx) == TRUE) {
+      print(paste0("!!!!Rrs for station ",stationID, " is not found in Rrs database!!!!"))
+      print(paste0("!!!!ERROR INCOMING!!!!"))
+      
+    }
+    rrs_hs_temp = as.matrix(cops_hs[(rrs_data_idx+1)])
     
+    #browser()
+    rrs_hs_temp_interp = approx(x=cops_hs$wave, y = rrs_hs_temp,
+                                xout = wavelength, method = "linear" )$y
+    
+    if (verbose == TRUE) {
+      print(paste0("Rrs for station ", stationID, " is exported"))
+    }
+    
+    
+    #4.5 Depth from COP-S
+    
+    cops_db_correct_statnames = rownames(cops_db_flip)
+    
+    depth_idx = grep(stationID, cops_db_correct_statnames)
+    
+    if (rlang::is_empty(depth_idx) == TRUE) {
+      print(paste0("!!!Depth for station ",stationID, " is not found in Depth database!!!"))
+      print(paste0("!!!!ERROR INCOMING!!!!"))
+      
+    }
+    
+    depth_input = as.numeric(as.character(cops_db_flip$Bottom.depth[depth_idx]))
+    
+    if (verbose == TRUE) {
+      print(paste0("Depth for station ", stationID, " is exported"))
+    }
   }
   
-  depth_input = as.numeric(as.character(cops_db_flip$Bottom.depth[depth_idx]))
   
-  if (verbose == TRUE) {
-    print(paste0("Depth for station ", stationID, " is exported"))
+  if (cops_anc == T) {
+    return(list("a_data" = absdata_sample, "bb_data" = bbdata_sample, "zB_COPS" = depth_input,
+                "Rrs_0p" = rrs_hs_temp_interp))
+  } else {
+    return(list("a_data" = absdata_sample, "bb_data" = bbdata_sample))
   }
-  
-  
-  return(list("a_data" = absdata_sample, "bb_data" = bbdata_sample, "zB_COPS" = depth_input,
-              "Rrs_0p" = rrs_hs_temp_interp))
+ 
   
 }
 
