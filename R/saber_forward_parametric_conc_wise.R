@@ -12,17 +12,17 @@
 #Author: Mr. Soham Mukherjee - PhD Student, Aquatel, UQAR
 #=====================================================================================================
 #rm(list=ls(all=TRUE))
-require(dplyr)
-require(readxl)
-require(stats4)
-require(MASS)
-require(dglm)
+library(dplyr)
+library(readxl)
+library(stats4)
+library(MASS)
+library(dglm)
 library(fitdistrplus)
-require(Riops)
-require(Cops)
-require(ggplot2)
+library(Riops)
+library(Cops)
+library(ggplot2)
 #--------------------------------------------------------------------------
-setwd("/home/musk0001/R_inverse_wasi")
+#setwd("/home/musk0001/R_inverse_wasi")
 
 #Function to convert above water to under water geometry
 snell_law <- function(view,sun){
