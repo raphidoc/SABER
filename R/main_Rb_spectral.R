@@ -17,11 +17,12 @@
 ###======================================================================
 
 #Input the WISE-Man IOP QC sheets for both sets of IOP cages
-kildir_iop = read.csv("/home/musk0001/Kildir_IOP.Process_Log.csv", header = T)
-saucier_iop = read.csv("/home/musk0001/saucierQC.csv", header = T)
+root = "S:/Work/UQAR/Datasets/WISE/L2_SRIMGSAT/"
+kildir_iop = read.csv(paste0(root, "Kildir_IOP.Process_Log.csv"), header = T)
+saucier_iop = read.csv(paste0(root,"saucierQC.csv"), header = T)
 
 #Input the depth statistics and simulation notes from WISE-Man IOP data
-wise_depth_stat = read.csv("/home/musk0001/Depth_wise.csv", header = T)
+wise_depth_stat = read.csv(paste0(root,"Depth_wise.csv"), header = T)
 wise_depth_stat$correct_statname = gsub(wise_depth_stat$Station, pattern = "\\_", replacement = "-") 
 wise_depth_stat <- wise_depth_stat %>% dplyr::select(correct_statname, everything())
 

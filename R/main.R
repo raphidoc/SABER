@@ -38,7 +38,7 @@ rm(list=ls(all=TRUE))
 # source("./R/saber_forward_parametric_conc.R")
 
 source("./R/saber_forward_parametric_conc_wise.R") #FINAL VERSION
-source("./R/SABER_forward_fast.R")
+source("./R/SABER_forward_fast.R") #FASTEST VERSION
 
 #Inelastic Scattering Models
 source("./R/SABER.sicf.R")
@@ -209,7 +209,7 @@ use.nomad.prior = TRUE
 use.ioccg.prior = FALSE
 
 #1.4  Desired Wavelength for the simulation
-wavelength <- seq(400,800,10)
+wavelength <- seq(400,750,10)
 
 #=======================================================================================================
 #--------------------------DATA HANDLING MANUAL: START----------------------------------
@@ -242,145 +242,41 @@ sun = sunzen_below(sun_zen_aove = sun_above) #Make sure you pass "sun" for subsu
 #1.6 bottom depth
 zB=2
 
-#1.7 Load Algae-WISE bottom reflectance
-algae_rb = read.csv("./data/Rb_AlgaeWISE.csv", header = T)
-algae_rb$type = paste0(algae_rb$Target, algae_rb$Background)
+#1.8 Areal fraction of bottom reflectance
 
-bottom_type = unique(algae_rb$Target)
-bottom_type = bottom_type[-(c(2,4))]
+                                                # fA0=0; # constant (Excluded from Model) 
+                                                # fA1=0.2; # sand
+                                                # fA2=0.2; # sediment
+                                                # fA3=0; # Chara contraria
+                                                # fA4=0.6; # Potamogeton perfoliatus
+                                                # fA5=0; # Potamogeton pectinatus
+                                                #fA.set= c(fA1,fA2,fA3,fA4,fA5)
+use_WASI_rb = FALSE
+use_WISE_Man_rb = TRUE
+use_algae_WISE_rb = FALSE
 
-xmin = 400; xmax= 800; xstp=100
-ymin= 0; ymax=100;ystp= signif(ymax/5, digits = 2)
-asp_rat <- (xmax-xmin)/(ymax-ymin)
-
-g <- ggplot(data = algae_rb, aes(x = algae_rb$Lambda, y = algae_rb$rho, color = algae_rb$type)) + 
-  geom_line(show.legend = T, lwd=1.5)+
-scale_x_continuous(name = expression(paste("Wavelength(", lambda, ")[nm]")), limits = c(xmin, xmax), 
-                   breaks = seq(xmin, xmax, xstp))  +
-  scale_y_continuous(name =expression(paste(italic("a"),{}["t-w"],"(",lambda,",", 0^"-",")[", m^-1,"]")) , limits = c(ymin, ymax),
-                     breaks = seq(ymin, ymax, ystp))+ 
-  coord_fixed(ratio = asp_rat, xlim = c(xmin, xmax), 
-              ylim = c(ymin, ymax), expand = FALSE, clip = "on") +
-  theme(plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
-        axis.text.x = element_text(size = 20, color = 'black', angle = 0), 
-        axis.text.y = element_text(size = 20, color = 'black', angle = 0), 
-        axis.title.x = element_text(size = 25),
-        axis.title.y = element_text(size = 25),
-        axis.ticks.length = unit(.25, "cm"),
-        legend.position=c(0.10, 0.9),
-        legend.direction = "vertical",
-        legend.title = element_blank(),
-        legend.text = element_text(colour = "black", size = 20, face = "plain"),
-        legend.background = element_rect(fill = NA, size = 0.5, 
-                                         linetype = "solid", colour = 0),
-        legend.key = element_blank(),
-        legend.justification = c("left", "top"),
-        panel.background = element_blank(),
-        panel.grid.major = element_line(colour = "grey", 
-                                        size = 0.5, linetype = "dotted"), 
-        panel.grid.minor = element_blank(),
-        #legend.spacing.y = unit(2.0, 'cm'),
-        plot.margin = unit(c(0.5,0.5,0.0,0.0), "cm"),
-        legend.text.align = 0,
-        panel.border = element_rect(colour = "black", fill = NA, size = 1.5))
-g
-
-#Split Rb data
-bottom_type_list = split(algae_rb, algae_rb$Target)
-
-# Create a list where each entry contains a data frame with wavelength and Rb
-Rb_algaeWISE <- lapply(bottom_type_list, function(df_observation) {
-  wavelength <- unique(df_observation$Lambda)
-  Rb_df <- matrix(df_observation$rho, nrow=512, byrow = F)
-  Rb = rowMeans(Rb_df, na.rm = T)
+if (use_WISE_Man_rb == TRUE) {
+  load("./data/WISE-Man.RData")
   
-  # Create a list for wavelength and Rb
-  df_wavelength_Rrs <- data.frame(wavelength, Rb)
-})
-
-Rb_df = data.frame("wave" = Rb_algaeWISE[[1]]$wavelength)
-
-for (i in seq_along(Rb_algaeWISE)) {
-  Rb_df <- cbind(Rb_df, Rb_algaeWISE[[i]]$Rb)
+} else {
+  load("./data/algae-WISE.RData")
 }
 
-# Set column names of the result dataframe as the names of each dataframe in the list
-names(Rb_df)[-1] <- names(Rb_algaeWISE)
-Rb_df[Rb_df < 0 ] <- NA
-Rb_df[-1][Rb_df[-1] > 100 & Rb_df[-1] <= 150] <- 100
-Rb_df[-1][Rb_df[-1] > 100 ] <- NA
-Rb_df <- Rb_df[Rb_df$wave >400 & Rb_df$wave <=800,]
-Rb_df[-1] <- Rb_df[-1]/100
+if (!(all(length(rb$wavelength) == length(wavelength)) && all(rb$wavelength == wavelength))) {
+  rb_interp = data.frame("wavelength" = wavelength,
+                         "class1" = approx(rb$wavelength, rb$class1, xout = wavelength)$y,
+                         "class2" = approx(rb$wavelength, rb$class2, xout = wavelength)$y,
+                         "class3" = approx(rb$wavelength, rb$class3, xout = wavelength)$y
+                         )
+  
+}
+rb = rb_interp
+rm(rb_interp)
+fA1=0.5; # aerial fraction 1 
+fA2=0.25; # aerial fraction 2 
+fA3=0.25; # aerial fraction 3, i.e. fa1+fa2+fa3 = 1
 
-Rb_df[-1] = apply(Rb_df[-1], 2,FUN = zoo::na.approx)
-
-# Apply spline interpolation on each column except the first one
-Rb_df_smooth <- as.data.frame(apply(Rb_df[-1], 2, 
-                                    function(x) smooth.spline(Rb_df$wave, x)$y))
-
-Rb_df_interp <- as.data.frame(apply(Rb_df_smooth, 2, 
-                                    function(x) spline(Rb_df$wave, x, xout = wavelength)$y))
-Rb_df_interp[Rb_df_interp > 1] = 1
-Rb_df_interp$wavelength = wavelength
-Rb_df_interp <- Rb_df_interp %>% dplyr::select(wavelength, everything())
-
-Rb_set = Rb_df_interp
-rm(algae_rb, bottom_type_list, bottom_type, Rb_df_interp)
-
-Rb_long = reshape2::melt(Rb_set, id.vars="wavelength")
-names(Rb_long) = c("wavelength","class","rb")
-
-xmin = 400; xmax= 800; xstp=100
-ymin= 0; ymax=1;ystp= signif(ymax/5, digits = 2)
-asp_rat <- (xmax-xmin)/(ymax-ymin)
-
-g1 <- ggplot(data = Rb_long, aes(x = wavelength, y = rb, color = class)) + 
-  geom_line(show.legend = T, lwd=1.5)+
-  scale_x_continuous(name = expression(paste("Wavelength(", lambda, ")[nm]")), limits = c(xmin, xmax), 
-                     breaks = seq(xmin, xmax, xstp))  +
-  scale_y_continuous(name =expression(paste(italic("R"),{}["B"],"(",lambda,")")) , limits = c(ymin, ymax),
-                     breaks = seq(ymin, ymax, ystp))+ 
-  coord_fixed(ratio = asp_rat, xlim = c(xmin, xmax), 
-              ylim = c(ymin, ymax), expand = FALSE, clip = "on") +
-  theme(plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
-        axis.text.x = element_text(size = 20, color = 'black', angle = 0), 
-        axis.text.y = element_text(size = 20, color = 'black', angle = 0), 
-        axis.title.x = element_text(size = 25),
-        axis.title.y = element_text(size = 25),
-        axis.ticks.length = unit(.25, "cm"),
-        legend.position=c(0.10, 0.9),
-        legend.direction = "vertical",
-        legend.title = element_blank(),
-        legend.text = element_text(colour = "black", size = 20, face = "plain"),
-        legend.background = element_rect(fill = NA, size = 0.5, 
-                                         linetype = "solid", colour = 0),
-        legend.key = element_blank(),
-        legend.justification = c("left", "top"),
-        panel.background = element_blank(),
-        panel.grid.major = element_line(colour = "grey", 
-                                        size = 0.5, linetype = "dotted"), 
-        panel.grid.minor = element_blank(),
-        #legend.spacing.y = unit(2.0, 'cm'),
-        plot.margin = unit(c(0.5,0.5,0.0,0.0), "cm"),
-        legend.text.align = 0,
-        panel.border = element_rect(colour = "black", fill = NA, size = 1.5))
-g1
-
-#1.8 Areal fraction of bottom reflectance
-# fA0=0; # constant (Excluded from Model) 
-# fA1=0.2; # sand
-# fA2=0.2; # sediment
-# fA3=0; # Chara contraria
-# fA4=0.6; # Potamogeton perfoliatus
-# fA5=0; # Potamogeton pectinatus
-#fA.set= c(fA1,fA2,fA3,fA4,fA5)
-
-fA1=0.5; # Lithonthamion
-fA2=0.25; # Sacha
-fA3=0.25; # Rock
-#fA4=0.0; # Sacha/Bryo
-
-fA.set= c(fA1,fA2,fA3)#,fA4)
+fA.set= c(fA1,fA2,fA3)
 
 source("./R/retrive.rb.spectral.R")
 source("./R/generate.rb.spectral.R")
@@ -600,70 +496,70 @@ if (insitu.present == TRUE) {
 #4.3 Test different bio-optical parametrization effect on rrs in forward SABER
 #-----------------------------------------------------------------------------
 
-#4.3.1. Constant values for s_g and s_nap (a_d,g spectral slopes) and \eta (bbp spectral slope)
-#with no spectral shape normalization and no SICF
-forward.op.am <- Saber_forward(chl = Fit.input$chl, acdom440 = Fit.input$acdom.440, 
-                            anap440 =Fit.input$anap.440 , bbp.550 = Fit.input$bbp.550, 
-                            #realdata = insitu.data, 
-                            z = zB, rb.fraction = fA.set,
-                            verbose = T, realdata.exist = T,
-                            realdata = surface_rrs_translate(Rrs = insitu.data),
-                            plot = F)
-
-rrs.forward.am <- forward.op.am[[1]]$Rrs #Extract AM03 modeled Rrs
-
-#4.3.2. parametric values for s_dg (a_dg slope) and \eta (bbp slope) following QAAv5
-#with no spectral shape normalization and no SICF
-forward.op.am.param <- Saber_forward_paramteric(chl = Fit.input$chl, 
-                           acdom440 = Fit.input$acdom.440, 
-                           anap440 =Fit.input$anap.440 , 
-                           bbp.550 = Fit.input$bbp.550,
-                           #realdata = rrs.forward.am,
-                           realdata.exist = T,
-                           realdata = surface_rrs_translate(Rrs = insitu.data),
-                           dg_composite = T,
-                           slope.parametric = T,
-                           verbose = F,
-                           sicf = F, plot = F)
-
-
-rrs.forward.am.param <- forward.op.am.param[[1]]$Rrs #Extract AM03 modeled Rrs
-
-#4.3.3.1. parameteric values for s_dg (a_dg slope) and \eta (bbp slope) following QAAv5
-#with spectral shape normalization and no SICF
-forward.op.am.param.conc.dg_sep <- Saber_forward_paramteric_conc(chl = Fit.input$chl, 
-                                   acdom440 = Fit.input$acdom.440, 
-                                   anap440 =Fit.input$anap.440 ,
-                                   bbp.550 = Fit.input$bbp.550, 
-                                   a_dg = NULL,
-                                   #realdata = rrs.forward.am,
-                                   realdata = surface_rrs_translate(Rrs = insitu.data),
-                                   slope.parametric = F,
-                                   dg_composite = F,
-                                   use_spectral_shape_chl = F,
-                                   use_spectral_shape_dg = T,
-                                   sicf = F, q_phi = 0.02, 
-                                   verbose = F, plot = F)
-
-rrs.forward.am.param.conc.dg_sep <- forward.op.am.param.conc.dg_sep[[1]]$Rrs #Extract AM03 modeled Rrs
-
-#4.3.3.2. parametric values for s_dg (a_dg slope) and \eta (bbp slope) following QAAv5
-#with spectral shape normalization and no SICF
-forward.op.am.param.conc.dg_comp <- Saber_forward_paramteric_conc(chl = Fit.input$chl, 
-                                    acdom440 =NULL, 
-                                    anap440 =NULL , 
-                                    a_dg = Fit.input$acdom.440 + Fit.input$anap.440,
-                                    bbp.550 = Fit.input$bbp.550,
-                                    #realdata = rrs.forward.am,
-                                    realdata = surface_rrs_translate(Rrs = insitu.data),
-                                    slope.parametric = T,
-                                    dg_composite = T,
-                                    use_spectral_shape_chl = F,
-                                    use_spectral_shape_dg = T,
-                                    sicf = F, q_phi = 0.02, 
-                                    verbose = F, plot = F)
-
-rrs.forward.am.param.conc.dg_comp <- forward.op.am.param.conc.dg_comp[[1]]$Rrs #Extract AM03 modeled Rrs
+# #4.3.1. Constant values for s_g and s_nap (a_d,g spectral slopes) and \eta (bbp spectral slope)
+# #with no spectral shape normalization and no SICF
+# forward.op.am <- Saber_forward(chl = Fit.input$chl, acdom440 = Fit.input$acdom.440, 
+#                             anap440 =Fit.input$anap.440 , bbp.550 = Fit.input$bbp.550, 
+#                             #realdata = insitu.data, 
+#                             z = zB, rb.fraction = fA.set,
+#                             verbose = T, realdata.exist = T,
+#                             realdata = surface_rrs_translate(Rrs = insitu.data),
+#                             plot = F)
+# 
+# rrs.forward.am <- forward.op.am[[1]]$Rrs #Extract AM03 modeled Rrs
+# 
+# #4.3.2. parametric values for s_dg (a_dg slope) and \eta (bbp slope) following QAAv5
+# #with no spectral shape normalization and no SICF
+# forward.op.am.param <- Saber_forward_paramteric(chl = Fit.input$chl, 
+#                            acdom440 = Fit.input$acdom.440, 
+#                            anap440 =Fit.input$anap.440 , 
+#                            bbp.550 = Fit.input$bbp.550,
+#                            #realdata = rrs.forward.am,
+#                            realdata.exist = T,
+#                            realdata = surface_rrs_translate(Rrs = insitu.data),
+#                            dg_composite = T,
+#                            slope.parametric = T,
+#                            verbose = F,
+#                            sicf = F, plot = F)
+# 
+# 
+# rrs.forward.am.param <- forward.op.am.param[[1]]$Rrs #Extract AM03 modeled Rrs
+# 
+# #4.3.3.1. parameteric values for s_dg (a_dg slope) and \eta (bbp slope) following QAAv5
+# #with spectral shape normalization and no SICF
+# forward.op.am.param.conc.dg_sep <- Saber_forward_paramteric_conc(chl = Fit.input$chl, 
+#                                    acdom440 = Fit.input$acdom.440, 
+#                                    anap440 =Fit.input$anap.440 ,
+#                                    bbp.550 = Fit.input$bbp.550, 
+#                                    a_dg = NULL,
+#                                    #realdata = rrs.forward.am,
+#                                    realdata = surface_rrs_translate(Rrs = insitu.data),
+#                                    slope.parametric = F,
+#                                    dg_composite = F,
+#                                    use_spectral_shape_chl = F,
+#                                    use_spectral_shape_dg = T,
+#                                    sicf = F, q_phi = 0.02, 
+#                                    verbose = F, plot = F)
+# 
+# rrs.forward.am.param.conc.dg_sep <- forward.op.am.param.conc.dg_sep[[1]]$Rrs #Extract AM03 modeled Rrs
+# 
+# #4.3.3.2. parametric values for s_dg (a_dg slope) and \eta (bbp slope) following QAAv5
+# #with spectral shape normalization and no SICF
+# forward.op.am.param.conc.dg_comp <- Saber_forward_paramteric_conc(chl = Fit.input$chl, 
+#                                     acdom440 =NULL, 
+#                                     anap440 =NULL , 
+#                                     a_dg = Fit.input$acdom.440 + Fit.input$anap.440,
+#                                     bbp.550 = Fit.input$bbp.550,
+#                                     #realdata = rrs.forward.am,
+#                                     realdata = surface_rrs_translate(Rrs = insitu.data),
+#                                     slope.parametric = T,
+#                                     dg_composite = T,
+#                                     use_spectral_shape_chl = F,
+#                                     use_spectral_shape_dg = T,
+#                                     sicf = F, q_phi = 0.02, 
+#                                     verbose = F, plot = F)
+# 
+# rrs.forward.am.param.conc.dg_comp <- forward.op.am.param.conc.dg_comp[[1]]$Rrs #Extract AM03 modeled Rrs
 
 #4.3.3.3. parametric values for s_dg (a_dg slope) and \eta (bbp slope) following QAAv5
 #with spectral shape normalization and SICF+fDOM
@@ -671,9 +567,9 @@ forward.op.am.param.conc.dg_comp_sicf_fdom <- Saber_forward_final(
                                               use_true_IOPs = F,
                                               
                                               chl = Fit.input$chl, 
-                                              acdom440 = Fit.input$acdom.440, 
-                                              anap440 = Fit.input$anap.440, 
-                                              a_dg =   NULL  ,
+                                              acdom440 = NULL, 
+                                              anap440 = NULL, 
+                                              a_dg =   Fit.input$acdom.440+Fit.input$anap.440  ,
                                               bbp.550 = Fit.input$bbp.550, 
                                               
                                               #z = iop_aop_data$zB_COPS,
@@ -690,7 +586,7 @@ forward.op.am.param.conc.dg_comp_sicf_fdom <- Saber_forward_final(
                                               
                                               slope.parametric = F,
                                               use_spectral_shape_chl = F,
-                                              use_spectral_shape_dg = T,
+                                              use_spectral_shape_dg = F,
                                               
                                               use_manual_slope =F,
                                               manual_slope = c("s_g"=0.016, "s_d"=0.01160, "gamma"=0.5),
@@ -705,176 +601,178 @@ forward.op.am.param.conc.dg_comp_sicf_fdom <- Saber_forward_final(
                                               use_fDOM_rad = F,
                                               
                                               verbose = T, plot = F)
+#Extract AM03 modeled Rrs
+rrs.forward.am.param.conc.dg_comp_sicf_fdom <- forward.op.am.param.conc.dg_comp_sicf_fdom[[1]]$Rrs 
 
-rrs.forward.am.param.conc.dg_comp_sicf_fdom <- forward.op.am.param.conc.dg_comp_sicf_fdom[[1]]$Rrs #Extract AM03 modeled Rrs
-
-#4.3.4.1. full spectral IOPs are provided and no SICF+fDOM
-forward.op.am.param.conc.true_iop <- Saber_forward_final(use_true_IOPs = T, 
-                                      a_non_water_path = IOP_files[idx_a],
-                                      bb_non_water_path = IOP_files[idx_bb],
-                                      
-                                      chl = Fit.input$chl, 
-                                      acdom440 =NULL, 
-                                      anap440 =NULL , 
-                                      a_dg = Fit.input$acdom.440 + Fit.input$anap.440,
-                                      bbp.550 = Fit.input$bbp.550,
-                                      
-                                      z = iop_aop_data$zB_COPS,
-                                      use_spectral_rb = T, spectral_rb_path = Rb_files[idx_rb],
-                                      
-                                      #realdata = rrs.forward.am,
-                                      realdata = surface_rrs_translate(Rrs = insitu.data),
-                                      
-                                      slope.parametric = F,
-                                      dg_composite = T,
-                                      
-                                      use_manual_slope =T,
-                                      manual_slope = c("s_g"=0.015, "s_d"=0.01160, "gamma"=0.5),
-                                      
-                                      use_spectral_shape_chl = F,
-                                      use_spectral_shape_dg = T,
-                                      
-                                      sicf = F, q_phi = 0.02, 
-                                      fDOM = F,
-                                      verbose = F, plot = F)
-
-rrs.forward.am.param.conc.true_iop <- forward.op.am.param.conc.true_iop[[1]]$Rrs #Extract AM03 modeled Rrs
-
-#4.3.4.2. full spectral IOPs are provided and included SICF+fDOM
-forward.op.am.param.conc.true_iop_sicf_fDOM <- Saber_forward_final(
-                                              use_true_IOPs = T, 
-                                              a_non_water_path = IOP_files[idx_a],
-                                              bb_non_water_path = IOP_files[idx_bb],
-                                              
-                                              chl = Fit.input$chl,
-                                              #chl = NULL,
-                                              
-                                              acdom440 =NULL, 
-                                              anap440 =NULL , 
-                                              a_dg = Fit.input$acdom.440 + Fit.input$anap.440,
-                                              bbp.550 = Fit.input$bbp.550,
-                                              
-                                              z = iop_aop_data$zB_COPS,
-                                              use_spectral_rb = T, 
-                                              spectral_rb_path = Rb_files[idx_rb],
-                                              
-                                              #realdata = rrs.forward.am,
-                                              realdata = surface_rrs_translate(Rrs = insitu.data),
-                                              
-                                              dg_composite = T,
-                                            
-                                              slope.parametric = F,
-                                              use_spectral_shape_chl = F,
-                                              use_spectral_shape_dg = T,
-                                              
-                                              use_manual_slope =F,
-                                              manual_slope = c("s_g"=0.015, "s_d"=0.01160, "gamma"=0.5),
-                                              
-                                              sicf = T, q_phi = 0.05,
-                                              
-                                              use_analytic_Ed = T,
-                                              
-                                              fDOM = T, sunzen_Ed = -99,
-                                              lat_Ed = 49.02487, lon_Ed = -68.37059,
-                                              date_time_Ed = "2019-08-18 20:59 GMT", 
-                                              Ed_fDOM_path = "./data/input-spectra/Ed_HL.csv",
-                                              use_fDOM_rad = F,
-                                            
-                                            verbose = T, plot = F)
-
-rrs.forward.am.param.conc.true_iop_sicf_fdom <- forward.op.am.param.conc.true_iop_sicf_fDOM[[1]]$Rrs #Extract AM03 modeled Rrs
-
-#4.3.4.1. FAST version of SABER_forward_final and no SICF+fDOM
+#4.3.3.4. FAST version of SABER_forward_final and no SICF+fDOM
 forward.saber.fast = Saber_forward_fast(use_true_IOPs = F, use_manual_slope = F, 
                                         
-                                        chl = 5,
-                                        a_dg = 2,
-                                        bbp.550 = 0.007, 
+                                        chl = Fit.input$chl,
+                                        a_dg = Fit.input$acdom.440+Fit.input$anap.440,
+                                        bbp.550 = Fit.input$bbp.550, 
                                         
-                                        slope.parametric = T, 
+                                        slope.parametric = F, 
                                         Rrs_input_for_slope = rrs.demo.Om.demo,
                                         
-                                        z = 2.5,
+                                        z = zB,
                                         rb.fraction = fA.set, 
-                                         
+                                        
                                         
                                         wavelength = wavelength,
                                         verbose = T)
 
 rrs.forward.saber.fast = forward.saber.fast[[1]]$Rrs
 
-plot(wavelength, rrs.forward.saber.fast, lwd=2, col="navyblue", type="l", ylim=c(0, 0.02))
+plot(wavelength, rrs.forward.saber.fast, lwd=2, col="navyblue", type="l", ylim=c(0, 0.03))
+lines(wavelength, rrs.forward.am.param.conc.dg_comp_sicf_fdom, lty="dashed", col="green")
 
-#4.3.5. Plot the Rrs from different Bio-optical parametrizations
-forward_rrs_collection = data.frame("wave" = wavelength, "insitu" = surface_rrs_translate(insitu.data),
-                                    "saber_param_dg_sep" = rrs.forward.am.param.conc.dg_sep,
-                                    "saber_param_dg_comp" = rrs.forward.am.param.conc.dg_comp,
-                                    "saber_param_dg_comp_inel" = rrs.forward.am.param.conc.dg_comp_sicf_fdom,
-                                    "saber_param_iop" = rrs.forward.am.param.conc.true_iop,
-                                    "saber_param_iop_inel" = rrs.forward.am.param.conc.true_iop_sicf_fdom)
-
-xmin = 400; xmax= 800; xstp=100
-ymin= 0; ymax=signif(1.25*max(forward_rrs_collection$insitu), digits = 1);ystp= ymax/5
-
-ymax = 0.025;ystp= ymax/5
-asp_rat <- (xmax-xmin)/(ymax-ymin)
-
-g <- ggplot(data = forward_rrs_collection)  + 
-  
-  geom_point(aes(y=insitu,color="xx1", x = wave),size=2,show.legend = F) +
-  
-  geom_line(aes(y=saber_param_dg_sep, x = wave,color="xx2", linetype="aa1"),
-            size=1.3,show.legend = F)+
-  geom_line(aes(y=saber_param_dg_comp, x = wave,color="xx3", linetype="aa1"),
-            size=1.3,show.legend = F)+
-  geom_line(aes(y=saber_param_dg_comp_inel,x = wave,color="xx3", linetype="aa2"), 
-            size=1.3,show.legend = F)+
-  
-  geom_line(aes(y=saber_param_iop, x = wave,color="xx4", linetype="aa1"), 
-            size=1.3, show.legend = T)+
-  geom_line(aes(y=saber_param_iop_inel, x = wave,color="xx4", linetype="aa2"), 
-            size=1.3,show.legend = T)+
-  
-  scale_colour_manual(labels = c(expression(paste(italic("observed"))),
-                                 expression(paste("abs-",italic("a")["dg"],italic(",b")["bp"])),
-                                 expression(paste("QAA-",italic("a")["dg"],italic(",b")["bp"])),
-                                 expression(paste(italic("field-"),italic("a")["t-w"],italic(",b")["bp"]))),
-                      values = c("black","green", "red", "purple")) +
-  scale_linetype_manual(labels = c("elastic", "elastic+inelastic"),
-                        values = c(1,4))+
-  #ggtitle(paste0(stationlist[i])) +
-  scale_x_continuous(name = expression(paste("Wavelength(", lambda, ")[nm]")), limits = c(xmin, xmax), 
-                     breaks = seq(xmin, xmax, xstp))  +
-  scale_y_continuous(name =expression(paste(italic("R"),{}[rs],"(",lambda,",", 0^"-",")[", sr^-1,"]")) , limits = c(ymin, ymax),
-                     breaks = seq(ymin, ymax, ystp))+ 
-  coord_fixed(ratio = asp_rat, xlim = c(xmin, xmax), 
-              ylim = c(ymin, ymax), expand = FALSE, clip = "on") +
-  theme(plot.title = element_text(size = 10, face = "bold", hjust = 0.5),
-        axis.text.x = element_text(size = 15, color = 'black', angle = 0), 
-        axis.text.y = element_text(size = 15, color = 'black', angle = 0), 
-        axis.title.x = element_text(size = 20),
-        axis.title.y = element_text(size = 20),
-        axis.ticks.length = unit(.25, "cm"),
-        legend.position=c(0.55, 0.98),
-        legend.direction = "vertical",
-        legend.title = element_blank(),
-        legend.text = element_text(colour = "black", size = 20, face = "plain"),
-        legend.background = element_rect(fill = NA, size = 0.5, 
-                                         linetype = "solid", colour = 0),
-        legend.key = element_blank(),
-        legend.justification = c("left", "top"),
-        panel.background = element_blank(),
-        panel.grid.major = element_line(colour = "grey", 
-                                        size = 0.5, linetype = "dotted"), 
-        panel.grid.minor = element_blank(),
-        plot.margin = unit(c(0.0,0.5,0.0,0.0), "cm"),
-        legend.text.align = 0,
-        panel.border = element_rect(colour = "black", fill = NA, size = 1.5))
-g  
-if (plot == TRUE) {
-  ggsave(paste0("./Outputs/Forward/forward.SABER.collection_",statname,".png"), plot = g,
-         scale = 1.5, width = 4.5, height = 4.5, units = "in",dpi = 300)
-}
+# #4.3.4.1. full spectral IOPs are provided and no SICF+fDOM
+# forward.op.am.param.conc.true_iop <- Saber_forward_final(use_true_IOPs = T, 
+#                                       a_non_water_path = IOP_files[idx_a],
+#                                       bb_non_water_path = IOP_files[idx_bb],
+#                                       
+#                                       chl = Fit.input$chl, 
+#                                       acdom440 =NULL, 
+#                                       anap440 =NULL , 
+#                                       a_dg = Fit.input$acdom.440 + Fit.input$anap.440,
+#                                       bbp.550 = Fit.input$bbp.550,
+#                                       
+#                                       z = iop_aop_data$zB_COPS,
+#                                       use_spectral_rb = T, spectral_rb_path = Rb_files[idx_rb],
+#                                       
+#                                       #realdata = rrs.forward.am,
+#                                       realdata = surface_rrs_translate(Rrs = insitu.data),
+#                                       
+#                                       slope.parametric = F,
+#                                       dg_composite = T,
+#                                       
+#                                       use_manual_slope =T,
+#                                       manual_slope = c("s_g"=0.015, "s_d"=0.01160, "gamma"=0.5),
+#                                       
+#                                       use_spectral_shape_chl = F,
+#                                       use_spectral_shape_dg = T,
+#                                       
+#                                       sicf = F, q_phi = 0.02, 
+#                                       fDOM = F,
+#                                       verbose = F, plot = F)
+# 
+# rrs.forward.am.param.conc.true_iop <- forward.op.am.param.conc.true_iop[[1]]$Rrs #Extract AM03 modeled Rrs
+# 
+# #4.3.4.2. full spectral IOPs are provided and included SICF+fDOM
+# forward.op.am.param.conc.true_iop_sicf_fDOM <- Saber_forward_final(
+#                                               use_true_IOPs = T, 
+#                                               a_non_water_path = IOP_files[idx_a],
+#                                               bb_non_water_path = IOP_files[idx_bb],
+#                                               
+#                                               chl = Fit.input$chl,
+#                                               #chl = NULL,
+#                                               
+#                                               acdom440 =NULL, 
+#                                               anap440 =NULL , 
+#                                               a_dg = Fit.input$acdom.440 + Fit.input$anap.440,
+#                                               bbp.550 = Fit.input$bbp.550,
+#                                               
+#                                               z = iop_aop_data$zB_COPS,
+#                                               use_spectral_rb = T, 
+#                                               spectral_rb_path = Rb_files[idx_rb],
+#                                               
+#                                               #realdata = rrs.forward.am,
+#                                               realdata = surface_rrs_translate(Rrs = insitu.data),
+#                                               
+#                                               dg_composite = T,
+#                                             
+#                                               slope.parametric = F,
+#                                               use_spectral_shape_chl = F,
+#                                               use_spectral_shape_dg = T,
+#                                               
+#                                               use_manual_slope =F,
+#                                               manual_slope = c("s_g"=0.015, "s_d"=0.01160, "gamma"=0.5),
+#                                               
+#                                               sicf = T, q_phi = 0.05,
+#                                               
+#                                               use_analytic_Ed = T,
+#                                               
+#                                               fDOM = T, sunzen_Ed = -99,
+#                                               lat_Ed = 49.02487, lon_Ed = -68.37059,
+#                                               date_time_Ed = "2019-08-18 20:59 GMT", 
+#                                               Ed_fDOM_path = "./data/input-spectra/Ed_HL.csv",
+#                                               use_fDOM_rad = F,
+#                                             
+#                                             verbose = T, plot = F)
+# 
+# rrs.forward.am.param.conc.true_iop_sicf_fdom <- forward.op.am.param.conc.true_iop_sicf_fDOM[[1]]$Rrs #Extract AM03 modeled Rrs
+# 
+# 
+# #4.3.5. Plot the Rrs from different Bio-optical parametrizations
+# forward_rrs_collection = data.frame("wave" = wavelength, "insitu" = surface_rrs_translate(insitu.data),
+#                                     "saber_param_dg_sep" = rrs.forward.am.param.conc.dg_sep,
+#                                     "saber_param_dg_comp" = rrs.forward.am.param.conc.dg_comp,
+#                                     "saber_param_dg_comp_inel" = rrs.forward.am.param.conc.dg_comp_sicf_fdom,
+#                                     "saber_param_iop" = rrs.forward.am.param.conc.true_iop,
+#                                     "saber_param_iop_inel" = rrs.forward.am.param.conc.true_iop_sicf_fdom)
+# 
+# xmin = 400; xmax= 800; xstp=100
+# ymin= 0; ymax=signif(1.25*max(forward_rrs_collection$insitu), digits = 1);ystp= ymax/5
+# 
+# ymax = 0.025;ystp= ymax/5
+# asp_rat <- (xmax-xmin)/(ymax-ymin)
+# 
+# g <- ggplot(data = forward_rrs_collection)  + 
+#   
+#   geom_point(aes(y=insitu,color="xx1", x = wave),size=2,show.legend = F) +
+#   
+#   geom_line(aes(y=saber_param_dg_sep, x = wave,color="xx2", linetype="aa1"),
+#             size=1.3,show.legend = F)+
+#   geom_line(aes(y=saber_param_dg_comp, x = wave,color="xx3", linetype="aa1"),
+#             size=1.3,show.legend = F)+
+#   geom_line(aes(y=saber_param_dg_comp_inel,x = wave,color="xx3", linetype="aa2"), 
+#             size=1.3,show.legend = F)+
+#   
+#   geom_line(aes(y=saber_param_iop, x = wave,color="xx4", linetype="aa1"), 
+#             size=1.3, show.legend = T)+
+#   geom_line(aes(y=saber_param_iop_inel, x = wave,color="xx4", linetype="aa2"), 
+#             size=1.3,show.legend = T)+
+#   
+#   scale_colour_manual(labels = c(expression(paste(italic("observed"))),
+#                                  expression(paste("abs-",italic("a")["dg"],italic(",b")["bp"])),
+#                                  expression(paste("QAA-",italic("a")["dg"],italic(",b")["bp"])),
+#                                  expression(paste(italic("field-"),italic("a")["t-w"],italic(",b")["bp"]))),
+#                       values = c("black","green", "red", "purple")) +
+#   scale_linetype_manual(labels = c("elastic", "elastic+inelastic"),
+#                         values = c(1,4))+
+#   #ggtitle(paste0(stationlist[i])) +
+#   scale_x_continuous(name = expression(paste("Wavelength(", lambda, ")[nm]")), limits = c(xmin, xmax), 
+#                      breaks = seq(xmin, xmax, xstp))  +
+#   scale_y_continuous(name =expression(paste(italic("R"),{}[rs],"(",lambda,",", 0^"-",")[", sr^-1,"]")) , limits = c(ymin, ymax),
+#                      breaks = seq(ymin, ymax, ystp))+ 
+#   coord_fixed(ratio = asp_rat, xlim = c(xmin, xmax), 
+#               ylim = c(ymin, ymax), expand = FALSE, clip = "on") +
+#   theme(plot.title = element_text(size = 10, face = "bold", hjust = 0.5),
+#         axis.text.x = element_text(size = 15, color = 'black', angle = 0), 
+#         axis.text.y = element_text(size = 15, color = 'black', angle = 0), 
+#         axis.title.x = element_text(size = 20),
+#         axis.title.y = element_text(size = 20),
+#         axis.ticks.length = unit(.25, "cm"),
+#         legend.position=c(0.55, 0.98),
+#         legend.direction = "vertical",
+#         legend.title = element_blank(),
+#         legend.text = element_text(colour = "black", size = 20, face = "plain"),
+#         legend.background = element_rect(fill = NA, size = 0.5, 
+#                                          linetype = "solid", colour = 0),
+#         legend.key = element_blank(),
+#         legend.justification = c("left", "top"),
+#         panel.background = element_blank(),
+#         panel.grid.major = element_line(colour = "grey", 
+#                                         size = 0.5, linetype = "dotted"), 
+#         panel.grid.minor = element_blank(),
+#         plot.margin = unit(c(0.0,0.5,0.0,0.0), "cm"),
+#         legend.text.align = 0,
+#         panel.border = element_rect(colour = "black", fill = NA, size = 1.5))
+# g  
+# if (plot == TRUE) {
+#   ggsave(paste0("./Outputs/Forward/forward.SABER.collection_",statname,".png"), plot = g,
+#          scale = 1.5, width = 4.5, height = 4.5, units = "in",dpi = 300)
+# }
 
 
 #4.4 Test the Lee SA model
@@ -1065,22 +963,24 @@ if (preFit == TRUE) {
 #-----------------------------------------------------------------------------------------
 ##5.2 Prepare the optimization parameters
 #-----------------------------------------------------------------------------------------
-
 pop.sd = "unknown" 
-constrain.shallow = FALSE ; constrain.bbp= FALSE 
+constrain.bbp= F
+constrain.shallow.bgc = F ; constrain.shallow.iop = F
 manual_par0 = T
 
+#---------------------------------------
 #5.2.1 Initial values for deep water 
+#---------------------------------------
 if (pop.sd == "known" & type_Rrs_below == "deep" & manual_par0 == FALSE) { #@@ sigma KNOWN
   
   par0 = c(chl = prefit.best$C_ph, adg440 = prefit.best$a_cdom.440+prefit.best$a.nap.440)
-           #anap440 = prefit.best$a.nap.440)#, population.sd = 0.0006327431)
+  #anap440 = prefit.best$a.nap.440)#, population.sd = 0.0006327431)
 } 
 
 if (pop.sd == "unknown" & type_Rrs_below == "deep" & manual_par0 == FALSE) { #@@ sigma UNKNOWN
   
   par0 = c(chl = prefit.best$C_ph, adg440 = prefit.best$a_cdom.440+prefit.best$a.nap.440)
-           #anap440 = prefit.best$a.nap.440, population.sd = 0.001)
+  #anap440 = prefit.best$a.nap.440, population.sd = 0.001)
 }
 
 if (pop.sd == "unknown" & type_Rrs_below == "deep" & manual_par0 == TRUE & constrain.bbp == "TRUE") {# <<MANUAL INPUT>>
@@ -1098,25 +998,31 @@ if (pop.sd == "unknown" & type_Rrs_below == "deep" & manual_par0 == TRUE & const
 }
 
 #Set bounds (Instead of flat multiplier, implement range as a function  #of parameter sensitivity)
-if (type_Rrs_below == "deep" & manual_par0 == FALSE) {
+if (type_Rrs_below == "deep" & constrain.bbp == TRUE & manual_par0 == FALSE) {
   upper.bound <- par0 + 5*par0  
   lower.bound <- par0 - 0.8*par0
 } else {
-  if (type_Rrs_below == "deep" & manual_par0 == FALSE) {
-    upper.bound <- c(30,10,0.5,0.01)  
-    lower.bound <- c(0.01, 0.01, 0.001, 0.0001)
+  if (type_Rrs_below == "deep" & manual_par0 == T) {
+    if (constrain.bbp == FALSE) {
+      upper.bound <- c(30,10,0.5,0.01)  
+      lower.bound <- c(0.01, 0.01, 0.001, 0.0001)
+    } else {
+      upper.bound <- c(30,10,0.1)  
+      lower.bound <- c(0.5, 0.1, 0.0001)
+    }
+    
   }
   
 }                                         
-
-
+#---------------------------------------
 #5.2.2 Initial values for shallow water
-
+#---------------------------------------
 rb_count = length(fA.set)
 rep(0.5, rb_count)
 rb_c = paste0("rb", (1:rb_count))
 
-if (pop.sd == "unknown" & type_Rrs_below == "shallow" & constrain.shallow == "TRUE") { # <<MANUAL INPUT>>
+# <<MANUAL INPUT>>
+if (pop.sd == "unknown" & type_Rrs_below == "shallow" & constrain.shallow.bgc == "TRUE") { 
   par0 = c(chl = 2, adg440 = 0.8,
            bbp = 0.005,
            z = 2.5, 
@@ -1137,8 +1043,28 @@ if (pop.sd == "unknown" & type_Rrs_below == "shallow" & constrain.shallow == "TR
                    population.sd = 10)
 }
 
+# <<MANUAL INPUT>>
+if (pop.sd == "unknown" & type_Rrs_below == "shallow" & constrain.shallow.iop == "TRUE") { 
+  par0 = c(z = 2.5, 
+           rb_c = rep(0.5, rb_count),
+           population.sd = 0.05)
+  
+  #Autoscale Intital values from pre-Ft
+  increament.scale <- 1
+  
+  lower.bound <- c(z = 1,
+                   rep(0, rb_count),
+                   population.sd = 0.00001)
+  
+  upper.bound <- c(z = 10,
+                   rep(1, rb_count),
+                   population.sd = 10)
+}
+
+
+
 #FOR FREE PARAMTER INVERSION INITIAL VALUE VECTOR
-if (pop.sd == "unknown" & type_Rrs_below == "shallow" & constrain.shallow == "FALSE") { # <<MANUAL INPUT>>
+if (pop.sd == "unknown" & type_Rrs_below == "shallow" & constrain.shallow.bgc == "FALSE" & constrain.shallow.iop == "FALSE") { # <<MANUAL INPUT>>
   par0 = c(chl = 2, adg440 = 0.8,
            bbp550 = 0.005,
            z = 2.5, 
@@ -1157,12 +1083,14 @@ if (pop.sd == "unknown" & type_Rrs_below == "shallow" & constrain.shallow == "FA
                    population.sd = 10)
 }
 
+########
 
 #------------------------------------------------------------------------------------
 #5.3 Gradient and finite difference based optimization 
 #------------------------------------------------------------------------------------
 
-#TEST PURPOSE
+#TEST inversion model with slower forward model
+
 # forward.op.am.param.conc.dg_comp_sicf_fdom <- Saber_forward_final( 
 #                                 use_true_IOPs = F,
 #                                 
@@ -1209,21 +1137,19 @@ if (pop.sd == "unknown" & type_Rrs_below == "shallow" & constrain.shallow == "FA
 # rrs.forward.am.param.conc.dg_comp_sicf_fdom <- forward.op.am.param.conc.dg_comp_sicf_fdom[[1]]$Rrs #Extract AM03 modeled Rrs
 # obsdata = rrs.forward.am.param.conc.dg_comp_sicf_fdom
 
+#TEST inversion model with fast forward model
 
-
-forward.saber.fast = Saber_forward_fast(use_true_IOPs = F,  
+forward.saber.fast = Saber_forward_fast(use_true_IOPs = F, use_manual_slope = F, 
                                         
-                                        chl = 5,
-                                        a_dg = 2,
-                                        bbp.550 = 0.007, 
+                                        chl = Fit.input$chl,
+                                        a_dg = Fit.input$acdom.440+Fit.input$anap.440,
+                                        bbp.550 = Fit.input$bbp.550, 
                                         
                                         slope.parametric = F, 
-                                        use_manual_slope = T, #use manual spectral slopes
-                                        manual_slope = c("s_g"=0.014, "s_d"=0.01160, "gamma"=0.46), 
-                                        Rrs_input_for_slope = rrs.demo.Om.demo,
+                                        Rrs_input_for_slope = obsdata,
                                         
-                                        z = 2.5,
-                                        rb.fraction = fA.set, 
+                                        z = zB,
+                                        rb.fraction = fA.set,
                                         
                                         
                                         wavelength = wavelength,
@@ -1239,219 +1165,293 @@ obj = c("log-LL", "SSR", "obj_L98")
 methods.opt <- c("Nelder-Mead", "BFGS", "CG", "L-BFGS-B", "SANN", 
                  "Brent","levenberg-marqardt", "auglag")
 
+#===================================================================
+### Deep water constrained inversion
+#===================================================================
 if (type_Rrs_below == "deep" & constrain.bbp == "TRUE") {
-  # inverse_output <- suppressWarnings(solve.objective.inverse(initial = par0, 
-  #                                           obsdata = obsdata,
-  #                                           sa.model = "am03", obj.fn =obj.run , 
-  #                                           method.opt = methods.opt[4],
-  #                                           lower.b = lower.bound,
-  #                                           upper.b = upper.bound, 
-  #                                           batch = FALSE, pop.sd = FALSE))
+  
   
   inverse_output_deep <- suppressWarnings(solve.objective.inverse.deep.final(
-                                      initial = par0, 
-                                      bbp.constrain  = T,
-                                      bbp.550 = Fit.input$bbp.550,
-                                      
-                                      obsdata = obsdata,
-                                      
-                                      sa.model = "am03", 
-                                      obj.fn = obj[1],
-                                      
-                                      auto_spectral_slope = T,
-                                      manual_spectral_slope = F, 
-                                      
-                                      manual_spectral_slope_vals = c("s_g"=0.014, "s_d"=0.01160, "gamma"=0.46),
-                                      
-                                      method.opt = methods.opt[8],
-                                      lower.b = lower.bound,
-                                      upper.b = upper.bound, 
-                                      batch = FALSE, pop.sd = FALSE))
-  
-  
-}
-
-if (type_Rrs_below == "deep" & constrain.bbp == "FALSE") {
-
-  
-  inverse_output_deep <- suppressWarnings(solve.objective.inverse.deep.final(
-                                      initial = par0, 
-                                      bbp.constrain  = F,
-                                      bbp.550 = Fit.input$bbp.550,
-                                      
-                                      obsdata = obsdata,
-                                      
-                                      sa.model = "am03", 
-                                      obj.fn = obj[1],
-                                      
-                                      auto_spectral_slope = T,
-                                      manual_spectral_slope = F, 
-                                      
-                                      manual_spectral_slope_vals = c("s_g"=0.014, "s_d"=0.003, "gamma"=1),
-                                      
-                                      method.opt = methods.opt[8],
-                                      lower.b = lower.bound,
-                                      upper.b = upper.bound, 
-                                      batch = FALSE, pop.sd = FALSE))
-  
-  
-}
-
-if (type_Rrs_below == "shallow" & constrain.shallow == TRUE) {
-  inverse_output_shallow_constr <- suppressWarnings(solve.objective.inverse.shallow.final(
+    initial = par0, 
+    bbp.constrain  = F,
+    bbp.550 = Fit.input$bbp.550,
     
-                                                constrained = T, 
-                                                constrain.param = c(Fit.input$chl, Fit.input$acdom.440+ 
-                                                Fit.input$anap.440, Fit.input$bbp.550),
-                                               
-                                                
-                                                initial = as.numeric(par0), 
-                                                obsdata = obsdata,
-                                                 
-                                                auto_spectral_slope = F,
-                                                manual_spectral_slope = T, 
-                                                 
-                                  manual_spectral_slope_vals = c("s_g"=0.015, "s_d"=0.003, "gamma"=0.5),
-                                                 
-                                                sa.model = "am03", 
-                                  #obj.fn =obj.run , 
-                                  obj.fn = obj[2], 
-                                                method.opt = methods.opt[4],
-                                  
-                                                lower.b = lower.bound,
-                                                upper.b = upper.bound, 
-                                                 
-                                               ))
+    obsdata = obsdata,
+    
+    sa.model = "am03", 
+    obj.fn = obj[1],
+    
+    auto_spectral_slope = F,
+    manual_spectral_slope = F, 
+    
+    manual_spectral_slope_vals = c("s_g"=0.014, "s_d"=0.003, "gamma"=1),
+    
+    method.opt = methods.opt[4],
+    lower.b = lower.bound,
+    upper.b = upper.bound, 
+    batch = FALSE, pop.sd = FALSE))
+  
+  
+  inverse_output_deep <- suppressWarnings(solve.objective.inverse.deep.final.fast(
+    initial = par0, 
+    bbp.constrain  = T,
+    bbp.constrain.value =  Fit.input$bbp.550,
+    
+    obsdata = obsdata,
+    
+    sa.model = "am03", 
+    obj.fn = obj[1],
+    
+    auto_spectral_slope = F,
+    manual_spectral_slope = F, 
+    
+    manual_spectral_slope_vals = c("s_g"=0.014, "s_d"=0.003, "gamma"=1),
+    
+    method.opt = methods.opt[4],
+    lower.b = lower.bound,
+    upper.b = upper.bound 
+    #,batch = FALSE, pop.sd = FALSE
+  ))
+  
+  
+}
+
+#===================================================================
+### Deep water unconstrained inversion
+#===================================================================
+if (type_Rrs_below == "deep" & constrain.bbp == "FALSE") {
+  
+  
+  inverse_output_deep <- suppressWarnings(solve.objective.inverse.deep.final.fast(
+    initial = par0, 
+    bbp.constrain  = F,
+    bbp.constrain.value =  Fit.input$bbp.550,
+    
+    obsdata = obsdata,
+    
+    sa.model = "am03", 
+    obj.fn = obj[1],
+    
+    auto_spectral_slope = F,
+    manual_spectral_slope = F, 
+    
+    manual_spectral_slope_vals = c("s_g"=0.014, "s_d"=0.003, "gamma"=0.46),
+    
+    method.opt = methods.opt[4],
+    lower.b = lower.bound,
+    upper.b = upper.bound 
+    #,batch = FALSE, pop.sd = FALSE
+  ))
+  
+  
 }
 #===================================================================
-### GOING GOD-MODE
+### Shallow Water constrained inversion
 #===================================================================
-if (type_Rrs_below == "shallow" & constrain.shallow == FALSE) {
+
+#BGC constrained
+if (type_Rrs_below == "shallow" & constrain.shallow.bgc == TRUE) {
+  inverse_output_shallow_constr <- suppressWarnings(solve.objective.inverse.shallow.final.fast(
+    
+    constrained = T, 
+    constrain.value  = const.input,
+    
+    
+    initial = as.numeric(par0), 
+    obsdata = obsdata,
+    
+    auto_spectral_slope = F,
+    manual_spectral_slope = T, 
+    
+    manual_spectral_slope_vals = c("s_g"=0.014, "s_d"=0.003, "gamma"=0.5),
+    
+    sa.model = "am03", 
+    #obj.fn =obj.run , 
+    obj.fn = obj[1],
+    method.opt = methods.opt[4],
+    
+    lower.b = lower.bound,
+    upper.b = upper.bound, 
+    
+  ))
+}
+
+#IOP constrained
+if (type_Rrs_below == "shallow" & constrain.shallow.iop == TRUE) {
+  inverse_output_shallow_constr <- suppressWarnings(solve.objective.inverse.shallow.final.fast(
+    constrain.shallow.iop = T, 
+    abs_path = abs_path, bb_path = bb_path,
+    
+    constrained.bgc = F, 
+    constrain.bgc.value   = const.input,
+    
+    
+    initial = as.numeric(par0), 
+    obsdata = obsdata,
+    
+    auto_spectral_slope = F,
+    manual_spectral_slope = T, 
+    
+    manual_spectral_slope_vals = c("s_g"=0.014, "s_d"=0.003, "gamma"=0.5),
+    
+    sa.model = "am03", 
+    #obj.fn =obj.run , 
+    obj.fn = obj[1],
+    method.opt = methods.opt[4],
+    
+    lower.b = lower.bound,
+    upper.b = upper.bound, 
+    
+  ))
+}
+#===================================================================
+### Shallow Water unconstrained inversion (GOD-MODE)
+#===================================================================
+if (type_Rrs_below == "shallow" & constrain.shallow.bgc == FALSE) {
   inverse_output_shallow_unconstr <- suppressWarnings(solve.objective.inverse.shallow.final.fast(
     
-                                    constrained = F, 
-                                    constrain.param = c(Fit.input$chl, Fit.input$acdom.440+ 
-                                    Fit.input$anap.440),
-                                    
-                                                
-                                    initial = as.numeric(par0), 
-                                    obsdata = obsdata,
-                                                 
-                                    auto_spectral_slope = F,
-                                    manual_spectral_slope = T, 
-                                                 
-                                  manual_spectral_slope_vals = c("s_g"=0.014, "s_d"=0.01160, "gamma"=0.46),
-                                                 
-                                  sa.model = "am03", 
-                                  #obj.fn =obj.run , 
-                                  obj.fn = obj[3],
-                                  method.opt = methods.opt[8],
-                                  
-                                  lower.b = lower.bound,
-                                  upper.b = upper.bound, 
-                                                 
-                                ))
+    constrain.shallow.iop = F, 
+    
+    unconstrained = T,
+    
+    constrained.bgc = F, 
+    constrain.bgc.value = c(Fit.input$chl, Fit.input$acdom.440+ 
+                              Fit.input$anap.440),
+    
+    
+    initial = as.numeric(par0), 
+    obsdata = obsdata,
+    
+    auto_spectral_slope = F,
+    manual_spectral_slope = F, 
+    
+    manual_spectral_slope_vals = c("s_g"=0.014, "s_d"=0.003, "gamma"=1),
+    
+    sa.model = "am03", 
+    #obj.fn =obj.run , 
+    obj.fn = obj[1],
+    method.opt = methods.opt[8],
+    
+    lower.b = lower.bound,
+    upper.b = upper.bound, 
+    
+  ))
 }
 
+#=====================================================================
+# Obtain Rrs with inversion retrieved parameters
+#=====================================================================
 
-
-if (obj.run == "log-LL" ) {
+#Obtain inversion retrieved parameters
+if (obj.run == "log-LL" | obj.run == "obj_L98") {
+  
+  #For deep waters
   if (type_Rrs_below == "deep") {
     if (constrain.bbp == TRUE) {
       Fit.optimized.ssobj <- data.frame("chl"=inverse_output_deep[[1]]$estimates[1], 
-                                        "adg.440"=inverse_output_deep[[1]]$estimates[2]
-                                        )
+                                        "adg443"=inverse_output_deep[[1]]$estimates[2]
+      )
     } else {
       Fit.optimized.ssobj <- data.frame("chl"=inverse_output_deep[[1]]$estimates[1], 
-                                        "adg.440"=inverse_output_deep[[1]]$estimates[2],
-                                        "bbp.550"=inverse_output_deep[[1]]$estimates[3])
+                                        "adg443"=inverse_output_deep[[1]]$estimates[2],
+                                        "bbp555"=inverse_output_deep[[1]]$estimates[3])
     }
     
   }
   
-  if (type_Rrs_below == "shallow" & constrain.shallow == FALSE) {
-    Fit.optimized.ssobj <- data.frame("chl"=inverse_output_shallow_unconstr[[1]]$estimates[1], 
-                                      "adg.440"=inverse_output_shallow_unconstr[[1]]$estimates[2],
-                                      "bbp.550"=inverse_output_shallow_unconstr[[1]]$estimates[3],
-                                      "z"=inverse_output_shallow_unconstr[[1]]$estimates[4],
-                                      "rb.frac1"=inverse_output_shallow_unconstr[[1]]$estimates[5],
-                                      "rb.frac2"=inverse_output_shallow_unconstr[[1]]$estimates[6],
-                                      "rb.frac3"=inverse_output_shallow_unconstr[[1]]$estimates[7],
-                                      "rb.frac4"=inverse_output_shallow_unconstr[[1]]$estimates[8],
-                                      "rb.frac5"=inverse_output_shallow_unconstr[[1]]$estimates[9]
-                                      )
-  }
-  if (type_Rrs_below == "shallow" & constrain.shallow == TRUE) {
-    Fit.optimized.ssobj <- data.frame("z"=inverse_output_shallow_constr[[1]]$estimates[1],
-                                      "rb.frac1"=inverse_output_shallow_constr[[1]]$estimates[2],
-                                      "rb.frac2"=inverse_output_shallow_constr[[1]]$estimates[3],
-                                      "rb.frac3"=inverse_output_shallow_constr[[1]]$estimates[4],
-                                      "rb.frac4"=inverse_output_shallow_constr[[1]]$estimates[5],
-                                      "rb.frac5"=inverse_output_shallow_constr[[1]]$estimates[6]
-    )
-  
-}} else{
-  if (obj.run == "SSR") {
+  #For shallow waters
+  if (type_Rrs_below == "shallow" & (constrain.shallow.bgc == FALSE | constrain.shallow.iop == FALSE)) {
+    estimates <- inverse_output_shallow_unconstr[[1]]$estimates
+    Fit.optimized.ssobj <- data.frame(t(
+      c(estimates[1:4], estimates[(5:(4 + rb_count))])
+    ))
     
-    Fit.optimized.ssobj <- data.frame("chl"=inverse_output[[1]]$chl,
-                                      "acdom.440"=inverse_output[[1]]$acdom.440,
-                                "anap.440"=inverse_output[[1]]$anap.440)
+    names(Fit.optimized.ssobj) = c("chl", "adg443", "bbp555", "H", paste0("rb_frac", seq(1:rb_count)))
   }
-}
-
-fa.set.param = as.numeric(Fit.optimized.ssobj[5:9])
+  if (type_Rrs_below == "shallow" & (constrain.shallow.bgc == TRUE | constrain.shallow.iop == TRUE)) {
+    estimates <- inverse_output_shallow_constr[[1]]$estimates
+    Fit.optimized.ssobj <- data.frame(t(
+      c(estimates[1], estimates[(2:(1 + rb_count))])
+    ))
+    
+    names(Fit.optimized.ssobj) = c("H", paste0("rb_frac", seq(1:rb_count)))
+    
+  }} else{
+    
+    if (obj.run == "SSR") {
+      
+      Fit.optimized.ssobj <- data.frame("chl"=inverse_output[[1]]$chl,
+                                        "acdom.440"=inverse_output[[1]]$acdom.440,
+                                        "anap.440"=inverse_output[[1]]$anap.440)
+    }
+  }
 
 if (type_Rrs_below == "shallow") {
-  fa.est = fa.set.param
+  rb_names = c(paste0("rb_frac", seq(1:rb_count)))
+  fa.set.param = Fit.optimized.ssobj[,rb_names]
+}
+
+if (type_Rrs_below == "shallow") {
+  fa.est = as.numeric(fa.set.param)
 } else {
   fa.est = NULL
 }
 
+#Simulate Rrs with inversion retrieved parameters
 forward.model.fit_param = Saber_forward_final( 
-                          use_true_IOPs = F,
-                          
-                          chl = Fit.optimized.ssobj$chl, 
-                          acdom440 = NULL, 
-                          anap440 = NULL, 
-                          a_dg =   Fit.optimized.ssobj$adg.440  ,
-                          bbp.550 = Fit.optimized.ssobj$bbp.550, 
-                          
-
-                          z=Fit.optimized.ssobj$z,
-                          rb.fraction = fa.est,
-                          
-                          
-                          use_spectral_rb = F, 
-                          spectral_rb_path = Rb_files[idx_rb],
-                          
-                          
-                          #realdata = rrs.forward.am,
-                          realdata = obsdata,
-                          
-                          dg_composite = T,
-                          
-                          slope.parametric = T,
-                          use_spectral_shape_chl = F,
-                          use_spectral_shape_dg = T,
-                          
-                          use_manual_slope =F,
-                          manual_slope = c("s_g"=0.016, "s_d"=0.01160, "gamma"=0.46),
-                          
-                          sicf = F, q_phi = 0.05, 
-                          
-                          fDOM = F,
-                          sunzen_Ed = -99, 
-                          lat_Ed = 49.02487, lon_Ed = -68.37059,
-                          date_time_Ed = "2019-08-18 20:59 GMT", 
-                          Ed_fDOM_path = "./data/input-spectra/Ed_HL.csv",
-                          use_fDOM_rad = F,
-                          
-                          verbose = T, plot = F)
+                      use_true_IOPs = F,
+                      
+                      chl = Fit.optimized.ssobj$chl, 
+                      acdom440 = NULL, 
+                      anap440 = NULL, 
+                      a_dg =   Fit.optimized.ssobj$adg443  ,
+                      bbp.550 = Fit.optimized.ssobj$bbp555, 
+                      
+                      
+                      z=Fit.optimized.ssobj$H,
+                      rb.fraction = fa.est,
+                      
+                      
+                      use_spectral_rb = F, 
+                      spectral_rb_path = Rb_files[idx_rb],
+                      
+                      
+                      #realdata = rrs.forward.am,
+                      realdata = obsdata,
+                      realdata.exist = F,
+                      realdata_wave = wavelength,
+                      
+                      dg_composite = T,
+                      
+                      slope.parametric = F,
+                      use_spectral_shape_chl = F,
+                      use_spectral_shape_dg = T,
+                      
+                      use_manual_slope =F,
+                      manual_slope = c("s_g"=0.016, "s_d"=0.01160, "gamma"=0.46),
+                      
+                      sicf = F, q_phi = 0.05, 
+                      
+                      fDOM = F,
+                      sunzen_Ed = -99, 
+                      lat_Ed = 49.02487, lon_Ed = -68.37059,
+                      date_time_Ed = "2019-08-18 20:59 GMT", 
+                      Ed_fDOM_path = "./data/input-spectra/Ed_HL.csv",
+                      use_fDOM_rad = F,
+                      
+                      verbose = T, plot = F
+)
 
 rrs.forward.model.fit_param <- forward.model.fit_param[[1]]$Rrs #Extract AM03 modeled Rrs
 
-plot(wavelength, obsdata, ylab = "Rrs")
+#Compare the actual input Rrs with the same obtained with inversion retrieved parameters
+plot(wavelength, obsdata, col="green4", pch=19,
+     ylab = expression(paste(italic("R"),{}[rs],"(",lambda,",", 0^"-",")[", sr^-1,"]")))
 lines(wavelength, rrs.forward.model.fit_param, lwd=2, lty="dashed", col="navyblue")
+legend("topright", legend = c("predicted"), col = "navyblue", lwd = 2,
+       lty = "dashed",bty = "n")
+
+
 #------------------------------------------------------------------------------------
 #5.4 Implement MCMC optimization
 #------------------------------------------------------------------------------------

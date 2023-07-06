@@ -360,14 +360,18 @@ Saber_forward_fast <-  function(use_true_IOPs = T, #Set TRUE if actual spectral 
     #--------------------------------------------------------------------------
     ## Water system total IOPs
     #--------------------------------------------------------------------------
-    print(paste0("Actual IOPs provided"))
+    if (verbose == T) {
+      print(paste0("Actual IOPs provided"))
+    }
     
     a_non_water[a_non_water < 0] = 0
     
     ## Total Absorption Coefficient (1/m)
     if (!(all(length(a_non_water_wave) == length(lambda)) && all(a_non_water_wave == lambda))) {
+      if (verbose == T) {
+        print("Simulation wavelength and absorption wavelength are different, data will be interpolated")
+      }
       
-      print("Simulation wavelength and absorption wavelength are different, data will be interpolated")
       
       a_non_water_interp = approx(x= a_non_water_wave, y = a_non_water,
                                   xout = lambda, method = "linear")$y
@@ -394,12 +398,16 @@ Saber_forward_fast <-  function(use_true_IOPs = T, #Set TRUE if actual spectral 
     ## Total Backscattering Coefficient (1/m)
     
     if ( !(all(length(bb_non_water_wave) == length(lambda)) && all(bb_non_water_wave == lambda))) {
-      
-      print("Simulation wavelength and backscatter wavelength are different")
+      if (verbose == T) {
+        print("Simulation wavelength and backscatter wavelength are different")
+      }
       
       #### Compute bbp and bb spectral slope
       if (length(bb_non_water_wave) == 6) {
-        print("HS-6 VSF is used")
+        if (verbose == T) {
+          print("HS-6 VSF is used")
+        }
+        
         HS6_wl = c(394, 420, 470, 532, 620, 700)
         x = 555/HS6_wl
         #nz=length(IOP.fitted.down$Depth)
@@ -409,8 +417,10 @@ Saber_forward_fast <-  function(use_true_IOPs = T, #Set TRUE if actual spectral 
       }
       
       if (length(bb_non_water_wave) == 9) {
-        
-        print("BB9 VSF is used")
+        if (verbose == T) {
+          print("BB9 VSF is used")
+        }
+       
         HS6_wl = c(412, 440, 488, 510, 532, 595, 650, 676, 715)
         x = 555/HS6_wl
         #nz=length(IOP.fitted.down$Depth)
@@ -454,8 +464,10 @@ Saber_forward_fast <-  function(use_true_IOPs = T, #Set TRUE if actual spectral 
         }
         j=j+1
       }
+      if (verbose == T) {
+        print("bbp for simulation wavelength is obtained using power-law fitting")
+      }
       
-      print("bbp for simulation wavelength is obtained using power-law fitting")
       bb <-  bb_W + as.vector(bbp_hs)
       
     } else {
@@ -540,9 +552,9 @@ Saber_forward_fast <-  function(use_true_IOPs = T, #Set TRUE if actual spectral 
       
       # Bottom Albedo for ALGAE-WISE
       
-      abott1 <-  Rb_set$Lithotamnion #Lithotamnion = Encrusting Algae that grow on rock and cover it
-      abott2 <-  Rb_set$Sacha #Sacha = Sacharina latissima, one of the most common type of kelp here
-      abott3 <-  Rb_set$Rock # Rock = Rock
+      abott1 <-  rb$class1 
+      abott2 <-  rb$class2
+      abott3 <-  rb$class3 
       
       abott <- rbind(abott1, abott2, abott3)#, abott4, abott5)
       
