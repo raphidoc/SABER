@@ -789,6 +789,12 @@ Fit.optimized.qaa.nomad <- data.frame("chl"=0,
                                         "bbp550"=0
                                         )
 negative_status_vec_qaa = vector()
+#Create the Progress Bar
+pb <- txtProgressBar(min = 0,      # Minimum value of the progress bar
+                     max = length(rrs_nomad_final$Rrs_405), # Maximum value of the progress bar
+                     style = 3,    # Progress bar style (also available style = 1 and style = 2)
+                     width = 50,   # Progress bar width. Defaults to getOption("width")
+                     char = "=")
 
 #Run QAA
 for (j in 1:dim(rrs_nomad_final)[1]) {
@@ -854,7 +860,8 @@ for (j in 1:dim(rrs_nomad_final)[1]) {
     } 
     
     Fit.optimized.qaa.nomad <- rbind(Fit.optimized.qaa.nomad, par0)
-    cat(paste0("\033[0;43m","############### QAA FINISHED for ", j, " no. spectra ################","\033[0m","\n"))
+    setTxtProgressBar(pb, j)
+    #cat(paste0("\033[0;43m","############### QAA FINISHED for ", j, " no. spectra ################","\033[0m","\n"))
     
 }
 
@@ -873,13 +880,114 @@ write.csv(file = "./Outputs/QAA_param_NOMAD.csv", x=Fit.optimized.qaa.nomad, sep
 ### 2.3 #Validate inversion parameters
 #---------------------------------------------
 
-fit_param_saber = read.csv("./Outputs/inv_param_NOMAD_qaa_initial_new.csv", header = T)
-fit_param_qaa = read.csv("./Outputs/QAA_param_NOMAD.csv", header = T)
+fit_param_saber = read.csv("./outputs/inv_param_NOMAD_qaa_initial_new.csv", header = T)
+fit_param_saber = read.csv("./outputs/inv_param_NOMAD.csv", header = T)
+
+fit_param_qaa = read.csv("./outputs/QAA_param_NOMAD.csv", header = T)
 iop_param_qc = iop_nomad_qc[-c(nomad_qaa_idx),]
+
+bbp_idx = (which(is.na(iop_param_qc$bb555) == FALSE))
+
+#====================
+# 1.3.3 Plot [bbp555]
+#====================
+bbp.555_saber = data.frame("id" = seq(1, length(fit_param_saber$bbp550[bbp_idx]),1),
+                           "bbp.555" = fit_param_saber$bbp550[bbp_idx])
+bbp.555_saber_long = reshape2::melt(data = bbp.555_saber, id.vars = "id")
+
+bbp.555_qaa = data.frame("id" = seq(1, length(fit_param_qaa$bbp550[bbp_idx]),1),
+                         "bbp.555" = fit_param_qaa$bbp550[bbp_idx])
+bbp.555_qaa_long = reshape2::melt(data = bbp.555_qaa, id.vars = "id")
+
+bbp.555_nomad = data.frame("id" = seq(1, length(iop_param_qc$bb555[bbp_idx]),1),
+                           "bbp.555" = iop_param_qc$bb555[bbp_idx])
+bbp.555_nomad_long = reshape2::melt(data = bbp.555_nomad, id.vars = "id")
+
+zprime <- merge(bbp.555_saber_long,bbp.555_qaa_long,by=c("id", "variable"))
+zprime <- merge(zprime, bbp.555_nomad_long, by=c("id", "variable"))
+
+names(zprime) <- c("id", "param", "SABER", "QAA", "IOCCG")
+
+rm(bbp.555_saber, bbp.555_saber_long, bbp.555_qaa, bbp.555_qaa_long, bbp.555_nomad, bbp.555_nomad_long )
+
+# Plot the validation
+legend_title <- element_blank()
+legend_position <- c(0.05, 0.85)
+
+xmin <- 10^-3; xmax <- 10^-1.5; xstp <- xmax/4
+xlbl <- expression(paste(italic("b")["bp"](555),italic("actual"), " [", "m"^-1, "]"))
+ymin <- xmin; ymax <- xmax ; ystp <- ymax/5
+ylbl <-expression(paste(italic("b")["bp"](555),italic("predicted"), " [", "m"^-1, "]"))
+
+asp_rat <- (xmax-xmin)/(ymax-ymin)
+
+g <- ggplot(zprime,aes(x = IOCCG)) +
+  geom_abline(slope = 1,intercept = 0,colour="black", na.rm = FALSE, show.legend = FALSE) +
+  
+  # For varying shapes for SABER and QAA
+  geom_point(aes(y = QAA, shape="xx2",fill = "yy2"),
+             size=3.0, na.rm = FALSE, show.legend = TRUE) +
+  geom_point(aes(y = SABER, shape="xx1", fill = "yy1"), 
+             size=3.0, na.rm = FALSE, show.legend = TRUE) +
+  
+  scale_shape_manual(name = "Model Type",
+                     labels=(c(expression(paste("SABER")),expression(paste("QAAv5")))),
+                     values = c(21,23))+
+  
+  # scale_color_manual(labels=rev(c(expression(paste("SABER")),expression(paste("QAAv5")))),
+  #                    values = c("navyblue","goldenrod2"))+
+  
+  scale_fill_manual(name = "Model Type",
+                    labels=c(expression(paste("SABER")),expression(paste("QAAv5"))),
+                    values = rev(c("navyblue","goldenrod2")))+
+  
+  
+  coord_fixed(ratio = asp_rat, xlim = c(xmin, xmax),
+              ylim = c(ymin, ymax), expand = FALSE, clip = "on")+
+  
+  scale_x_log10(
+    breaks = scales::trans_breaks("log10", function(x) 10^x),
+    labels = scales::trans_format("log10", scales::math_format(10^.x))
+  ) +
+  scale_y_log10(
+    breaks = scales::trans_breaks("log10", function(x) 10^x),
+    labels = scales::trans_format("log10", scales::math_format(10^.x))
+  ) +
+  xlab(xlbl)+
+  ylab(ylbl)+
+  annotation_logticks()+
+  theme(plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+        axis.text.x = element_text(size = 15, color = 'black', angle = 0),
+        axis.text.y = element_text(size = 15, color = 'black', angle = 0),
+        axis.title.x = element_text(size = 20),
+        axis.title.y = element_text(size = 20),
+        axis.ticks.length = unit(.25, "cm"),
+        legend.box.just = "right",
+        legend.spacing = unit(-0.5, "cm"),
+        legend.position = legend_position,
+        legend.direction = "vertical",
+        legend.title = element_blank(),
+        legend.text = element_text(colour = "black", size = 15, face = "plain"),
+        legend.background = element_rect(fill = NA, size = 0.5,
+                                         linetype = "solid", colour = 0),
+        legend.key = element_blank(),
+        legend.justification = c("left", "top"),
+        panel.background = element_blank(),
+        panel.grid.major = element_line(colour = "grey",
+                                        size = 0.5, linetype = "dotted"),
+        panel.grid.minor = element_blank(),
+        plot.margin = unit(c(0.5,1.0,0.5,0.5), "cm"),
+        panel.border = element_rect(colour = "black", fill = NA, size = 1.5))
+g
+
+ggsave(paste0("./outputs/nomad_bbp555_valid_v2.png"), plot = g,
+       scale = 1.5, width = 4.5, height = 4.5, units = "in",dpi = 300)
+
 
 #====================
 # 2.3.1 Plot [chl]
 #====================
+fit_param_saber = read.csv("./outputs/inv_param_NOMAD_qaa_initial_new.csv", header = T)
 chl_saber = data.frame("id" = seq(1, length(fit_param_saber$chl),1),
                        "chl" = fit_param_saber$chl)
 chl_saber_long = reshape2::melt(data = chl_saber, id.vars = "id")
@@ -903,9 +1011,9 @@ legend_title <- element_blank()
 legend_position <- c(0.05, 0.85)
 
 xmin <- 10^-3.5; xmax <- 10^3.5; xstp <- xmax/4
-xlbl <- expression(paste(italic("[chl]")["NOMAD"],italic("in vivo"), " [","mg"^1,"m"^-3,"]"))
+xlbl <- expression(paste("[",italic("chl"),"]",italic("actual"), " [","mg"^1,"m"^-3,"]"))
 ymin <- xmin; ymax <- xmax ; ystp <- ymax/5
-ylbl <-expression(paste(italic("[chl]")["MODEL"],italic("estimated"), " [","mg"^1,"m"^-3,"]"))
+ylbl <-expression(paste("[",italic("chl"),"]",italic("predicted"), " [","mg"^1,"m"^-3,"]"))
 
 asp_rat <- (xmax-xmin)/(ymax-ymin)
 
@@ -968,7 +1076,7 @@ g <- ggplot(zprime,aes(x = NOMAD)) +
         panel.border = element_rect(colour = "black", fill = NA, size = 1.5))
 g
 
-ggsave(paste0("./Outputs/nomad_chl_valid_v2.png"), plot = g,
+ggsave(paste0("./outputs/nomad_chl_valid_v2.png"), plot = g,
          scale = 1.5, width = 4.5, height = 4.5, units = "in",dpi = 300)
 
 
@@ -997,9 +1105,9 @@ legend_title <- element_blank()
 legend_position <- c(0.05, 0.85)
 
 xmin <- 10^-4; xmax <- 10^2; xstp <- xmax/4
-xlbl <- expression(paste(italic("a")["dg"](443),italic("NOMAD"), " [", "m"^-1, "]"))
+xlbl <- expression(paste(italic("a")["dg"](443),italic("actual"), " [", "m"^-1, "]"))
 ymin <- xmin; ymax <- xmax ; ystp <- ymax/5
-ylbl <-expression(paste(italic("a")["dg"](443),italic("MODEL"), " [", "m"^-1, "]"))
+ylbl <-expression(paste(italic("a")["dg"](443),italic("predicted"), " [", "m"^-1, "]"))
 
 asp_rat <- (xmax-xmin)/(ymax-ymin)
 
@@ -1062,7 +1170,7 @@ g <- ggplot(zprime,aes(x = NOMAD)) +
         panel.border = element_rect(colour = "black", fill = NA, size = 1.5))
 g
 
-ggsave(paste0("./Outputs/nomad_adg443_valid_v2.png"), plot = g,
+ggsave(paste0("./outputs/nomad_adg443_valid_v2.png"), plot = g,
        scale = 1.5, width = 4.5, height = 4.5, units = "in",dpi = 300)
 
 #----------------------------------------------------

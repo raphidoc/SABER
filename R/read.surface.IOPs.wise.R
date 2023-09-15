@@ -7,7 +7,7 @@ read.surface.IOPs.wise <- function(absdata_kildir = "./data/Rb_spectral/absorpti
                                    cops_anc = F,
                                    verbose = T,
                                    save_on_disc = F,
-                                   disc_path = "/data/soham/"){
+                                   disc_path = "./data/wise_iops"){
   ###======================================================================
   # 1. READ ABSORPTION DATA
   ###======================================================================
@@ -175,7 +175,7 @@ read.surface.IOPs.wise <- function(absdata_kildir = "./data/Rb_spectral/absorpti
     write.csv(file = paste0("./data/Rb_spectral/surface_iops/abs_surf_", stationID, ".csv"), 
               x = absdata_sample, row.names = F, quote = F)
   } else {
-    write.csv(file = paste0(disc_path,"surface_iops/abs_surf_", stationID, ".csv"), 
+    write.csv(file = paste0(disc_path,"/abs_surf_", stationID, ".csv"), 
               x = absdata_sample, row.names = F, quote = F)
   }
   
@@ -204,7 +204,7 @@ read.surface.IOPs.wise <- function(absdata_kildir = "./data/Rb_spectral/absorpti
     write.csv(file = paste0("./data/Rb_spectral/surface_iops/bb_surf_", stationID, ".csv"), 
               x = bbdata_sample, row.names = F, quote = F)
   } else {
-    write.csv(file = paste0(disc_path,"surface_iops/bb_surf_", stationID, ".csv"), 
+    write.csv(file = paste0(disc_path,"/bb_surf_", stationID, ".csv"), 
               x = bbdata_sample, row.names = F, quote = F)
   }
   

@@ -2,22 +2,23 @@
 # main.R performs a series of operations on Radiative transfer in optically complex case-II
 # waters. Some of the major functionalities are listed below:
 
-# 1. Model the Remote-Sensing Reflectance in optically complex waters from user-given [chl],
+# 1. FORWARD: Model the Remote-Sensing Reflectance in optically complex waters from user-given [chl],
 # CDOM and NAP absorption at 440nm wavelength and in case of shallow water, depth and 
 # aerial fraction of bottom types using SA models. Two types of SA models; I.Albert & Mobley 03,
-# II. Lee et al. 98. The AM03 model has two modes for the calculation of slopes in BGC models,
-# i.e.constant and dynamically obtained from rrs. The AM03 model is also able to model SICF if
-# quantum yield is provided.
+# II. Lee et al. 98. The AM03 model (recomended) has two modes for the calculation of slopes in BGC models,
+# i.e.constant and dynamically obtained from rrs. The AM03 model is also able to model SICF and fDOM
+# if chl quantum yield and a_CDOM(443) values are provided respectively.
 
-# 2. Retrieve [chl], a_cdom+nap(440) and z with Rb (shallow) from user given rrs by inverting
+# 2. INVERSE: Retrieve [chl], a_cdom+nap(440) and z with Rb (shallow) from user given rrs by inverting
 # SA model. User can opt between the AM03 and Lee98 SA models to invert. The inversion can be
 # performed by finite difference based optimization, constrained gradient based optimization,
 # Stochastic optimization and Markov Chain Monte Carlo optimization. For gradient based method,
 # an analytical jacobian can be supplied to drastically improve the optimization speed.
 
-# Note, all methods except the Stochastic Optimization and MCMC are sensitive to initial values.
-# A prefit of parameters is available following the CRISTAL LUT approach of Mobley 200~. For
-# gradient based methods, it is advised to perform the prefit prior to optimization.
+# Note, all methods except the Stochastic Optimization (SANN) and MCMC are sensitive to initial values.
+# A prefit of parameters is available following the CRISTAL LUT approach of Mobley 2003. For
+# gradient based methods, it is advised to perform the prefit prior to optimization or to use the "auglag"
+# optimization incorporating constraints (for Rb only) as it can handle bizzare initial values.
 
 #3. The AM03 model for shallow waters has two mode of inversion, I. unconstrained: all parameters
 # are unknown, II. constrained : only depth and bottom albedo are unknown. for the bottom
@@ -591,14 +592,14 @@ forward.op.am.param.conc.dg_comp_sicf_fdom <- Saber_forward_final(
                                               use_manual_slope =F,
                                               manual_slope = c("s_g"=0.016, "s_d"=0.01160, "gamma"=0.5),
                                               
-                                              sicf = F, q_phi = 0.05, 
+                                              sicf = T, q_phi = 0.05, 
                                               
-                                              fDOM = F,
+                                              fDOM = T,
                                               sunzen_Ed = -99, 
                                               lat_Ed = 49.02487, lon_Ed = -68.37059,
                                               date_time_Ed = "2019-08-18 20:59 GMT", 
                                               Ed_fDOM_path = "./data/input-spectra/Ed_HL.csv",
-                                              use_fDOM_rad = F,
+                                              use_fDOM_rad = F, realdata_wave = wavelength,
                                               
                                               verbose = T, plot = F)
 #Extract AM03 modeled Rrs
@@ -776,126 +777,126 @@ lines(wavelength, rrs.forward.am.param.conc.dg_comp_sicf_fdom, lty="dashed", col
 
 
 #4.4 Test the Lee SA model
-forward.op.lee <- Lee_forward(chl = Fit.input$chl, acdom440 = Fit.input$acdom.440, 
-                              anap440 =Fit.input$anap.440 , 
-                              bbp.550 = Fit.input$bbp.550, 
-                              realdata = insitu.data, verbose = T,z = zB,
-                              rb.fraction = fA.set)
-
-rrs.forward.lee <- forward.op.lee[[1]]$Rrs #Extract Lee98 modelled Rrs
-
-#4.5 Plot the forward simulated Rrs (AM03 & Lee98 with optional in situ)
-if (insitu.present == TRUE) {
-  forward.rrs <- data.frame("wave"=wavelength, "rrs.obs"=insitu.data,
-                              "rrs.am03"=rrs.forward.am,
-                              "rrs.lee98"=rrs.forward.lee)
-  
-  xmin = min(forward.rrs$wave); xmax= max(forward.rrs$wave); xstp=100
-  ymin= 0; ymax=max(forward.rrs$rrs.am03)+0.20*max(forward.rrs$rrs.am03);ystp= signif(ymax/5, digits = 1)
-  asp_rat <- (xmax-xmin)/(ymax-ymin)
-  
-  g1 <- ggplot()  + geom_line(data = forward.rrs,aes(y=rrs.obs,color="xx1",x = wave),
-                              linetype="dashed",size=1.3,show.legend = TRUE) +
-    geom_line(data = forward.rrs,aes(y=rrs.am03,color="xx2",x = wave),
-              size=1.3,show.legend = TRUE) +
-    geom_line(data = forward.rrs,aes(y=rrs.lee98,x = wave,color="xx3"), 
-              size=1.3,show.legend = TRUE)+
-    
-    scale_colour_manual(labels = c(expression(paste(italic("R")["rs,model,actual"])),
-                                   expression(paste(italic("R")["rs,model,AM03"])),
-                                   expression(paste(italic("R")["rs,model,Lee98"]))), 
-                        values = c("red","green","purple")) +
-    
-    scale_x_continuous(name = expression(paste("Wavelength(", lambda, ")[nm]")), limits = c(xmin, xmax), 
-                       breaks = seq(xmin, xmax, xstp))  +
-    scale_y_continuous(name =expression(paste(italic("R"),{}[rs],"(",lambda,",", 0^"-",")[", sr^-1,"]")) , limits = c(ymin, ymax),
-                       breaks = seq(ymin, ymax, ystp))+ 
-    coord_fixed(ratio = asp_rat, xlim = c(xmin, xmax), 
-                ylim = c(ymin, ymax), expand = FALSE, clip = "on") +
-    
-    theme(plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
-          axis.text.x = element_text(size = 20, color = 'black', angle = 0), 
-          axis.text.y = element_text(size = 20, color = 'black', angle = 0), 
-          axis.title.x = element_text(size = 25),
-          axis.title.y = element_text(size = 25),
-          axis.ticks.length = unit(.25, "cm"),
-          legend.position=c(0.55, 0.9),
-          legend.direction = "vertical",
-          legend.title = element_blank(),
-          legend.text = element_text(colour = "black", size = 20, face = "plain"),
-          legend.background = element_rect(fill = NA, size = 0.5, 
-                                           linetype = "solid", colour = 0),
-          legend.key = element_blank(),
-          legend.justification = c("left", "top"),
-          panel.background = element_blank(),
-          panel.grid.major = element_line(colour = "grey", 
-                                          size = 0.5, linetype = "dotted"), 
-          panel.grid.minor = element_blank(),
-          #legend.spacing.y = unit(2.0, 'cm'),
-          plot.margin = unit(c(0.5,0.5,0.0,0.0), "cm"),
-          legend.text.align = 0,
-          panel.border = element_rect(colour = "black", fill = NA, size = 1.5))
-  g1 
-  
-  if (plot == "TRUE") {
-    ggsave(paste0("./Rrs_forward_chl=",Fit.input$chl,"_acdom=",Fit.input$acdom.440,"_anap=",Fit.input$anap.440,"_bbp=",Fit.input$bbp.550,".png"), plot = g1,
-           scale = 1.5, width = 4.5, height = 4.5, units = "in",dpi = 300)
-  }
-} else {
-  forward.rrs <- data.frame("wave"=wavelength, #"rrs.obs"=insitu.data,
-                            "rrs.am03"=rrs.forward.am,
-                            "rrs.lee98"=rrs.forward.lee)
-  
-  xmin = min(forward.rrs$wave); xmax= max(forward.rrs$wave); xstp=100
-  ymin= 0; ymax=max(forward.rrs$rrs.am03)+0.20*max(forward.rrs$rrs.am03);ystp= signif(ymax/5, digits = 1)
-  asp_rat <- (xmax-xmin)/(ymax-ymin)
-  
-  g1 <- ggplot()  + 
-    geom_line(data = forward.rrs,aes(y=rrs.am03,color="xx2",x = wave),
-              size=1.3,show.legend = TRUE) +
-    geom_line(data = forward.rrs,aes(y=rrs.lee98,x = wave,color="xx3"), 
-              size=1.3,show.legend = TRUE)+
-    
-    scale_colour_manual(labels = c(expression(paste(italic("R")["rs,model,AM03"])),
-                                   expression(paste(italic("R")["rs,model,Lee98"]))), 
-                        values = c("green","purple")) +
-    
-    scale_x_continuous(name = expression(paste("Wavelength(", lambda, ")[nm]")), limits = c(xmin, xmax), 
-                       breaks = seq(xmin, xmax, xstp))  +
-    scale_y_continuous(name =expression(paste(italic("R"),{}[rs],"(",lambda,",", 0^"-",")[", sr^-1,"]")) , limits = c(ymin, ymax),
-                       breaks = seq(ymin, ymax, ystp))+ 
-    coord_fixed(ratio = asp_rat, xlim = c(xmin, xmax), 
-                ylim = c(ymin, ymax), expand = FALSE, clip = "on") +
-    
-    theme(plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
-          axis.text.x = element_text(size = 20, color = 'black', angle = 0), 
-          axis.text.y = element_text(size = 20, color = 'black', angle = 0), 
-          axis.title.x = element_text(size = 25),
-          axis.title.y = element_text(size = 25),
-          axis.ticks.length = unit(.25, "cm"),
-          legend.position=c(0.55, 0.9),
-          legend.direction = "vertical",
-          legend.title = element_blank(),
-          legend.text = element_text(colour = "black", size = 20, face = "plain"),
-          legend.background = element_rect(fill = NA, size = 0.5, 
-                                           linetype = "solid", colour = 0),
-          legend.key = element_blank(),
-          legend.justification = c("left", "top"),
-          panel.background = element_blank(),
-          panel.grid.major = element_line(colour = "grey", 
-                                          size = 0.5, linetype = "dotted"), 
-          panel.grid.minor = element_blank(),
-          #legend.spacing.y = unit(2.0, 'cm'),
-          plot.margin = unit(c(0.5,0.5,0.0,0.0), "cm"),
-          legend.text.align = 0,
-          panel.border = element_rect(colour = "black", fill = NA, size = 1.5))
-  g1 
-  
-  if (plot == "TRUE") {
-    ggsave(paste0("./Rrs_forward_chl=",Fit.input$chl,"_acdom=",Fit.input$acdom.440,"_anap=",Fit.input$anap.440,"_bbp=",Fit.input$bbp.550,".png"), plot = g1,
-           scale = 1.5, width = 4.5, height = 4.5, units = "in",dpi = 300)
-  }
-}
+# forward.op.lee <- Lee_forward(chl = Fit.input$chl, acdom440 = Fit.input$acdom.440, 
+#                               anap440 =Fit.input$anap.440 , 
+#                               bbp.550 = Fit.input$bbp.550, 
+#                               realdata = insitu.data, verbose = T,z = zB,
+#                               rb.fraction = fA.set)
+# 
+# rrs.forward.lee <- forward.op.lee[[1]]$Rrs #Extract Lee98 modelled Rrs
+# 
+# #4.5 Plot the forward simulated Rrs (AM03 & Lee98 with optional in situ)
+# if (insitu.present == TRUE) {
+#   forward.rrs <- data.frame("wave"=wavelength, "rrs.obs"=insitu.data,
+#                               "rrs.am03"=rrs.forward.am,
+#                               "rrs.lee98"=rrs.forward.lee)
+#   
+#   xmin = min(forward.rrs$wave); xmax= max(forward.rrs$wave); xstp=100
+#   ymin= 0; ymax=max(forward.rrs$rrs.am03)+0.20*max(forward.rrs$rrs.am03);ystp= signif(ymax/5, digits = 1)
+#   asp_rat <- (xmax-xmin)/(ymax-ymin)
+#   
+#   g1 <- ggplot()  + geom_line(data = forward.rrs,aes(y=rrs.obs,color="xx1",x = wave),
+#                               linetype="dashed",size=1.3,show.legend = TRUE) +
+#     geom_line(data = forward.rrs,aes(y=rrs.am03,color="xx2",x = wave),
+#               size=1.3,show.legend = TRUE) +
+#     geom_line(data = forward.rrs,aes(y=rrs.lee98,x = wave,color="xx3"), 
+#               size=1.3,show.legend = TRUE)+
+#     
+#     scale_colour_manual(labels = c(expression(paste(italic("R")["rs,model,actual"])),
+#                                    expression(paste(italic("R")["rs,model,AM03"])),
+#                                    expression(paste(italic("R")["rs,model,Lee98"]))), 
+#                         values = c("red","green","purple")) +
+#     
+#     scale_x_continuous(name = expression(paste("Wavelength(", lambda, ")[nm]")), limits = c(xmin, xmax), 
+#                        breaks = seq(xmin, xmax, xstp))  +
+#     scale_y_continuous(name =expression(paste(italic("R"),{}[rs],"(",lambda,",", 0^"-",")[", sr^-1,"]")) , limits = c(ymin, ymax),
+#                        breaks = seq(ymin, ymax, ystp))+ 
+#     coord_fixed(ratio = asp_rat, xlim = c(xmin, xmax), 
+#                 ylim = c(ymin, ymax), expand = FALSE, clip = "on") +
+#     
+#     theme(plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+#           axis.text.x = element_text(size = 20, color = 'black', angle = 0), 
+#           axis.text.y = element_text(size = 20, color = 'black', angle = 0), 
+#           axis.title.x = element_text(size = 25),
+#           axis.title.y = element_text(size = 25),
+#           axis.ticks.length = unit(.25, "cm"),
+#           legend.position=c(0.55, 0.9),
+#           legend.direction = "vertical",
+#           legend.title = element_blank(),
+#           legend.text = element_text(colour = "black", size = 20, face = "plain"),
+#           legend.background = element_rect(fill = NA, size = 0.5, 
+#                                            linetype = "solid", colour = 0),
+#           legend.key = element_blank(),
+#           legend.justification = c("left", "top"),
+#           panel.background = element_blank(),
+#           panel.grid.major = element_line(colour = "grey", 
+#                                           size = 0.5, linetype = "dotted"), 
+#           panel.grid.minor = element_blank(),
+#           #legend.spacing.y = unit(2.0, 'cm'),
+#           plot.margin = unit(c(0.5,0.5,0.0,0.0), "cm"),
+#           legend.text.align = 0,
+#           panel.border = element_rect(colour = "black", fill = NA, size = 1.5))
+#   g1 
+#   
+#   if (plot == "TRUE") {
+#     ggsave(paste0("./Rrs_forward_chl=",Fit.input$chl,"_acdom=",Fit.input$acdom.440,"_anap=",Fit.input$anap.440,"_bbp=",Fit.input$bbp.550,".png"), plot = g1,
+#            scale = 1.5, width = 4.5, height = 4.5, units = "in",dpi = 300)
+#   }
+# } else {
+#   forward.rrs <- data.frame("wave"=wavelength, #"rrs.obs"=insitu.data,
+#                             "rrs.am03"=rrs.forward.am,
+#                             "rrs.lee98"=rrs.forward.lee)
+#   
+#   xmin = min(forward.rrs$wave); xmax= max(forward.rrs$wave); xstp=100
+#   ymin= 0; ymax=max(forward.rrs$rrs.am03)+0.20*max(forward.rrs$rrs.am03);ystp= signif(ymax/5, digits = 1)
+#   asp_rat <- (xmax-xmin)/(ymax-ymin)
+#   
+#   g1 <- ggplot()  + 
+#     geom_line(data = forward.rrs,aes(y=rrs.am03,color="xx2",x = wave),
+#               size=1.3,show.legend = TRUE) +
+#     geom_line(data = forward.rrs,aes(y=rrs.lee98,x = wave,color="xx3"), 
+#               size=1.3,show.legend = TRUE)+
+#     
+#     scale_colour_manual(labels = c(expression(paste(italic("R")["rs,model,AM03"])),
+#                                    expression(paste(italic("R")["rs,model,Lee98"]))), 
+#                         values = c("green","purple")) +
+#     
+#     scale_x_continuous(name = expression(paste("Wavelength(", lambda, ")[nm]")), limits = c(xmin, xmax), 
+#                        breaks = seq(xmin, xmax, xstp))  +
+#     scale_y_continuous(name =expression(paste(italic("R"),{}[rs],"(",lambda,",", 0^"-",")[", sr^-1,"]")) , limits = c(ymin, ymax),
+#                        breaks = seq(ymin, ymax, ystp))+ 
+#     coord_fixed(ratio = asp_rat, xlim = c(xmin, xmax), 
+#                 ylim = c(ymin, ymax), expand = FALSE, clip = "on") +
+#     
+#     theme(plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+#           axis.text.x = element_text(size = 20, color = 'black', angle = 0), 
+#           axis.text.y = element_text(size = 20, color = 'black', angle = 0), 
+#           axis.title.x = element_text(size = 25),
+#           axis.title.y = element_text(size = 25),
+#           axis.ticks.length = unit(.25, "cm"),
+#           legend.position=c(0.55, 0.9),
+#           legend.direction = "vertical",
+#           legend.title = element_blank(),
+#           legend.text = element_text(colour = "black", size = 20, face = "plain"),
+#           legend.background = element_rect(fill = NA, size = 0.5, 
+#                                            linetype = "solid", colour = 0),
+#           legend.key = element_blank(),
+#           legend.justification = c("left", "top"),
+#           panel.background = element_blank(),
+#           panel.grid.major = element_line(colour = "grey", 
+#                                           size = 0.5, linetype = "dotted"), 
+#           panel.grid.minor = element_blank(),
+#           #legend.spacing.y = unit(2.0, 'cm'),
+#           plot.margin = unit(c(0.5,0.5,0.0,0.0), "cm"),
+#           legend.text.align = 0,
+#           panel.border = element_rect(colour = "black", fill = NA, size = 1.5))
+#   g1 
+#   
+#   if (plot == "TRUE") {
+#     ggsave(paste0("./Rrs_forward_chl=",Fit.input$chl,"_acdom=",Fit.input$acdom.440,"_anap=",Fit.input$anap.440,"_bbp=",Fit.input$bbp.550,".png"), plot = g1,
+#            scale = 1.5, width = 4.5, height = 4.5, units = "in",dpi = 300)
+#   }
+# }
 
 #------------------------------------------------------------------------------
 #5. Perform inverse modeling using optimization of inverse cost function
@@ -1160,7 +1161,7 @@ obsdata = forward.saber.fast[[1]]$Rrs
 
 ########
 
-obj = c("log-LL", "SSR", "obj_L98")
+obj = c("log-LL", "SSR", "obj_L98"); obj.run = obj[1]
 
 methods.opt <- c("Nelder-Mead", "BFGS", "CG", "L-BFGS-B", "SANN", 
                  "Brent","levenberg-marqardt", "auglag")
@@ -1322,7 +1323,7 @@ if (type_Rrs_below == "shallow" & constrain.shallow.bgc == FALSE) {
     initial = as.numeric(par0), 
     obsdata = obsdata,
     
-    auto_spectral_slope = F,
+    auto_spectral_slope = T,
     manual_spectral_slope = F, 
     
     manual_spectral_slope_vals = c("s_g"=0.014, "s_d"=0.003, "gamma"=1),

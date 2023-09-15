@@ -52,62 +52,99 @@ fit.anap440.norm <- fitdistrplus::fitdist(anap.440.sample, "weibull") #try to fi
 #-----------------------------------------------------------------------------------------------------
 #Function for prior
 #-----------------------------------------------------------------------------------------------------
-prior = function(param){
+
+prior_param = create.prior.data(use.nomad.prior = T, distrib.fit = "weibull", #Weibull
+                                plot.diag = T, truncate_chl = c(1,30),
+                                truncate_adg = c(0.1,5),
+                                truncate_bbp = c(0.002,0.01),
+                                sample_count = 150)
+
+
+prior = function(param, prior_param){
   chl = param[1]
-  acdom.440 = param[2]
-  anap.440 = param[3]
-  chl.prior = dweibull(x=chl,shape = fit.chl.norm$estimate[1], 
-                       scale =fit.chl.norm$estimate[2] , log = T)
+  adg443 = param[2]
+  bbp555 = param[3]
+  pop_sd = param[4]
+  chl.prior = dweibull(x=chl,shape = prior_param$fit_chl$estimate[1], 
+                       scale =prior_param$fit_chl$estimate[2] , log = T)
   
-  acdom440.prior = dweibull(x=acdom.440,shape = fit.acdom440.norm$estimate[1], 
-                            scale =fit.acdom440.norm$estimate[2] , log = T)
+  adg.prior = dweibull(x=adg443,shape = prior_param$fit_acdm440$estimate[1], 
+                            scale =prior_param$fit_acdm440$estimate[2] , log = T)
   
-  anap440.prior = dweibull(x=anap.440,shape = fit.anap440.norm$estimate[1], 
-                           scale =fit.anap440.norm$estimate[2] , log = T)
+  bbp.prior = dweibull(x=bbp555,shape = prior_param$fit_bbp555$estimate[1], 
+                           scale =prior_param$fit_bbp555$estimate[2] , log = T)
   
-  return(chl.prior+acdom440.prior+anap440.prior)
+  #sd.prior = dunif(x = pop_sd, min = 0.00001, max = 1, log = T)
+  
+  #return(chl.prior+adg.prior+bbp.prior+sd.prior)
+  return(chl.prior+adg.prior+bbp.prior)
 }
 
 #-----------------------------------------------------------------------------------------------------
 #Function for Likelihood
 #-----------------------------------------------------------------------------------------------------
-likelihood = function(pars, dataobs, batch){
+likelihood = function(pars, dataobs){
   
   # Values predicted by the forward model for single RUN
-  if (batch == FALSE) {
-    Gpred = Saber_forward(chl = pars[1], acdom440 = pars[2],
-                          anap440 =pars[3],
-                          #bbp.550 = Fit.input$bbp.550,
-                          verbose=F ,realdata = dataobs)
+  if (sa.model == "am03") {
+    Gpred = Saber_forward_fast(
+      use_true_IOPs = F, 
+      #a_non_water_path = IOP_files[idx_a],
+      #bb_non_water_path = IOP_files[idx_bb],
+      
+      chl = pars[1], 
+      a_dg = pars[2],
+      bbp.550 = pars[3],
+      
+      z = pars[4],
+      rb.fraction = as.numeric(pars[5:(4+initial_rb_length)]),
+      
+      
+      Rrs_input_for_slope = obsdata,
+      
+      slope.parametric = auto_spectral_slope,
+      
+      
+      use_manual_slope =manual_spectral_slope,
+      manual_slope =  manual_spectral_slope_vals,
+      
+      verbose = F, wavelength = wavelength
+    )
+    
+  } else {
+    Gpred = Lee_forward(chl = pars[1], acdom440 = pars[2],
+                        anap440 =pars[3], bbp.550 = bbp.550,
+                        z = pars[4], rb.fraction = pars[5:(length(pars)-1)],
+                        verbose = F, realdata = data, plot = F)
   }
-  # Gpred = Saber_forward(chl = pars[1], acdom440 = pars[2], 
-  #                       anap440 =pars[3], 
-                          #bbp.550 = Fit.input$bbp.550,
-  #                       verbose=F ,realdata = dataobs)
   
-  #Values predicted by the forward model for batch RUN
-  if (batch == TRUE) {
-    Gpred = Saber_forward(chl = pars[1], acdom440 = pars[2], 
-                          anap440 =pars[3], bbp.550 = HL.deep.iop$bbp550[j],
-                          verbose=F ,realdata = dataobs)
-  }
+  # Negative log-likelihood
+  # smull = sum(dnorm(x = 10000*dataobs, mean = 10000*Gpred[[1]]$Rrs, sd = pars[length(pars)], 
+  #                   log = TRUE), na.rm = T)
   
-  # log-likelihood 
-  smull = sum(dnorm(x = dataobs, mean = Gpred[[1]]$Rrs, sd = 0.0001, log = TRUE)) #Single RUN
-  #smull = sum(dnorm(x = dataobs, mean = Gpred[[1]]$Rrs, sd = 0.13129354/100, log = TRUE)) #IOCCG RUN
+  smull = sum(dnorm(x = 10000*dataobs, mean = 10000*Gpred[[1]]$Rrs, sd = pars[length(pars)],
+                    log = TRUE), na.rm = T)
+  
   return(smull)
 }
 #-----------------------------------------------------------------------------------------------------
 #Function for Posterior
 #-----------------------------------------------------------------------------------------------------
-posterior = function(param, rrs.actual, lklhood.max, maxpar, batch.run){
+posterior = function(param, rrs.actual, lklhood.max, maxpar, prior_param){
   if (lklhood.max == TRUE) {
-    return (likelihood(pars = maxpar, dataobs = rrs.actual,batch = batch.run ) + prior(param))
+    
+    return (likelihood(pars = maxpar, dataobs = rrs.actual) + prior(param, prior_param = prior_param))
   } else {
-    return (likelihood(pars = param, dataobs = rrs.actual, batch = batch.run ) + prior(param))
+    
+    return (likelihood(pars = param, dataobs = rrs.actual) + prior(param, prior_param = prior_param))
   }
   
 }
+
+
+posterior(param = param, rrs.actual = obsdata, lklhood.max = T, 
+          maxpar = c(4.96, 1, 0.007), prior_param = prior_param)
+
 #-----------------------------------------------------------------------------------------------------
 #Function for MCMC using Metropolis-Hastings
 #-----------------------------------------------------------------------------------------------------
@@ -122,39 +159,44 @@ posterior = function(param, rrs.actual, lklhood.max, maxpar, batch.run){
 #   )
 # }
 
-proposalfunction = function(param){
-  priopart <- rweibull(param,
-           shape = as.numeric(c(fit.chl.norm$estimate[1], 
-                                fit.acdom440.norm$estimate[1],
-                                fit.anap440.norm$estimate[1])),
-           scale = as.numeric(c(fit.chl.norm$estimate[2], 
-                                fit.acdom440.norm$estimate[2],
-                                fit.anap440.norm$estimate[2]))
+proposalfunction = function(param, prior_param){
+  priopart_deep <- rweibull(param,
+           shape = as.numeric(c(prior_param$fit_chl$estimate[1], 
+                                prior_param$fit_acdm440$estimate[1],
+                                prior_param$fit_bbp555$estimate[1])),
+           
+           scale = as.numeric(c(prior_param$fit_chl$estimate[2], 
+                                prior_param$fit_acdm440$estimate[2],
+                                prior_param$fit_bbp555$estimate[2]))
   )
+  
+  priorpart_pop_sd = runif(1, min = 0.00001, max = 1)
+  
+  #priorpart = c(priopart_deep, priorpart_pop_sd)
+  priorpart = c(priopart_deep)
+  
   lklpart <- rnorm(3,mean = param, 
-                   sd= c(sd(chl.sample),sd(acdom.440.sample),sd(anap.440.sample))
+                   sd= c(sd(prior_param$obs_chl),sd(prior_param$obs_acdm440),sd(prior_param$obs_bbp550))
                    #sd= c(mse[1],mse[2],mse[3])
                    #sd= c(0.5,0.25,0.01)
   )
   #target.distribution <- (priopart+lklpart)/2
-  target.distribution <- priopart
+  target.distribution <- priorpart
   
   return(target.distribution)
 }
-#Create the Progress Bar
-pb <- txtProgressBar(min = 0,      # Minimum value of the progress bar
-                     max = 5000, # Maximum value of the progress bar
-                     style = 3,    # Progress bar style (also available style = 1 and style = 2)
-                     width = 50,   # Progress bar width. Defaults to getOption("width")
-                     char = "=")
 
-run_metropolis_MCMC = function(startvalue, iterations, rrs.actual, lklhood.max, maxpar, batchrun){
+
+
+run_metropolis_MCMC <- function(startvalue, iterations, rrs.actual, lklhood.max, maxpar,  
+                               prior_param){
+  
   chain = array(dim = c(iterations+1,3))
   chain[1,] = startvalue
   for (i in 1:iterations){
-    proposal = proposalfunction(chain[i,])
+    proposal = proposalfunction(chain[i,], prior_param = prior_param)
     
-    probab = exp(posterior(proposal,rrs.actual = rrs.actual, lklhood.max, maxpar,batch.run = batchrun) - posterior(chain[i,],rrs.actual = rrs.actual, lklhood.max, maxpar, batch.run = batchrun))
+    probab = exp(posterior(proposal,rrs.actual = rrs.actual, lklhood.max, maxpar, prior_param) - posterior(chain[i,],rrs.actual = rrs.actual, lklhood.max, maxpar, prior_param))
     if (runif(1) < probab){
       chain[i+1,] = proposal
       #print(paste0(i," no. iteration: P(h+1)/P(h) > 1"))
@@ -171,7 +213,7 @@ run_metropolis_MCMC = function(startvalue, iterations, rrs.actual, lklhood.max, 
 #Create function for applying the MCMC
 #--------------------------------------------------------------------------------------------------------
 require(coda)
-mcmc.run  = function(rrs.actual, initials, iterations, burn_In, lklhood.max=FALSE, maxpar, batchrun)
+mcmc.run  = function(rrs.actual, initials, iterations, burn_In, lklhood.max=FALSE, maxpar,  prior_param)
 {
   trueSd = 0.000001
   sampleSize = length(wavelength)
@@ -185,7 +227,7 @@ mcmc.run  = function(rrs.actual, initials, iterations, burn_In, lklhood.max=FALS
   startvalue = initials
   #startvalue = c(5,1,0.05)
   start.time <- Sys.time()
-  chain = run_metropolis_MCMC(startvalue, iterations, rrs.actual = rrs.actual, lklhood.max, maxpar, batchrun = batchrun)
+  chain = run_metropolis_MCMC(startvalue, iterations, rrs.actual = rrs.actual, lklhood.max, maxpar,  prior_param)
   end.time <- Sys.time()
   burnIn = burn_In
   acceptance = 1-mean(duplicated(chain[-(1:burnIn),]))
@@ -196,10 +238,22 @@ mcmc.run  = function(rrs.actual, initials, iterations, burn_In, lklhood.max=FALS
 #-------------------------------------------------------------------------------------------------------
 #Apply MCMC to sample the posterior
 #--------------------------------------------------------------------------------------------------------
-startvalue = as.numeric(Fit.optimized.ssobj[1,1:3])
-chain.op <- mcmc.run(rrs.actual = rrs.forward.am, iterations = 5000, 
-                   initials = startvalue, burn_In = 2500,
-                  maxpar = startvalue, lklhood.max = TRUE, batchrun = FALSE  )
+startvalue = as.numeric(c(par0#[1:3]
+                          #, 0.0001
+                          ))
+max_iter = 50000
+burn_in = max_iter/4
+
+#Create the Progress Bar
+pb <- txtProgressBar(min = 0,      # Minimum value of the progress bar
+                     max = max_iter, # Maximum value of the progress bar
+                     style = 3,    # Progress bar style (also available style = 1 and style = 2)
+                     width = 50,   # Progress bar width. Defaults to getOption("width")
+                     char = "=")
+
+chain.op <- mcmc.run(rrs.actual = obsdata, iterations = max_iter, 
+                   initials = startvalue, burn_In = burn_in,
+                  maxpar = startvalue, lklhood.max = T,  prior_param = prior_param)
 chain1 <- chain.op[[1]]
 
 
@@ -209,6 +263,8 @@ chain.op <- mcmc.run(rrs.actual = rrs.forward.am, iterations = 5000,
                      maxpar = startvalue, lklhood.max = TRUE, batchrun = FALSE  )
 chain2 <- chain.op[[1]]
 
+chain = data.frame(as.mcmc(chain1))
+names(chain) = c("chl", "adg443", "bbp555")
 #-------------------------------------------------------------------------------------------------------
 #Create plot to visualize result of MCMC
 #--------------------------------------------------------------------------------------------------------
@@ -224,41 +280,41 @@ abline(v = mean(chain[,1]), col="seagreen", lwd=2)
 abline(v = startvalue[1], col="blue", lwd=2 )
 abline(v = Fit.input$chl, col="red", lwd=2 )
 
-hist(chain[,2],nclass=30, main="Posterior of acdom440[m^-1]",
+hist(chain[,2],nclass=30, main="Posterior of adg443[m^-1]",
      xlab="Bayes = green; MLE =blue; actual=red", probability = T 
      #xlim=c(min(acdom.440.sample), max(acdom.440.sample))
 )
 lines(density(chain[,2]), col="blue", lwd=2)
 abline(v = mean(chain[,2]),col="seagreen", lwd=2)
 abline(v = startvalue[2], col="blue", lwd=2 )
-abline(v = Fit.input$acdom.440, col="red", lwd=2 )
+abline(v = Fit.input$acdom.440+ Fit.input$anap.440, col="red", lwd=2 )
 
-hist(chain[,3],nclass=30, main="Posterior of anap440[m^-1]", 
+hist(chain[,3],nclass=30, main="Posterior of bbp555[m^-1]", 
      xlab="Bayes = green; MLE =blue; actual=red", probability = T
      #xlim=c(min(anap.440.sample), max(anap.440.sample))
 )
 lines(density(chain[,3]), col="blue", lwd=2)
 abline(v = mean(chain[,3]) ,col="seagreen", lwd=2)
 abline(v = startvalue[3], col="blue", lwd=2 )
-abline(v = Fit.input$anap.440, col="red", lwd=2 )
+abline(v = Fit.input$bbp.550, col="red", lwd=2 )
 
 plot(chain1[,1], type = "l", xlab="Bayes = green; actual = Red" , 
      main = "Chain of chl[mg^1m-3]")
-lines(chain2[,2], col="red")
+#lines(chain2[,2], col="red")
 #abline(h = startvalue[1], col="red", lwd=2 )
 abline(h = Fit.input$chl, col="red", lwd=2 )
 abline(h =  mean(chain[,1]), col="seagreen", lwd=2 )
 
 plot(chain[,2], type = "l", xlab="Bayes = green; actual = Red" ,
-     main = "Chain of acdom440[m^-1]")
+     main = "Chain of adg443[m^-1]")
 #abline(h = startvalue[2], col="red", lwd=2)
-abline(h = Fit.input$acdom.440, col="red", lwd=2 )
+abline(h = Fit.input$acdom.440+Fit.input$anap.440, col="red", lwd=2 )
 abline(h =  mean(chain[,2]), col="seagreen" , lwd=2)
 
 plot(chain[,3], type = "l", xlab="Bayes = green; actual = Red" , 
-     main = "Chain of anap440[m^-1]")
+     main = "Chain of bbp555[m^-1]")
 #abline(h = startvalue[3], col="red", lwd=2 )
-abline(h = Fit.input$anap.440, col="red", lwd=2 )
+abline(h = Fit.input$bbp.550, col="red", lwd=2 )
 abline(h =  mean(chain[,3]), col="seagreen", lwd=2 )
 #dev.off()
 

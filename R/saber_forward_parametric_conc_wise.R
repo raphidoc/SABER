@@ -1028,7 +1028,7 @@ Saber_forward_final <-  function(use_true_IOPs = T, #Set TRUE if actual spectral
     }
     rrs_sicf = Rrs_Fluorescence(c_chl = C_ph,  
                                 #c_chl = Fit.input$chl,
-                                dg_comsposite = FALSE,  
+                                dg_comsposite = FALSE,  wavelength = lambda,
                                 dg_443 = NULL,
                                 
                                 use_analytic_Ed = TRUE,
@@ -1052,7 +1052,7 @@ Saber_forward_final <-  function(use_true_IOPs = T, #Set TRUE if actual spectral
     qaa_op = QAA.v5(waves = lambda, Rrs = Rrs_obs.interp)
     rrs_sicf = Rrs_Fluorescence(c_chl = C_ph,  
                                 #c_chl = Fit.input$chl,
-                                dg_comsposite = TRUE,  
+                                dg_comsposite = TRUE,  wavelength = lambda,
                                 
                                 use_analytic_Ed = TRUE,
                                 sunzen_Ed = sunzen_Ed, lat_Ed = lat_Ed, lon_Ed = lon_Ed,
