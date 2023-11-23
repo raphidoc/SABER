@@ -72,7 +72,7 @@ Saber_forward_fast <-  function(use_true_IOPs = T, #Set TRUE if actual spectral 
                                  verbose = FALSE, #plot diagnostics and console output
                                  
                                 wavelength = seq(400,800,10),
-                                Rrs_input_for_slope
+                                Rrs_input_for_slope, plot = T
                                  
 ){
   
@@ -201,7 +201,8 @@ Saber_forward_fast <-  function(use_true_IOPs = T, #Set TRUE if actual spectral 
     a0 <- Hmisc::approxExtrap(lam_p, a0_p,xout = lambda,method = "linear")$y
     a1 <- Hmisc::approxExtrap(lam_p, a1_p,xout = lambda,method = "linear")$y
     
-    aph_440 <- 0.06 * (C_ph)^0.65  # [mg/m^3]
+    aph_440 <- 0.06 * (C_ph)^0.65  # [mg/m^3] #Prieur & Satyendranath (1981)
+    
     abs_ph <- sapply(1:length(lambda), function(i) (a0[i] + a1[i] * log(aph_440)) * aph_440) #Vectorization
     
     

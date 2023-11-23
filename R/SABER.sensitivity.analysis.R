@@ -64,12 +64,18 @@ sobol_results <- sobolSalt(model = model_function,
 #Store the sensitivity analysis outputs in data-frame(s)
 sobol_result_df_1st = sobol_results$S*100
 sobol_result_df_1st$type = "1st order"
+sobol_result_df_1st$id = seq(1,4,1)
 
 sobol_result_df_2nd = sobol_results$S2*100
 sobol_result_df_2nd$type = "2nd order"
+sobol_result_df_2nd$id = seq(1,6,1)
 
 sobol_result_df_tot = sobol_results$T*100
 sobol_result_df_tot$type = "Total"
+sobol_result_df_tot$id = seq(1,4,1)
+
+
+sobol_comb = rbind(sobol_result_df_1st, sobol_result_df_tot)
 
 #Plot the results from sensitivity analysis
 chl_lab <- expression(paste("[", italic("chl"), "]"))
@@ -77,35 +83,23 @@ adg443_lab <- expression(paste(italic("a")["dg"](443)))
 bbp555_lab <- expression(paste(italic("b")["bp"](555)))
 H_lab <- expression(paste(italic("H")))
 
-g <- ggplot() + 
-  geom_point(data = sobol_result_df_1st, aes(x = seq(1,4,1),y = original,  
-                                             shape = "xx1", color = "xx1"), 
-             size=5, stroke=2 )+
-  geom_point(data = sobol_result_df_tot, aes(x = seq(1,4,1),y = original,  
-                                             shape = "xx2", color="xx2"), 
-             size=5, stroke=2)+
+
+g <- ggplot(sobol_comb, aes(x=id, y=original, fill=type)) + 
+  geom_bar(stat="identity", color="black", 
+           position=position_dodge()
+           ) +
+  geom_errorbar(aes(ymin=`min. c.i.`, ymax=`max. c.i.`), width=0.25, size= 1.3, 
+                color = "black",
+                position=position_dodge(.9))+
   
-  geom_errorbar(data = sobol_result_df_1st, aes(x = seq(1,4,1),ymin = sobol_result_df_1st$`min. c.i.`,
-                     ymax = sobol_result_df_1st$`max. c.i.`),
-                 color="goldenrod2",
-                 
-                 width = 0.1, 
-                 size=1.3 )+
-  geom_errorbar(data = sobol_result_df_tot, aes(x = seq(1,4,1),ymin = sobol_result_df_tot$`min. c.i.`,
-                                                ymax = sobol_result_df_tot$`max. c.i.`),
-                color="navyblue",
-                
-                width = 0.1, 
-                size=1.3)+
-  
-  
-  scale_x_continuous(name = " ",
+  scale_x_continuous(name = " ", breaks = seq(1, 4, 1),
               labels = c(chl_lab, adg443_lab, bbp555_lab, H_lab)) +
   ylim(0,100)+
   ylab(expression(paste("Var[",italic("R"),{}[rs],"(",lambda,")] (%)"))) +
   
   scale_shape_manual(name = "legend",values = c(21,23), labels= c("1st order", "Total"))+
-  scale_color_manual(name="legend", values = c("goldenrod2","navyblue"), labels= c("1st order", "Total"))+
+  scale_fill_manual(name="legend", values = c("#481567FF", "#20A387FF"), 
+                     labels= c("1st order", "Total"))+
   
   theme(plot.title = element_text(size = 10, face = "bold", hjust = 0.5),
         axis.text.x = element_text(size = 15, color = 'black', angle = 0),

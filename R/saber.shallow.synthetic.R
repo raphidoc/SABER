@@ -17,9 +17,9 @@ param_vec <- data.frame("chl"=sample(seq(from=min(0.5), to=max(30),
                                    length.out=length(vec_size))),
                       "H"=(seq(from=min(0.5), to=max(8), 
                               length.out=length(vec_size))) + truncnorm::rtruncnorm(500, 
-                                                                                    a = 0.25, b = 2,
-                                                                                      mean = 2, sd = 1)
-)
+                                                                              a = 0.25, b = 2,
+                                                                              mean = 2, sd = 1)
+                      )
 
 #param_vec.LUT <- expand.grid(param_vec) 
 
@@ -54,6 +54,73 @@ rownames(rrs.forward.SABER) = vec_size
 
 #Plot the simulated Rrs
 matplot(wavelength, t(rrs.forward.SABER), col = viridis(500), type = "l", lwd=3)
+
+
+rrs_synth = as.data.frame(rrs.forward.SABER)
+
+rrs_synth$id = seq(1, length(rrs_synth$`401`), 1)
+
+rrs_synth = reshape2::melt(rrs_synth, id.vars = "id")
+
+H_plot_df = data.frame("id" = seq(1,length(param_vec$H), 1), "Depth" = param_vec$H)
+H_long = reshape2::melt(H_plot_df, id.vars = "id")
+
+rrs_synth_H = merge(rrs_synth,H_long,by=c("id"))
+
+names(rrs_synth_H) = c("id", "wavelength", "rrs", "shallow_tag", "depth")
+
+xmin <- 400; xmax <- 700;  xstp <- 50; xlbl <- expression(paste("Wavelength (", lambda, ") [nm]")) 
+ymin <- 0; ymax <- 0.015; ystp <- 0.003; ylbl <- expression(paste(italic("R")["rs"]("0"^"-", lambda),italic("in situ ("), "sr"^{-1}, ")"))
+asp_rat <-  (xmax-xmin)/(ymax-ymin)
+legend_title <- element_blank()
+legend_position <- c(0.70, 0.98)
+
+
+library(viridis)
+
+g <- ggplot(data = rrs_synth_H) + 
+  geom_line(aes(x = as.numeric(as.character(wavelength)), y = rrs, colour = depth, 
+                group = id), size = 1.3, show.legend = T)+
+  scale_colour_viridis(discrete = F, name = "Depth (m)") +
+  coord_fixed(ratio = asp_rat, xlim = c(xmin, xmax),
+              ylim = c(ymin, ymax)
+              ,expand = FALSE, clip = "on"
+  ) +
+  #scale_colour_manual(name = "",values = rev(collist))+
+  #guides(fill = FALSE)+
+  guides(fill = guide_legend(title = "Depth (m)"))+
+  scale_x_continuous(name = xlbl, limits = c(xmin, xmax),
+                     breaks = seq(xmin, xmax, xstp))  +
+  #scale_y_log10()+
+  scale_y_continuous(name = ylbl, limits = c(ymin, ymax),
+                     breaks = seq(ymin, ymax, ystp))  +
+  theme_bw()+
+  theme(plot.title = element_text(size = 25, face = "bold", hjust = 0.5),
+        axis.text.x = element_text(size = 25, color = 'black', angle = 0), 
+        axis.text.y = element_text(size = 25, color = 'black', angle = 0), 
+        axis.title.x = element_text(size = 25),
+        axis.title.y = element_text(size = 25),
+        axis.ticks.length = unit(.25, "cm"),
+        legend.box.just = "right",
+        legend.spacing = unit(-0.5, "cm"),
+        legend.position = legend_position,
+        legend.direction = "vertical",
+        legend.title = element_text(colour = "black", size = 15, face = "plain"),
+        legend.text = element_text(colour = "black", size = 15, face = "plain"),
+        legend.background = element_rect(fill = NA, size = 0.5, 
+                                         linetype = "solid", colour = 0),
+        legend.key = element_blank(),
+        legend.justification = c("left", "top"),
+        panel.background = element_blank(),
+        panel.grid.major = element_line(colour = "grey", 
+                                        size = 0.5, linetype = "dotted"), 
+        panel.grid.minor = element_blank(),
+        plot.margin = unit(c(0.0,0.9,0.0,0.0), "cm"),
+        panel.border = element_rect(colour = "black", fill = NA, size = 1.5))
+
+g
+ggsave("./outputs/synthetic_rrs.png", plot = g,scale = 1.7, width = 4.5, height = 4.5, 
+       units = "in",dpi = 300)
 
 #-----------------------------------------------------------------------------------------
 # Prepare the optimization parameters
@@ -284,7 +351,8 @@ abline(0,1)
 #Extract H
 #-----------------------------------------------------------------------------------------
 H_df = data.frame( 
-                  "H_actual" = param_vec$H, "H_predicted" = fit_results_df$H, "H_sd" =  fit_results_df$sd_H)
+                  "H_actual" = param_vec$H, "H_predicted" = fit_results_df$H, 
+                  "H_sd" =  fit_results_df$sd_H)
 
 H_df = data.frame( 
   "H_actual" = param_vec$H, "H_predicted" = fit_results_constr$H, "H_sd" =  fit_results_df$sd_H)
@@ -395,6 +463,124 @@ write.csv(x = fit_results_constr, file = "./outputs/inv_param_shallow_synth_cons
           quote = F, col.names = T, sep = ",")
 write.csv(x = H_df, file = "./outputs/inv_H_shallow_synth_constr.csv", 
           quote = F, col.names = T, sep = ",")
+
+#-----------------------------------------------------------------------------------------
+# Plot validation from saved .csv
+#-----------------------------------------------------------------------------------------
+
+H_shallow_synth_unconstr <- read.csv("./outputs/inv_H_shallow_synth.csv", header = T)
+H_shallow_synth_unconstr$const_stat = "unconstrained"
+
+H_shallow_synth_constr <- read.csv("./outputs/inv_H_shallow_synth_constr.csv", header = T)
+H_shallow_synth_constr$const_stat = "constrained"
+
+H_df_synth = rbind(H_shallow_synth_constr, H_shallow_synth_unconstr)
+
+
+legend_title <- element_blank()
+legend_position <- c(0.40, 0.20)
+
+xlbl <- expression(paste("(",italic(H),")",italic("actual"), "[m]"))
+ylbl <- expression(paste("(",italic(H),")",italic("predicted"), "[m]"))
+
+ymin <- 0; ymax <- 12 ; ystp <- ymax/4
+xmin <- 0; xmax <- 12; xstp <- ymax/4
+asp_rat <- (xmax-xmin)/(ymax-ymin)
+
+## data
+H_df_synth <- H_df_synth %>% 
+  as_tibble()
+
+
+
+g<-   ggplot(data=H_df_synth, aes(x = H_actual, y = H_predicted, colour = as.factor(const_stat), 
+                            fill = as.factor(const_stat))) +
+  #geom_contour(aes(z = z), col = "black")+
+  
+  
+  geom_density_2d(data = H_df_synth, aes(x = H_actual, y = H_predicted), na.rm = T, bins = 6,
+                  linewidth = 1,  show.legend = F, size=1.1)+
+  
+  geom_point(data = H_df_synth, aes(H_actual, H_predicted, shape = as.factor(const_stat),
+                              fill = as.factor(const_stat)), 
+             alpha = I(0.4), size = I(3), show.legend = show_legend) +
+  
+  scale_shape_manual(name ="", labels=(c("IOP Constrained", "IOP Unconstrained")),
+                     values = c(21,23))+
+  scale_fill_manual(name ="", labels=(c("IOP Constrained", "IOP Unconstrained")),
+                    values = c("goldenrod2", "navyblue"))+
+  scale_colour_manual(name ="", labels=(c("IOP Constrained", "IOP Unconstrained")),
+                      values = c("goldenrod2", "navyblue"))+
+  
+  
+  geom_ribbon(aes(ymin = H_predicted - H_sd,
+                  ymax = H_predicted + H_sd, fill = as.factor(const_stat)),
+              alpha = opacity, show.legend = F,
+              
+              colour="NA"
+  )+
+  
+  geom_rug(size = 1.1, show.legend = F, alpha = opacity)+
+  
+  geom_abline(slope = 1,linetype="solid", intercept = 0,
+              colour="black", na.rm = FALSE, size=1.3, show.legend = FALSE) +
+  
+  coord_fixed(ratio = asp_rat, xlim = c(xmin, xmax), 
+              ylim = c(ymin, ymax), expand = FALSE, clip = "on") +
+  scale_x_continuous(name = xlbl, limits = c(xmin, xmax), 
+                     breaks = seq(xmin, xmax, xstp)) +
+  scale_y_continuous(name = ylbl, limits = c(ymin, ymax), 
+                     breaks = seq(ymin, ymax, ystp)) +
+  
+  theme_bw() +
+  theme(plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+        axis.text.x = element_text(size = 20, color = 'black', angle = 0), 
+        axis.text.y = element_text(size = 20, color = 'black', angle = 0), 
+        axis.title.x = element_text(size = 25),
+        axis.title.y = element_text(size = 25),
+        axis.ticks.length = unit(.25, "cm"),
+        legend.box.just = "right",
+        legend.spacing = unit(-0.5, "cm"),
+        legend.position = legend_position,
+        #legend.direction = "vertical",
+        legend.title = element_blank(),
+        legend.text = element_text(colour = "black", size = 20, face = "plain"),
+        legend.background = element_rect(fill = NA, size = 0.5, 
+                                         linetype = "solid", colour = 0),
+        legend.key = element_blank(),
+        legend.justification = c("left", "top"),
+        panel.background = element_blank(),
+        panel.grid.major = element_line(colour = "black", 
+                                        size = 0.5, linetype = "dotted"), 
+        panel.grid.minor = element_line(colour = "grey80", 
+                                        linewidth =  0.2, linetype = "solid"),
+        plot.margin = unit(c(0.5,1.0,0.5,0.5), "cm"),
+        legend.direction = "vertical", legend.box = "vertical",
+        legend.text.align = 0,
+        panel.border = element_rect(colour = "black", fill = NA, size = 1.5))
+
+g <- ggMarginal(groupFill = T, data = H_df_synth, type = "densigram", bins = 30,
+                p = g, aes(x = H_actual, y = H_predicted))
+
+
+ggsave(paste0("./outputs/H_synthetic.png"), plot = g,
+       scale = 1.5, width = 4.5, height = 4.5, units = "in",dpi = 300)
+
+
+
+H_synth_constr = plot_inversion_validation_singlevar_linear_contour(
+  input_df = H_shallow_synth_constr, xmin = xmin,
+       xmax = xmax, xlabel = xlbl, ylabel = ylbl, opacity = 0.25, show_legend = F)
+
+ggsave(paste0("./outputs/H_synthetic_constr.png"), plot = H_synth_constr,
+       scale = 1.5, width = 4.5, height = 4.5, units = "in",dpi = 300)
+
+H_synth_unconstr = plot_inversion_validation_singlevar_linear_contour(
+  input_df = H_shallow_synth_unconstr, xmin = xmin,
+  xmax = xmax, xlabel = xlbl, ylabel = ylbl, opacity = 0.25, show_legend = F)
+
+ggsave(paste0("./outputs/H_synthetic_unconstr.png"), plot = H_synth_unconstr,
+       scale = 1.5, width = 4.5, height = 4.5, units = "in",dpi = 300)
 
 #-----------------------------------------------------------------------------------------
 #Create mosaic of the H scatterplots

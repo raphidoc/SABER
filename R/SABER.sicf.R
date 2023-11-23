@@ -48,15 +48,52 @@ Rrs_Fluorescence <- function(dg_comsposite=TRUE, dg_443,
                       }
     )
     
-    test_Ed = GreggCarder.f.modified(the = sunzen_Ed, #Calculate the Ed following Gregg & Carder 1990
-                                     lam.sel = lambda, hr = time_dec,
-                                     jday = jday_no, rlon = lon_Ed, rlat = lat_Ed, debug = F)
-    
     if (sunzen_Ed < 0) {
       print("SICF: Sun Zenith was not provided, calculated from Geometry")
       sunzen_Ed = Cops::GreggCarder.sunang(rad = 180/pi, iday = jday_no, 
                                            xlon = lon_Ed, ylat = lat_Ed, hr = time_dec)
     }
+    
+    # test_Ed = GreggCarder.f.modified(the = sunzen_Ed, #Calculate the Ed following Gregg & Carder 1990
+    #                                  lam.sel = lambda, hr = time_dec,
+    #                                  jday = jday_no, rlon = lon_Ed, rlat = lat_Ed, debug = F)
+    
+    tryCatch({
+      #Calculate the Ed following Gregg & Carder 1990
+      test_Ed = GreggCarder.f.modified(the = sunzen_Ed, 
+                                       lam.sel = lambda, hr = time_dec,
+                                       jday = jday_no, rlon = lon_Ed, rlat = lat_Ed, debug = F)
+      
+      if (all(is.na(test_Ed))) {
+        cat(paste0("Sun is below horizon with given sun-earth geometry, reseting to default"))
+        
+        sunzen_Ed = -999; lat_Ed = 49; lon_Ed = -68;
+        date_time_Ed = "2019-08-18 20:50 GMT"
+        
+        
+        library(lubridate)
+        library(dplyr)
+        
+        x = as_datetime(as.POSIXct(date_time_Ed))
+        
+        jday_no = yday(x) #Get Jullien Day no.
+        time_no = format(x, "%T") #Get time in UTC
+        
+        time_dec = sapply(strsplit(as.character(time_no),":"), #Convert time in decimal format
+                          function(x) {
+                            x <- as.numeric(x)
+                            x[1]+x[2]/60
+                          }
+        )
+        
+        test_Ed = GreggCarder.f.modified(the = sunzen_Ed, 
+                                         lam.sel = lambda, hr = time_dec,
+                                         jday = jday_no, rlon = lon_Ed, rlat = lat_Ed, debug = F)
+      } }, 
+      error = function(e){cat("ERROR in Irradiance model :",conditionMessage(e), "\n")}
+    )
+    
+    
     Ed0.0p = test_Ed$Ed #Total Ed at 0+
     Ed0_dir.0p = test_Ed$Edir #Direct Ed at 0+
     Ed0_dif.0p = test_Ed$Edif #Diffused Ed at 0+

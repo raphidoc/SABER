@@ -288,19 +288,19 @@ weibull_fit <- create.prior.data(use.nomad.prior = T, distrib.fit = "weibull", #
                                  plot.diag = T, truncate_chl = c(1,30),
                                  truncate_adg = c(0.1,5),
                                  truncate_bbp = c(0.002,0.01),
-                                 sample_count = 150)
+                                 sample_count = 100)
 
 lognormal_fit <- create.prior.data(use.nomad.prior = T, distrib.fit = "lnorm", #Log-Normal
                                    plot.diag = T, truncate_chl = c(1,30),
                                    truncate_adg = c(0.1,5),
                                    truncate_bbp = c(0.002,0.01),
-                                   sample_count = 150)
+                                   sample_count = 100)
 
 gamma_fit <- create.prior.data(use.nomad.prior = T, distrib.fit = "gamma", #Gamma
                                plot.diag = T, truncate_chl = c(1,30),
                                truncate_adg = c(0.1,5),
                                truncate_bbp = c(0.002,0.01),
-                               sample_count = 150)
+                               sample_count = 100)
 
 #-----------------------------------------------------------------------
 #Store the goodness of fit for the distributions fitted to prior samples

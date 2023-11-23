@@ -43,6 +43,7 @@ source("./R/SABER_forward_fast.R") #FASTEST VERSION
 
 #Inelastic Scattering Models
 source("./R/SABER.sicf.R")
+source("./R/SABER.fdom.R")
 source("./R/inelastic.wavelength.redistribution.R")
 
 #QAAv5 for IOP and Spectral slopes
@@ -94,6 +95,10 @@ library(nloptr)
 library(minpack.lm)
 library(pracma)
 library(alabama)
+library(data.table)
+library(ggalt)
+library(ggExtra)
+library(suncalc)
 #-------------------------------------------------------------------------------------------
 #Function to read EXCEL sheet
 read_excel_allsheets <- function(filename, tibble = FALSE) {
@@ -623,6 +628,24 @@ forward.saber.fast = Saber_forward_fast(use_true_IOPs = F, use_manual_slope = F,
                                         verbose = T)
 
 rrs.forward.saber.fast = forward.saber.fast[[1]]$Rrs
+
+forward.lee.fast = Lee_forward_fast(use_true_IOPs = F, use_manual_slope = F, 
+                                        
+                                        chl = Fit.input$chl,
+                                        a_dg = Fit.input$acdom.440+Fit.input$anap.440,
+                                        bbp.550 = Fit.input$bbp.550, 
+                                        
+                                        slope.parametric = F, 
+                                        Rrs_input_for_slope = rrs.demo.Om.demo,
+                                        
+                                        z = zB,
+                                        rb.fraction = fA.set, 
+                                        
+                                        
+                                        wavelength = wavelength,
+                                        verbose = T)
+
+rrs.forward.lee.fast = forward.saber.fast[[1]]$Rrs
 
 plot(wavelength, rrs.forward.saber.fast, lwd=2, col="navyblue", type="l", ylim=c(0, 0.03))
 lines(wavelength, rrs.forward.am.param.conc.dg_comp_sicf_fdom, lty="dashed", col="green")

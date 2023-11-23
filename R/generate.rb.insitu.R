@@ -1,5 +1,10 @@
+#===================================================================================
+# Code to create and Plot the spectral reflectance of different benthic end-members
+#===================================================================================
+
+
 #======================================================
-# Generate WISE-Man Rb endmembers
+# Generate WISE-Man Rb end-members
 #======================================================
 
 # Specify the main directory path
@@ -94,11 +99,12 @@ g1
 
 rb = result_df_filter
 names(rb) = c("wavelength", "class1", "class2", "class3")
-write.csv(rb, file = "./data/Rb_WISE-Man_endmembers.csv", col.names = T, row.names = F, quote = FALSE)
+write.csv(rb, file = "./data/Rb_WISE-Man_endmembers.csv", col.names = T, row.names = F, 
+          quote = FALSE)
 save(rb, file = "./data/WISE-Man.RData")
 
 #======================================================
-# Generate Algae_WISE Rb endmembers
+# Generate Algae_WISE Rb-endmembers
 #======================================================
 #1.7 Load Algae-WISE bottom reflectance
 algae_rb = read.csv("./data/Rb_AlgaeWISE.csv", header = T) #This data has been accidentally replaced with wrong one
@@ -188,28 +194,40 @@ rm(algae_rb, bottom_type_list, bottom_type, Rb_df_interp)
 Rb_long = reshape2::melt(Rb_set, id.vars="wavelength")
 names(Rb_long) = c("wavelength","class","rb")
 
-xmin = 400; xmax= 800; xstp=100
-ymin= 0; ymax=1;ystp= signif(ymax/5, digits = 2)
+xmin = 400; xmax= 700; xstp=50
+ymin= 0; ymax=0.3;ystp= signif(ymax/5, digits = 2)
 asp_rat <- (xmax-xmin)/(ymax-ymin)
 
-g1 <- ggplot(data = Rb_long, aes(x = wavelength, y = rb, color = class)) + 
+legend_position <- c(0.35, 0.98)
+
+g1 <- ggplot(data = Rb_long[Rb_long$class != "Touffue",], 
+             aes(x = wavelength, y = rb, color = class)) + 
   geom_line(show.legend = T, lwd=1.5)+
-  scale_x_continuous(name = expression(paste("Wavelength(", lambda, ")[nm]")), limits = c(xmin, xmax), 
+  scale_x_continuous(name = expression(paste("Wavelength(", lambda, ")[nm]")), 
+                     limits = c(xmin, xmax), 
                      breaks = seq(xmin, xmax, xstp))  +
-  scale_y_continuous(name =expression(paste(italic("R"),{}["B"],"(",lambda,")")) , limits = c(ymin, ymax),
+  scale_y_continuous(name =expression(paste(italic("R"),{}["B"],"(",lambda,")")) , 
+                     limits = c(ymin, ymax),
                      breaks = seq(ymin, ymax, ystp))+ 
+  scale_color_viridis(name = "", discrete = T, 
+                      labels = c(expression(paste(italic("Lithothamnium sp."))), 
+                                                          "Rock", 
+                                 expression(paste(italic("Saccharina latissima"))) 
+                      ))+
   coord_fixed(ratio = asp_rat, xlim = c(xmin, xmax), 
               ylim = c(ymin, ymax), expand = FALSE, clip = "on") +
-  theme(plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
-        axis.text.x = element_text(size = 20, color = 'black', angle = 0), 
-        axis.text.y = element_text(size = 20, color = 'black', angle = 0), 
+  theme(plot.title = element_text(size = 25, face = "bold", hjust = 0.5),
+        axis.text.x = element_text(size = 25, color = 'black', angle = 0), 
+        axis.text.y = element_text(size = 25, color = 'black', angle = 0), 
         axis.title.x = element_text(size = 25),
         axis.title.y = element_text(size = 25),
         axis.ticks.length = unit(.25, "cm"),
-        legend.position=c(0.10, 0.9),
+        legend.box.just = "right",
+        legend.spacing = unit(-0.5, "cm"),
+        legend.position = legend_position,
         legend.direction = "vertical",
-        legend.title = element_blank(),
-        legend.text = element_text(colour = "black", size = 20, face = "plain"),
+        legend.title = element_text(colour = "black", size = 15, face = "plain"),
+        legend.text = element_text(colour = "black", size = 25, face = "plain"),
         legend.background = element_rect(fill = NA, size = 0.5, 
                                          linetype = "solid", colour = 0),
         legend.key = element_blank(),
@@ -217,14 +235,16 @@ g1 <- ggplot(data = Rb_long, aes(x = wavelength, y = rb, color = class)) +
         panel.background = element_blank(),
         panel.grid.major = element_line(colour = "grey", 
                                         size = 0.5, linetype = "dotted"), 
-        panel.grid.minor = element_blank(),
-        #legend.spacing.y = unit(2.0, 'cm'),
-        plot.margin = unit(c(0.5,0.5,0.0,0.0), "cm"),
         legend.text.align = 0,
+        panel.grid.minor = element_blank(),
+        plot.margin = unit(c(0.0,0.9,0.0,0.0), "cm"),
         panel.border = element_rect(colour = "black", fill = NA, size = 1.5))
 g1
+ggsave("./outputs/rb_algaewise.png", plot = g1, scale = 1.7, width = 4.5, height = 4.5, 
+       units = "in",dpi = 300)
 
 rb = Rb_set[-(5)]
 names(rb) = c("wavelength", "class1", "class2", "class3")
-write.csv(rb, file = "./data/Rb_algaeWISE_endmembers.csv", col.names = T, row.names = F, quote = FALSE)
+write.csv(rb, file = "./data/Rb_algaeWISE_endmembers.csv", col.names = T, row.names = F, 
+          quote = FALSE)
 save(rb, file = "./data/algae-WISE.RData")

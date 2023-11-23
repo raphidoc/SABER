@@ -22,57 +22,128 @@ setwd("/home/musk0001/R_inverse_wasi")
 # Function for goodness of fit for inversion retrieved
 # parameters for QAA and SABER
 #=====================================================
-goodness_of_fit <- function(actual, predicted, bbp.exist = F) {
+summary_stat <- function(input_var ) {
+  summary_temp = summary(input_var)
+  desc_stat = data_frame("min" = summary_temp[1], "max" = summary_temp[length(summary_temp)],
+                         "sd" = sd(input_var), "mean" = summary_temp[4], 
+                         "median" = summary_temp[3], "mode" = Mode(input_var),
+                         "skewness" = skewness(input_var), "kurtosis" = kurtosis(input_var))
   
-  #BIAS
-  bias_chl = Metrics::bias(actual = actual$chl, #chl
-                               predicted = predicted$chl)
+  return(desc_stat)
+}
+#=====================================================
+# Function for goodness of fit for inversion retrieved
+# parameters for QAA and SABER
+#=====================================================
+goodness_of_fit <- function(actual, predicted, bbp.exist = F, take_log = T) {
   
-  bias_adg443 = Metrics::bias(actual = actual$adg443, #adg443
-                              predicted = predicted$adg443)
   
-  
-  #%-bias
-  p_bias_chl = Metrics::percent_bias(actual = actual$chl, #chl
-                                     predicted = predicted$chl)
-  
-  p_bias_adg443 = Metrics::percent_bias(actual = actual$adg443, #adg443
-                                        predicted = predicted$adg443)
-  
-  #RMSE
-  rmse_chl = Metrics::rmse(actual = actual$chl, #chl
-                           predicted = predicted$chl)
-  
-  rmse_adg443 = Metrics::rmse(actual = actual$adg443, #adg443
-                              predicted = predicted$adg443)
-  
-  #R^2
-  yx.lmodel2_chl <- lmodel2(log10(predicted$chl) ~ log10(actual$chl)) #chl
-  
-  r_square_chl = yx.lmodel2_chl$rsquare
-  slope_chl = yx.lmodel2_chl$regression.results$Slope[2]
-  
-  yx.lmodel2_adg443 <- lmodel2(log10(predicted$adg443) ~ log10(actual$adg443)) #adg443
-  
-  r_square_adg443 = yx.lmodel2_adg443$rsquare
-  slope_adg443 = yx.lmodel2_adg443$regression.results$Slope[2]
-  
-  if (bbp.exist == T) {
-    bias_bbp555 = Metrics::bias(actual = actual$bbp555, #bbp555
-                                predicted = predicted$bbp555)
+  if (take_log == TRUE) {
     
-    p_bias_bbp555 = Metrics::percent_bias(actual = actual$bbp555, #bbp555
-                                       predicted = predicted$bbp555)
+    #BIAS
+    bias_chl = Metrics::bias(actual = log10(actual$chl), #chl
+                             predicted = log10(predicted$chl))
     
-    rmse_bbp555 = Metrics::rmse(actual = actual$bbp555, #bbp555
-                             predicted = predicted$bbp555)
+    bias_adg443 = Metrics::bias(actual = log10(actual$adg443), #adg443
+                                predicted = log10(predicted$adg443))
     
-    yx.lmodel2_bbp555 <- lmodel2(log10(predicted$bbp555) ~ log10(actual$bbp555)) #bbp555
     
-    r_square_bbp555 = yx.lmodel2_bbp555$rsquare
-    slope_bbp555 = yx.lmodel2_bbp555$regression.results$Slope[2]
+    #%-bias
+    p_bias_chl = Metrics::percent_bias(actual = log10(actual$chl), #chl
+                                       predicted = log10(predicted$chl))
     
+    p_bias_adg443 = Metrics::percent_bias(actual = log10(actual$adg443), #adg443
+                                          predicted = log10(predicted$adg443))
+    
+    #RMSE
+    rmse_chl = Metrics::rmse(actual = log10(actual$chl), #chl
+                             predicted = log10(predicted$chl))
+    
+    rmse_adg443 = Metrics::rmse(actual = log10(actual$adg443), #adg443
+                                predicted = log10(predicted$adg443))
+    
+    #R^2
+    yx.lmodel2_chl <- lmodel2(log10(predicted$chl) ~ log10(actual$chl)) #chl
+    
+    r_square_chl = yx.lmodel2_chl$rsquare
+    slope_chl = yx.lmodel2_chl$regression.results$Slope[2]
+    
+    yx.lmodel2_adg443 <- lmodel2(log10(predicted$adg443) ~ log10(actual$adg443)) #adg443
+    
+    r_square_adg443 = yx.lmodel2_adg443$rsquare
+    slope_adg443 = yx.lmodel2_adg443$regression.results$Slope[2]
+    
+    if (bbp.exist == T) {
+      bias_bbp555 = Metrics::bias(actual = log10(actual$bbp555), #bbp555
+                                  predicted = log10(predicted$bbp555))
+      
+      p_bias_bbp555 = Metrics::percent_bias(actual = log10(actual$bbp555), #bbp555
+                                            predicted = log10(predicted$bbp555))
+      
+      rmse_bbp555 = Metrics::rmse(actual = log10(actual$bbp555), #bbp555
+                                  predicted = log10(predicted$bbp555))
+      
+      yx.lmodel2_bbp555 <- lmodel2(log10(predicted$bbp555) ~ log10(actual$bbp555)) #bbp555
+      
+      r_square_bbp555 = yx.lmodel2_bbp555$rsquare
+      slope_bbp555 = yx.lmodel2_bbp555$regression.results$Slope[2]
+      
+    }
+    
+    
+  } else {
+    
+    #BIAS
+    bias_chl = Metrics::bias(actual = actual$chl, #chl
+                             predicted = predicted$chl)
+    
+    bias_adg443 = Metrics::bias(actual = actual$adg443, #adg443
+                                predicted = predicted$adg443)
+    
+    
+    #%-bias
+    p_bias_chl = Metrics::percent_bias(actual = actual$chl, #chl
+                                       predicted = predicted$chl)
+    
+    p_bias_adg443 = Metrics::percent_bias(actual = actual$adg443, #adg443
+                                          predicted = predicted$adg443)
+    
+    #RMSE
+    rmse_chl = Metrics::rmse(actual = actual$chl, #chl
+                             predicted = predicted$chl)
+    
+    rmse_adg443 = Metrics::rmse(actual = actual$adg443, #adg443
+                                predicted = predicted$adg443)
+    
+    #R^2
+    yx.lmodel2_chl <- lmodel2((predicted$chl) ~ (actual$chl)) #chl
+    
+    r_square_chl = yx.lmodel2_chl$rsquare
+    slope_chl = yx.lmodel2_chl$regression.results$Slope[2]
+    
+    yx.lmodel2_adg443 <- lmodel2((predicted$adg443) ~ (actual$adg443)) #adg443
+    
+    r_square_adg443 = yx.lmodel2_adg443$rsquare
+    slope_adg443 = yx.lmodel2_adg443$regression.results$Slope[2]
+    
+    if (bbp.exist == T) {
+      bias_bbp555 = Metrics::bias(actual = actual$bbp555, #bbp555
+                                  predicted = predicted$bbp555)
+      
+      p_bias_bbp555 = Metrics::percent_bias(actual = actual$bbp555, #bbp555
+                                            predicted = predicted$bbp555)
+      
+      rmse_bbp555 = Metrics::rmse(actual = actual$bbp555, #bbp555
+                                  predicted = predicted$bbp555)
+      
+      yx.lmodel2_bbp555 <- lmodel2((predicted$bbp555) ~ (actual$bbp555)) #bbp555
+      
+      r_square_bbp555 = yx.lmodel2_bbp555$rsquare
+      slope_bbp555 = yx.lmodel2_bbp555$regression.results$Slope[2]
+      
+    }
   }
+  
   
   if (bbp.exist == T) {
     bias = c(bias_chl, bias_adg443, bias_bbp555)
@@ -117,6 +188,69 @@ HL.deep.iop = read_IOCCG_data()
 
 #sub-surface (0^-) Rrs
 rrs.HL <- as.matrix(insitu.data$r_rs); rrs.HL.wl <- as.numeric(names(insitu.data$r_rs))
+
+rrs.HL_plot = as.data.frame(rrs.HL)
+names(rrs.HL_plot) = rrs.HL.wl
+
+
+rrs.HL_plot$id = seq(1, length(rrs.HL_plot$`400`), 1)
+
+rrs.HL_plot = reshape2::melt(rrs.HL_plot, id.vars = "id")
+
+names(rrs.HL_plot) = c("id", "wavelength", "rrs")
+
+xmin <- 400; xmax <- 700;  xstp <- 50; xlbl <- expression(paste("Wavelength (", lambda, ") [nm]")) 
+ymin <- 0; ymax <- 0.06; ystp <- 0.010; ylbl <- expression(paste(italic("R")["rs"]("0"^"-", lambda),italic("in situ ("), "sr"^{-1}, ")"))
+asp_rat <-  (xmax-xmin)/(ymax-ymin)
+legend_title <- element_blank()
+legend_position <- c(0.70, 0.98)
+
+
+library(viridis)
+
+g <- ggplot(data = rrs.HL_plot) + 
+  geom_line(aes(x = as.numeric(as.character(wavelength)), y = rrs, colour = id, 
+                group = id), size = 1.3, show.legend = F)+
+  scale_colour_viridis(discrete = F,) +
+  coord_fixed(ratio = asp_rat, xlim = c(xmin, xmax),
+              ylim = c(ymin, ymax)
+              ,expand = FALSE, clip = "on"
+  ) +
+  #scale_colour_manual(name = "",values = rev(collist))+
+  #guides(fill = FALSE)+
+  guides(fill = guide_legend(title = "Depth (m)"))+
+  scale_x_continuous(name = xlbl, limits = c(xmin, xmax),
+                     breaks = seq(xmin, xmax, xstp))  +
+  #scale_y_log10()+
+  scale_y_continuous(name = ylbl, limits = c(ymin, ymax),
+                     breaks = seq(ymin, ymax, ystp))  +
+  theme_bw()+
+  theme(plot.title = element_text(size = 25, face = "bold", hjust = 0.5),
+        axis.text.x = element_text(size = 25, color = 'black', angle = 0), 
+        axis.text.y = element_text(size = 25, color = 'black', angle = 0), 
+        axis.title.x = element_text(size = 25),
+        axis.title.y = element_text(size = 25),
+        axis.ticks.length = unit(.25, "cm"),
+        legend.box.just = "right",
+        legend.spacing = unit(-0.5, "cm"),
+        legend.position = legend_position,
+        legend.direction = "vertical",
+        legend.title = element_text(colour = "black", size = 15, face = "plain"),
+        legend.text = element_text(colour = "black", size = 15, face = "plain"),
+        legend.background = element_rect(fill = NA, size = 0.5, 
+                                         linetype = "solid", colour = 0),
+        legend.key = element_blank(),
+        legend.justification = c("left", "top"),
+        panel.background = element_blank(),
+        panel.grid.major = element_line(colour = "grey", 
+                                        size = 0.5, linetype = "dotted"), 
+        panel.grid.minor = element_blank(),
+        plot.margin = unit(c(0.0,0.9,0.0,0.0), "cm"),
+        panel.border = element_rect(colour = "black", fill = NA, size = 1.5))
+
+g
+ggsave("./outputs/ioccg_rrs.png", plot = g,scale = 1.7, width = 4.5, height = 4.5, 
+       units = "in",dpi = 300)
 
 #---------------------------------------------
 ### 1.1 Inversion of IOCCG dataset using SABER
@@ -562,10 +696,12 @@ names(fit_param_saber) = c("chl", "adg443", "bbp555", "chl_sd", "adg443_sd", "bb
 names(fit_param_qaa) = c("chl", "adg443", "bbp555")
 names(iop_param_qc) = c("chl", "adg443", "bbp555")
 
-errorstat_IOCCG_SABER = goodness_of_fit(actual = iop_param_qc, predicted = fit_param_saber, bbp.exist = T)
+errorstat_IOCCG_SABER = goodness_of_fit(actual = iop_param_qc, 
+                                        predicted = fit_param_saber, bbp.exist = T)
 errorstat_IOCCG_SABER <- errorstat_IOCCG_SABER %>% dplyr::select(parameter, everything())
 
-errorstat_IOCCG_QAA = goodness_of_fit(actual = iop_param_qc, predicted = fit_param_qaa, bbp.exist = T)
+errorstat_IOCCG_QAA = goodness_of_fit(actual = iop_param_qc, 
+                                      predicted = fit_param_qaa, bbp.exist = T)
 errorstat_IOCCG_QAA <- errorstat_IOCCG_QAA %>% dplyr::select(parameter, everything())
 
 # ====================================================
@@ -641,6 +777,68 @@ rrs_nomad_qc_interp_df_iop_idx = rrs_nomad_qc_interp_df[rrs_nomad_qc_interp_df$i
 rrs_nomad_final = rrs_nomad_qc_interp_df_iop_idx[-(21:22)]
 iop_nomad_qc$adg443  = iop_nomad_qc$ag443 + iop_nomad_qc$ad443
 
+rrs_nomad_plot = rrs_nomad_final[-(which.max(rrs_nomad_final$Rrs_555)),]
+names(rrs_nomad_plot) = nomad_wave
+
+
+rrs_nomad_plot$id = seq(1, length(rrs_nomad_plot$`405`), 1)
+
+rrs_nomad_plot = reshape2::melt(rrs_nomad_plot, id.vars = "id")
+
+names(rrs_nomad_plot) = c("id", "wavelength", "rrs")
+
+xmin <- 400; xmax <- 700;  xstp <- 50; xlbl <- expression(paste("Wavelength (", lambda, ") [nm]")) 
+ymin <- 0; ymax <- 0.05; ystp <- 0.010; ylbl <- expression(paste(italic("R")["rs"]("0"^"-", lambda),italic("in situ ("), "sr"^{-1}, ")"))
+asp_rat <-  (xmax-xmin)/(ymax-ymin)
+legend_title <- element_blank()
+legend_position <- c(0.70, 0.98)
+
+
+library(viridis)
+
+g <- ggplot(data = rrs_nomad_plot) + 
+  geom_line(aes(x = as.numeric(as.character(wavelength)), y = rrs, colour = id, 
+                group = id), size = 1.3, show.legend = F)+
+  scale_colour_viridis(discrete = F,) +
+  coord_fixed(ratio = asp_rat, xlim = c(xmin, xmax),
+              ylim = c(ymin, ymax)
+              ,expand = FALSE, clip = "on"
+  ) +
+  #scale_colour_manual(name = "",values = rev(collist))+
+  #guides(fill = FALSE)+
+  guides(fill = guide_legend(title = "Depth (m)"))+
+  scale_x_continuous(name = xlbl, limits = c(xmin, xmax),
+                     breaks = seq(xmin, xmax, xstp))  +
+  #scale_y_log10()+
+  scale_y_continuous(name = ylbl, limits = c(ymin, ymax),
+                     breaks = seq(ymin, ymax, ystp))  +
+  theme_bw()+
+  theme(plot.title = element_text(size = 25, face = "bold", hjust = 0.5),
+        axis.text.x = element_text(size = 25, color = 'black', angle = 0), 
+        axis.text.y = element_text(size = 25, color = 'black', angle = 0), 
+        axis.title.x = element_text(size = 25),
+        axis.title.y = element_text(size = 25),
+        axis.ticks.length = unit(.25, "cm"),
+        legend.box.just = "right",
+        legend.spacing = unit(-0.5, "cm"),
+        legend.position = legend_position,
+        legend.direction = "vertical",
+        legend.title = element_text(colour = "black", size = 15, face = "plain"),
+        legend.text = element_text(colour = "black", size = 15, face = "plain"),
+        legend.background = element_rect(fill = NA, size = 0.5, 
+                                         linetype = "solid", colour = 0),
+        legend.key = element_blank(),
+        legend.justification = c("left", "top"),
+        panel.background = element_blank(),
+        panel.grid.major = element_line(colour = "grey", 
+                                        size = 0.5, linetype = "dotted"), 
+        panel.grid.minor = element_blank(),
+        plot.margin = unit(c(0.0,0.9,0.0,0.0), "cm"),
+        panel.border = element_rect(colour = "black", fill = NA, size = 1.5))
+
+g
+ggsave("./outputs/nomad_rrs.png", plot = g,scale = 1.7, width = 4.5, height = 4.5, 
+       units = "in",dpi = 300)
 
 #---------------------------------------------
 ### 2.1 Inversion of NOMAD dataset using SABER
@@ -740,33 +938,33 @@ for (j in 1:dim(rrs_nomad_final)[1]) {
     
   }
   
-  #Optimize
-  inverse_output <- suppressWarnings(solve.objective.inverse.deep.final(
-                            initial = par0, 
-                            bbp.constrain  = F,
-                            
-                            #bbp.550 = ,
-                            
-                            #obsdata = as.numeric(rrs_nomad_final[j,]),
-                            obsdata = rrs_inverse_input,
-                            
-                            sa.model = "am03", 
-                            
-                            #obj.fn =obj.run ,
-                            obj.fn =obj[1],
-                            
-                            auto_spectral_slope = T,
-                            manual_spectral_slope = F, 
-                            
-                            manual_spectral_slope_vals = c("s_g"=a_g_vec[i], "s_d"=a_d_vec[i], "gamma"=1),
-                            
-                            method.opt = methods.opt[4],
-                            lower.b = lower.bound,
-                            upper.b = upper.bound, 
-                            batch = FALSE, pop.sd = FALSE))
-  
-  Fit.optimized.ssobj.nomad <- rbind(Fit.optimized.ssobj.nomad, c(inverse_output[[1]]$estimates[1:3],
-                                                                  inverse_output[[1]]$`sd(+/-)`[1:3]))
+  # #Optimize
+  # inverse_output <- suppressWarnings(solve.objective.inverse.deep.final(
+  #                           initial = par0, 
+  #                           bbp.constrain  = F,
+  #                           
+  #                           #bbp.550 = ,
+  #                           
+  #                           #obsdata = as.numeric(rrs_nomad_final[j,]),
+  #                           obsdata = rrs_inverse_input,
+  #                           
+  #                           sa.model = "am03", 
+  #                           
+  #                           #obj.fn =obj.run ,
+  #                           obj.fn =obj[1],
+  #                           
+  #                           auto_spectral_slope = T,
+  #                           manual_spectral_slope = F, 
+  #                           
+  #                           manual_spectral_slope_vals = c("s_g"=a_g_vec[i], "s_d"=a_d_vec[i], "gamma"=1),
+  #                           
+  #                           method.opt = methods.opt[4],
+  #                           lower.b = lower.bound,
+  #                           upper.b = upper.bound, 
+  #                           batch = FALSE, pop.sd = FALSE))
+  # 
+  # Fit.optimized.ssobj.nomad <- rbind(Fit.optimized.ssobj.nomad, c(inverse_output[[1]]$estimates[1:3],
+  #                                                                 inverse_output[[1]]$`sd(+/-)`[1:3]))
   cat(paste0("\033[0;43m","############### INVERSION FINISHED for ", j, " no. spectra ################","\033[0m","\n"))
 }
 
@@ -884,7 +1082,9 @@ fit_param_saber = read.csv("./outputs/inv_param_NOMAD_qaa_initial_new.csv", head
 fit_param_saber = read.csv("./outputs/inv_param_NOMAD.csv", header = T)
 
 fit_param_qaa = read.csv("./outputs/QAA_param_NOMAD.csv", header = T)
+
 iop_param_qc = iop_nomad_qc[-c(nomad_qaa_idx),]
+iop_param_qc = iop_nomad_qc[-c(nomad_inverse_idx),]
 
 bbp_idx = (which(is.na(iop_param_qc$bb555) == FALSE))
 
