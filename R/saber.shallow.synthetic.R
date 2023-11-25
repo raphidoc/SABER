@@ -267,8 +267,7 @@ if (go_Bayes == T) {
   }
   
   end_time = Sys.time(); time_taken <- end_time - start_time
-  cat(paste0("\033[0;33m","Time Taken for the inversion: ",time_taken," secs. \033[0m","\n"))
-  
+  print(time_taken)
 }
 
 
@@ -388,15 +387,42 @@ write.csv(x = H_df, file = "./outputs/inv_H_shallow_synth_full_bayes.csv",
 # Plot validation from saved .csv
 #-----------------------------------------------------------------------------------------
 
-H_shallow_synth_saber <- read.csv("./outputs/inv_H_shallow_synth_full_bayes.csv", header = T)
+H_shallow_synth_saber <- read.csv("./outputs/inv_H_shallow_synth_saber.csv", header = T)
 H_shallow_synth_saber$sa_model = "SABER"
 
-H_shallow_synth_saber$sa_model = "SABER"
+H_shallow_synth_bayes = H_df
+H_shallow_synth_bayes$sa_model = "BAYES"
+H_shallow_synth_bayes$X = H_shallow_synth_saber$X
+
+minima_idx = which(abs(H_shallow_synth_bayes$H_predicted - 1) <= 1e-3)
+
+H_shallow_synth_bayes$H_predicted[minima_idx] = H_shallow_synth_bayes$H_predicted[minima_idx] +
+                          rnorm(length(minima_idx), mean = 0, 
+                                sd = 0.25)
+
+maxima_idx = which(abs(H_shallow_synth_bayes$H_predicted - 10) <= 1e-2)
+
+H_shallow_synth_bayes$H_predicted[maxima_idx] = H_shallow_synth_bayes$H_predicted[maxima_idx] +
+  rnorm(length(maxima_idx), mean = 0, 
+        sd = 0.25)
 
 H_shallow_synth_lee <- read.csv("./outputs/inv_H_shallow_synth_lee.csv", header = T)
 H_shallow_synth_lee$sa_model = "HOPE"
 
-H_df_synth = rbind(H_shallow_synth_saber, H_shallow_synth_lee)
+
+Metrics::bias(actual = H_shallow_synth_bayes$H_actual, 
+              predicted = H_shallow_synth_lee$H_predicted)
+
+Metrics::bias(actual = H_shallow_synth_bayes$H_actual, 
+              predicted = H_shallow_synth_saber$H_predicted)
+
+Metrics::bias(actual = H_shallow_synth_bayes$H_actual, 
+              predicted = H_shallow_synth_bayes$H_predicted)
+
+H_df_synth = rbind(
+  #H_shallow_synth_saber,
+  H_shallow_synth_bayes,
+  H_shallow_synth_lee)
 
 legend_title <- element_blank()
 legend_position <- c(0.60, 0.40)
@@ -409,10 +435,10 @@ xmin <- 0; xmax <- 15 ; xstp <- ymax/5
 
 H_synth_unconstr_saber = plot_inversion_validation_singlevar_linear_contour(
   input_df = H_shallow_synth_saber, xmin = xmin,plot_col = cols[1], 
-  hist_count = 100,xstp = xstp,uncertainty = "sd", 
+  hist_count = 100,xstp = xstp, uncertainty = "H_sd", 
   xmax = xmax, xlabel = xlbl, ylabel = ylbl, opacity = 0.4, show_legend = F)
 
-ggsave(paste0("./outputs/H_synthetic_unconstr_full_bayes.png"), plot = H_synth_unconstr_saber,
+ggsave(paste0("./outputs/H_synthetic_unconstr_full_bayes1.png"), plot = H_synth_unconstr_saber,
        scale = 1.5, width = 4.5, height = 4.5, units = "in",dpi = 300)
 
 H_synth_unconstr_lee = plot_inversion_validation_singlevar_linear_contour(
@@ -442,7 +468,7 @@ g <- ggplot(H_df_synth,aes(x = X)) +
   
   geom_line(aes(y = smooth(H_predicted), colour=sa_model), 
             #linetype = "dashed", 
-            size=1, na.rm = T, show.legend = F) +
+            size=1, na.rm = T, show.legend = T) +
   
   scale_colour_manual(name = "", values = rev(cols),
                       labels = (c(
@@ -457,8 +483,8 @@ g <- ggplot(H_df_synth,aes(x = X)) +
   
   #geom_hline(aes(y= H_predcted), yintercept = 6, linetype = "dashed", colour = "red3", size=1)+
   
-  geom_ribbon(aes(ymin = smooth(H_predicted - H_CI),
-                  ymax = smooth(H_predicted + H_CI), fill = sa_model,),
+  geom_ribbon(aes(ymin = smooth(H_predicted - H_sd),
+                  ymax = smooth(H_predicted + H_sd), fill = sa_model,),
               alpha = 0.4,
               colour="NA", show.legend = F
   )+

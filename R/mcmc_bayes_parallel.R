@@ -6,6 +6,7 @@ library(BayesianTools)
 library(plot3D)
 library(coda)
 library(bayesplot)
+
 quiet <- function(x) { 
   sink(tempfile()) 
   on.exit(sink()) 
@@ -17,7 +18,7 @@ runBayes <- function(obsdata, rrs_type, max_par, min_par,
                      qaa_slope, manual_slope, 
                      manual_slope_val= c("s_g"=0.014, "s_d"=0.003, "gamma"=0.5),
                      iter_count, sampler_mcmc,
-                     wavelngth_sim, sa_model, hybrid_mode){
+                     wavelngth_sim, sa_model, hybrid_mode, plot_rrs){
   
   cat(paste0("\033[0;33m","###################################################################","\033[0m","\n"))
   cat(paste0("\033[0;39m","########### EMBRACE THE RANDOMNESS #######","\033[0m","\n"))
@@ -49,6 +50,9 @@ runBayes <- function(obsdata, rrs_type, max_par, min_par,
   cat(paste0("\033[0;32m","HYBRID mode: ",hybrid_mode,"\033[0m","\n"))
   cat(paste0("\033[0;34m**************************************************************************\033[0m","\n"))
   Sys.sleep(1)
+  
+  initial = max_par
+  initial_rb_length = length(initial[5:(length(initial)-1)])
   
   LL_unconstr_bayes = function(pars) {
     
@@ -224,6 +228,106 @@ runBayes <- function(obsdata, rrs_type, max_par, min_par,
   bayes_output = c(MAP_bayes$parametersMAP, sd_bayes)
   cat(paste0("\033[0;34m @@@@@@@@@@ MCMC FINISHED @@@@@@@@@ \033[0m","\n"))
   summary(out, start = burn_in)
+  
+  
+  if (plot_rrs == TRUE) {
+    
+    
+    pred_rrs = Saber_forward_fast(
+      use_true_IOPs = F, 
+      
+      chl = bayes_output[1], 
+      a_dg = bayes_output[2],
+      bbp.550 = bayes_output[3],
+      
+      z = bayes_output[4],
+      rb.fraction = as.numeric(bayes_output[5:(4+initial_rb_length)]),
+      
+      
+      Rrs_input_for_slope = obsdata,
+      
+      slope.parametric = qaa_slope,
+      
+      
+      use_manual_slope =manual_slope,
+      manual_slope =  manual_spectral_slope_vals,
+      
+      verbose = F, wavelength = wavelngth_sim
+    )
+    
+    
+    plotframe.rrs <- data.frame("wave"=wavelngth_sim, 
+                                "rrs_est"=pred_rrs[[1]]$Rrs,
+                                "rrs_obs"=obsdata)
+    #Create labels
+    map_vals = signif(MAP_bayes$parametersMAP,digits = 2)
+    mcmc_label = paste0("theta[MAP]== {",map_vals[1],"*',",
+                        map_vals[2],",",
+                        map_vals[3],",",
+                        map_vals[4],",",
+                        map_vals[5],",",
+                        map_vals[6],",",
+                        map_vals[7],
+                        "'}")
+  
+    #Create AXIS
+    xmin = min(wavelngth_sim); xmax= max(wavelngth_sim); xstp=100
+    ymin= 0; ymax=max(plotframe.rrs$rrs_obs)+0.20*max(plotframe.rrs$rrs_obs)
+    ystp= signif(ymax/5, digits = 1)
+    asp_rat <- (xmax-xmin)/(ymax-ymin)
+    
+    #Create Plot
+    g1 <- ggplot()  + 
+      geom_line(data = plotframe.rrs,aes(y=rrs_obs,color="xx1",x = wave),
+                size=1.3,show.legend = TRUE) +
+      geom_line(data = plotframe.rrs,aes(y=rrs_est,x = wave,color="xx2"), 
+                linetype = "dashed",
+                size=1.3,show.legend = TRUE)+
+      
+      scale_colour_viridis(discrete = T,
+                           labels = c(expression(paste(italic("R")["rs,obs"])),
+                                     
+                                     expression(paste(italic("R")["rs,MAP"]))) 
+                          ) +
+      
+      scale_x_continuous(name = expression(paste("Wavelength(", lambda, ")[nm]")), 
+                         limits = c(xmin, xmax), 
+                         breaks = seq(xmin, xmax, xstp))  +
+      scale_y_continuous(name =expression(paste(italic("R"),{}[rs],"(",lambda,
+                                                ",", 0^"-",")[", sr^-1,"]")) , 
+                         limits = c(ymin, ymax),
+                         breaks = seq(ymin, ymax, ystp))+ 
+      coord_fixed(ratio = asp_rat, xlim = c(xmin, xmax), 
+                  ylim = c(ymin, ymax), expand = FALSE, clip = "on") +
+     
+      annotate("text",x=550, y= 0.9*ymax, label = mcmc_label, parse=T, size=5, color="black")+
+      theme(plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+            axis.text.x = element_text(size = 20, color = 'black', angle = 0), 
+            axis.text.y = element_text(size = 20, color = 'black', angle = 0), 
+            axis.title.x = element_text(size = 25),
+            axis.title.y = element_text(size = 25),
+            axis.ticks.length = unit(.25, "cm"),
+            legend.position=c(0.62, 0.905),
+            legend.direction = "vertical",
+            legend.title = element_blank(),
+            legend.text = element_text(colour = "black", size = 20, face = "plain"),
+            legend.background = element_rect(fill = NA, size = 0.5, 
+                                             linetype = "solid", colour = 0),
+            legend.key = element_blank(),
+            legend.justification = c("left", "top"),
+            panel.background = element_blank(),
+            panel.grid.major = element_line(colour = "grey", 
+                                            size = 0.5, linetype = "dotted"), 
+            panel.grid.minor = element_blank(),
+            #legend.spacing.y = unit(2.0, 'cm'),
+            plot.margin = unit(c(0.5,0.5,0.0,0.0), "cm"),
+            legend.text.align = 0,
+            panel.border = element_rect(colour = "black", fill = NA, size = 1.5))
+    
+    dev.new()
+    print(g1)
+    
+  }
   
   return(bayes_output)
   

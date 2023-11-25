@@ -935,10 +935,12 @@ plot_inversion_validation_singlevar_linear_contour <- function(input_df,
     geom_point(data = d, aes(H_actual, H_predicted), shape=21, fill=plot_col,
                alpha = I(opacity), size = I(3), show.legend = show_legend) +
     
-    geom_ribbon(aes(ymin = smooth(H_predicted - H_sd),
-                    ymax = smooth(H_predicted + H_sd)),
-                alpha = opacity,
+    
+    geom_ribbon(data = d, aes(x = H_actual, y = H_predicted, 
+                              ymin = (H_predicted - .data[[uncertainty]]),
+                              ymax = (H_predicted + .data[[uncertainty]])),
                 fill = "navyblue",
+                alpha = opacity, show.legend = F,
                 colour="NA"
     )+
     
