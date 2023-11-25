@@ -96,10 +96,27 @@ solve.objective.inverse.shallow.final.fast <- function(
           )
           
         } else {
-          Gpred = Lee_forward(chl = pars[1], acdom440 = pars[2],
-                              anap440 =pars[3], bbp.550 = bbp.550,
-                              z = pars[4], rb.fraction = pars[5:(length(pars)-1)],
-                              verbose = F, realdata = data, plot = F)
+          Gpred = lee_forward_fast(
+            use_true_IOPs = T, 
+            a_non_water_path = abs_path,
+            bb_non_water_path = bb_path,
+            
+            #chl = pars[1], 
+            #a_dg = pars[2],
+            #bbp.550 = pars[3],
+            
+            z = pars[1],
+            rb.fraction = as.numeric(pars[2:(1+initial_rb_length)]),
+            
+            
+            slope.parametric = auto_spectral_slope,
+            Rrs_input_for_slope = data, 
+            
+            use_manual_slope =manual_spectral_slope,
+            manual_slope =  manual_spectral_slope_vals,
+            
+            verbose = F, wavelength = wave
+          )
         }
         
         # Negative log-likelihood
@@ -141,10 +158,27 @@ solve.objective.inverse.shallow.final.fast <- function(
           
           
         } else {
-          Gpred = Lee_forward(chl = constrain.param[1], acdom440 = constrain.param[2],
-                              anap440 = constrain.param[3], bbp.550 = bbp.550,
-                              z = pars[1], rb.fraction = as.numeric(pars[2:6]),
-                              verbose = F, realdata = data, plot = F)
+          Gpred = lee_forward_fast(
+            use_true_IOPs = T, 
+            a_non_water_path = abs_path,
+            bb_non_water_path = bb_path,
+            
+            #chl = pars[1], 
+            #a_dg = pars[2],
+            #bbp.550 = pars[3],
+            
+            z = pars[1],
+            rb.fraction = as.numeric(pars[2:(1+initial_rb_length)]),
+            
+            
+            slope.parametric = auto_spectral_slope,
+            Rrs_input_for_slope = data, 
+            
+            use_manual_slope =manual_spectral_slope,
+            manual_slope =  manual_spectral_slope_vals,
+            
+            verbose = F, wavelength = wave
+          )
         }
         
         rrs_est = Gpred[[1]]$Rrs
@@ -376,10 +410,29 @@ solve.objective.inverse.shallow.final.fast <- function(
           
           
         } else {
-          Gpred = Lee_forward(chl = constrain.bgc.value[1], acdom440 = constrain.bgc.value[2],
-                              anap440 = constrain.bgc.value[3], bbp.550 = bbp.550,
-                              z = pars[1], rb.fraction = as.numeric(pars[2:6]),
-                              verbose = F, realdata = data, plot = F)
+          Gpred = lee_forward_fast(
+            use_true_IOPs = F, 
+            #a_non_water_path = IOP_files[idx_a],
+            #bb_non_water_path = IOP_files[idx_bb],
+            
+            chl = constrain.bgc.value[1], 
+            a_dg = constrain.bgc.value[2],
+            bbp.550 = constrain.bgc.value[3],
+            
+            z = pars[1],
+            rb.fraction = as.numeric(pars[2:(1+initial_rb_length)]),
+            
+            
+            Rrs_input_for_slope = data,
+            
+            slope.parametric = auto_spectral_slope,
+            
+            
+            use_manual_slope =manual_spectral_slope,
+            manual_slope =  manual_spectral_slope_vals,
+            
+            verbose = F, wavelength = wave
+          )
         }
         
         # Negative log-likelihood
@@ -422,10 +475,29 @@ solve.objective.inverse.shallow.final.fast <- function(
           
           
         } else {
-          Gpred = Lee_forward(chl = constrain.param[1], acdom440 = constrain.param[2],
-                              anap440 = constrain.param[3], bbp.550 = bbp.550,
-                              z = pars[1], rb.fraction = as.numeric(pars[2:6]),
-                              verbose = F, realdata = data, plot = F)
+          Gpred = lee_forward_fast(
+            use_true_IOPs = F, 
+            #a_non_water_path = IOP_files[idx_a],
+            #bb_non_water_path = IOP_files[idx_bb],
+            
+            chl = constrain.bgc.value[1], 
+            a_dg = constrain.bgc.value[2],
+            bbp.550 = constrain.bgc.value[3],
+            
+            z = pars[1],
+            rb.fraction = as.numeric(pars[2:(1+initial_rb_length)]),
+            
+            
+            Rrs_input_for_slope = data,
+            
+            slope.parametric = auto_spectral_slope,
+            
+            
+            use_manual_slope =manual_spectral_slope,
+            manual_slope =  manual_spectral_slope_vals,
+            
+            verbose = F, wavelength = wave
+          )
         }
         
         rrs_est = Gpred[[1]]$Rrs
@@ -659,10 +731,29 @@ solve.objective.inverse.shallow.final.fast <- function(
           )
           
         } else {
-          Gpred = Lee_forward(chl = pars[1], acdom440 = pars[2],
-                              anap440 =pars[3], bbp.550 = bbp.550,
-                              z = pars[4], rb.fraction = pars[5:(length(pars)-1)],
-                              verbose = F, realdata = data, plot = F)
+          Gpred = lee_forward_fast(
+            use_true_IOPs = F, 
+            #a_non_water_path = IOP_files[idx_a],
+            #bb_non_water_path = IOP_files[idx_bb],
+            
+            chl = pars[1], 
+            a_dg = pars[2],
+            bbp.550 = pars[3],
+            
+            z = pars[4],
+            rb.fraction = as.numeric(pars[5:(4+initial_rb_length)]),
+            
+            
+            Rrs_input_for_slope = data,
+            
+            slope.parametric = auto_spectral_slope,
+            
+            
+            use_manual_slope =manual_spectral_slope,
+            manual_slope =  manual_spectral_slope_vals,
+            
+            verbose = F, wavelength = wave
+          )
         }
         
         # Negative log-likelihood
@@ -705,10 +796,29 @@ solve.objective.inverse.shallow.final.fast <- function(
           
           
         } else {
-          Gpred = Lee_forward(chl = constrain.param[1], acdom440 = constrain.param[2],
-                              anap440 = constrain.param[3], bbp.550 = bbp.550,
-                              z = pars[1], rb.fraction = as.numeric(pars[2:6]),
-                              verbose = F, realdata = data, plot = F)
+          Gpred = lee_forward_fast(
+            use_true_IOPs = F, 
+            #a_non_water_path = IOP_files[idx_a],
+            #bb_non_water_path = IOP_files[idx_bb],
+            
+            chl = pars[1], 
+            a_dg = pars[2],
+            bbp.550 = pars[3],
+            
+            z = pars[4],
+            rb.fraction = as.numeric(pars[5:(4+initial_rb_length)]),
+            
+            
+            Rrs_input_for_slope = data,
+            
+            slope.parametric = auto_spectral_slope,
+            
+            
+            use_manual_slope =manual_spectral_slope,
+            manual_slope =  manual_spectral_slope_vals,
+            
+            verbose = F, wavelength = wave
+          )
         }
         
         rrs_est = Gpred[[1]]$Rrs
@@ -960,9 +1070,26 @@ solve.objective.inverse.deep.final.fast <- function(
           )
           
         } else {
-          Gpred = Lee_forward(chl = pars[1], acdom440 = pars[2],
-                              anap440 =pars[3], bbp.550 = bbp.constrain.value,
-                              verbose = F, realdata = data, plot = F)
+          Gpred = lee_forward_fast(
+            use_true_IOPs = F, 
+            a_non_water_path = abs_path,
+            bb_non_water_path = bb_path,
+            
+            chl = pars[1], 
+            a_dg = pars[2],
+            bbp.550 =bbp.constrain.value,
+            
+            z = zB,
+            rb.fraction = fA.set,
+            
+            slope.parametric = auto_spectral_slope,
+            Rrs_input_for_slope = data, 
+            
+            use_manual_slope =manual_spectral_slope,
+            manual_slope =  manual_spectral_slope_vals,
+            
+            verbose = F, wavelength = wave
+          )
         }
         
         # Negative log-likelihood
@@ -1002,9 +1129,27 @@ solve.objective.inverse.deep.final.fast <- function(
           )
           
         } else {
-          Gpred = Lee_forward(chl = pars[1], acdom440 = pars[2],
-                              anap440 =pars[3], bbp.550 = bbp.constrain.value,
-                              verbose = F, realdata = data, plot = F)
+          Gpred = lee_forward_fast(
+            use_true_IOPs = F, 
+            a_non_water_path = abs_path,
+            bb_non_water_path = bb_path,
+            
+            chl = pars[1], 
+            a_dg = pars[2],
+            bbp.550 =bbp.constrain.value,
+            
+            z = zB,
+            rb.fraction = fA.set,
+            
+            
+            slope.parametric = auto_spectral_slope,
+            Rrs_input_for_slope = data, 
+            
+            use_manual_slope =manual_spectral_slope,
+            manual_slope =  manual_spectral_slope_vals,
+            
+            verbose = F, wavelength = wave
+          )
         }
         
         rrs_est = Gpred[[1]]$Rrs
@@ -1168,9 +1313,27 @@ solve.objective.inverse.deep.final.fast <- function(
           )
           
         } else {
-          Gpred = Lee_forward(chl = pars[1], acdom440 = pars[2],
-                              anap440 =pars[3], bbp.550 = bbp.constrain.value,
-                              verbose = F, realdata = data, plot = F)
+          Gpred = lee_forward_fast(
+            use_true_IOPs = F, 
+            a_non_water_path = abs_path,
+            bb_non_water_path = bb_path,
+            
+            chl = pars[1], 
+            a_dg = pars[2],
+            bbp.550 =pars[3],
+            
+            z = zB,
+            rb.fraction = fA.set,
+            
+            
+            slope.parametric = auto_spectral_slope,
+            Rrs_input_for_slope = data, 
+            
+            use_manual_slope =manual_spectral_slope,
+            manual_slope =  manual_spectral_slope_vals,
+            
+            verbose = F, wavelength = wave
+          )
         }
         
         # Negative log-likelihood
@@ -1210,9 +1373,27 @@ solve.objective.inverse.deep.final.fast <- function(
           )
           
         } else {
-          Gpred = Lee_forward(chl = pars[1], acdom440 = pars[2],
-                              anap440 =pars[3], bbp.550 = bbp.constrain.value,
-                              verbose = F, realdata = data, plot = F)
+          Gpred = lee_forward_fast(
+            use_true_IOPs = F, 
+            a_non_water_path = abs_path,
+            bb_non_water_path = bb_path,
+            
+            chl = pars[1], 
+            a_dg = pars[2],
+            bbp.550 =pars[3],
+            
+            z = zB,
+            rb.fraction = fA.set,
+            
+            
+            slope.parametric = auto_spectral_slope,
+            Rrs_input_for_slope = data, 
+            
+            use_manual_slope =manual_spectral_slope,
+            manual_slope =  manual_spectral_slope_vals,
+            
+            verbose = F, wavelength = wave
+          )
         }
         
         rrs_est = Gpred[[1]]$Rrs

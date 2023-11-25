@@ -11,7 +11,7 @@
 #Author: Mr. Soham Mukherjee - PhD Student, Aquatel, UQAR
 #=====================================================================================================
 #SABER FORWARD Model FAST version
-Lee_forward_fast <-  function(use_true_IOPs = T, #Set TRUE if actual spectral IOPs exist
+lee_forward_fast <-  function(use_true_IOPs = T, #Set TRUE if actual spectral IOPs exist
                                 a_non_water_path = "./data/rb_retrieve_demo_a.csv", #a path
                                 bb_non_water_path = "./data/rb_retrieve_demo_bb.csv", #bb path
                                 

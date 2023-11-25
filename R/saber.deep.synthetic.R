@@ -599,8 +599,10 @@ plot_inversion_validation_multvar_contour_final <- function(input_df, xmin, xmax
 # ===================================================================================
 # FINAL version for uni-variate log scale scatter plot for inversion (solo cruise)
 # ===================================================================================
-plot_inversion_validation_singlevar_contour <- function(input_df, xmin, xmax, xlabel, ylabel, 
-                                                      uncertainty = "CI", opacity = 0.3, plot_col,
+plot_inversion_validation_singlevar_contour_singlecruise <- function(input_df, xmin, xmax,
+                                                                     xlabel, ylabel, 
+                                                      uncertainty = "CI", opacity = 0.3, 
+                                                      plot_col,
                                                       show_legend){
   
   xmin = xmin; xmax = xmax
@@ -909,14 +911,17 @@ plot_inversion_validation_singlevar_contour_multcruise <- function(input_df, plo
 plot_inversion_validation_singlevar_linear_contour <- function(input_df, 
                                                                xmin, xmax, xlabel, 
                                                                ylabel, 
-                                                        uncertainty = "CI", opacity = 0.3,
-                                                        show_legend){
+                                                               uncertainty = "CI", opacity = 0.3, 
+                                                      plot_col, xstp,
+                            #label_list = c("GLORIA","MERMAID","SEABASS", "NOMAD", "AERONET-OC"),
+                            #shape_list = c(21,22,23,24,25),
+                            show_legend, hist_count = 30){
   
   ## data
   d <- input_df %>% 
     as_tibble() 
   
-  ymin = xmin; ymax = xmax ; xstp = xmax/4 ; ystp = ymax/4
+  ymin = xmin; ymax = xmax
   
   asp_rat <- (xmax-xmin)/(ymax-ymin)
   
@@ -927,11 +932,11 @@ plot_inversion_validation_singlevar_linear_contour <- function(input_df,
     geom_density_2d(data = d, aes(x = H_actual, y = H_predicted),na.rm = T, bins = 6,
                     linewidth = 0.25, colour = "black", show.legend = F, size=1.1)+
     
-    geom_point(data = d, aes(H_actual, H_predicted), shape=21, fill="goldenrod2",
-               alpha = I(0.4), size = I(3), show.legend = show_legend) +
+    geom_point(data = d, aes(H_actual, H_predicted), shape=21, fill=plot_col,
+               alpha = I(opacity), size = I(3), show.legend = show_legend) +
     
-    geom_ribbon(aes(ymin = H_predicted - H_sd,
-                    ymax = H_predicted + H_sd),
+    geom_ribbon(aes(ymin = smooth(H_predicted - H_sd),
+                    ymax = smooth(H_predicted + H_sd)),
                 alpha = opacity,
                 fill = "navyblue",
                 colour="NA"
@@ -940,8 +945,11 @@ plot_inversion_validation_singlevar_linear_contour <- function(input_df,
     geom_rug(size = 1.1, show.legend = T, alpha = opacity, 
              colour = heat.colors(n = length(d$H_actual)))+
     
-    geom_abline(slope = 1,linetype="solid", intercept = 0,
+    geom_abline(slope = 1,linetype="dashed", intercept = 0,
                 colour="black", na.rm = FALSE, size=1.3, show.legend = FALSE) +
+    
+    geom_smooth(size=1,level = 0.95,show.legend = F,linetype = "solid", color="red4", 
+                se= T, method = "lm")+
     
     coord_fixed(ratio = asp_rat, xlim = c(xmin, xmax), 
                 ylim = c(ymin, ymax), expand = FALSE, clip = "on") +
@@ -977,7 +985,7 @@ plot_inversion_validation_singlevar_linear_contour <- function(input_df,
           legend.text.align = 0,
           panel.border = element_rect(colour = "black", fill = NA, size = 1.5))
   
-  g <- ggMarginal(fill = "goldenrod2", data = d, type = "densigram", bins = 30, alpha = 0.7,
+  g <- ggMarginal(fill = plot_col, data = d, type = "densigram", bins = hist_count, alpha = 0.7,
                   p = g, aes(x = H_actual, y = H_predicted))
   return(g)
 }

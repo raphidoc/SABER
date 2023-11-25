@@ -618,7 +618,7 @@ forward.saber.fast = Saber_forward_fast(use_true_IOPs = F, use_manual_slope = F,
                                         bbp.550 = Fit.input$bbp.550, 
                                         
                                         slope.parametric = F, 
-                                        Rrs_input_for_slope = rrs.demo.Om.demo,
+                                        Rrs_input_for_slope = NA,
                                         
                                         z = zB,
                                         rb.fraction = fA.set, 
@@ -636,7 +636,7 @@ forward.lee.fast = Lee_forward_fast(use_true_IOPs = F, use_manual_slope = F,
                                         bbp.550 = Fit.input$bbp.550, 
                                         
                                         slope.parametric = F, 
-                                        Rrs_input_for_slope = rrs.demo.Om.demo,
+                                        Rrs_input_for_slope = NA,
                                         
                                         z = zB,
                                         rb.fraction = fA.set, 
@@ -645,10 +645,12 @@ forward.lee.fast = Lee_forward_fast(use_true_IOPs = F, use_manual_slope = F,
                                         wavelength = wavelength,
                                         verbose = T)
 
-rrs.forward.lee.fast = forward.saber.fast[[1]]$Rrs
+rrs.forward.lee.fast = forward.lee.fast[[1]]$Rrs
 
 plot(wavelength, rrs.forward.saber.fast, lwd=2, col="navyblue", type="l", ylim=c(0, 0.03))
-lines(wavelength, rrs.forward.am.param.conc.dg_comp_sicf_fdom, lty="dashed", col="green")
+lines(wavelength, rrs.forward.lee.fast, lwd=2, col="green4", type="l", ylim=c(0, 0.03))
+
+#lines(wavelength, rrs.forward.am.param.conc.dg_comp_sicf_fdom, lty="dashed", col="green")
 
 # #4.3.4.1. full spectral IOPs are provided and no SICF+fDOM
 # forward.op.am.param.conc.true_iop <- Saber_forward_final(use_true_IOPs = T, 
@@ -1088,7 +1090,8 @@ if (pop.sd == "unknown" & type_Rrs_below == "shallow" & constrain.shallow.iop ==
 
 
 #FOR FREE PARAMTER INVERSION INITIAL VALUE VECTOR
-if (pop.sd == "unknown" & type_Rrs_below == "shallow" & constrain.shallow.bgc == "FALSE" & constrain.shallow.iop == "FALSE") { # <<MANUAL INPUT>>
+if (pop.sd == "unknown" & type_Rrs_below == "shallow" & constrain.shallow.bgc == "FALSE" & 
+    constrain.shallow.iop == "FALSE") { # <<MANUAL INPUT>>
   par0 = c(chl = 2, adg440 = 0.8,
            bbp550 = 0.005,
            z = 2.5, 
@@ -1100,11 +1103,11 @@ if (pop.sd == "unknown" & type_Rrs_below == "shallow" & constrain.shallow.bgc ==
   
   lower.bound <- c((par0[1:3] - 0.8*par0[1:3]),z = 1,
                    rep(0, rb_count),
-                   population.sd = 0.00001)
+                   population.sd = 1e-05)
   
   upper.bound <- c((par0[1:3] + 5*par0[1:3]),z = 10,
                    rep(1, rb_count),
-                   population.sd = 10)
+                   population.sd = 1)
 }
 
 ########
@@ -1346,15 +1349,15 @@ if (type_Rrs_below == "shallow" & constrain.shallow.bgc == FALSE) {
     initial = as.numeric(par0), 
     obsdata = obsdata,
     
-    auto_spectral_slope = T,
+    auto_spectral_slope = F,
     manual_spectral_slope = F, 
     
     manual_spectral_slope_vals = c("s_g"=0.014, "s_d"=0.003, "gamma"=1),
     
-    sa.model = "am03", 
+    sa.model = "lee98", 
     #obj.fn =obj.run , 
     obj.fn = obj[1],
-    method.opt = methods.opt[8],
+    method.opt = methods.opt[4],
     
     lower.b = lower.bound,
     upper.b = upper.bound, 
