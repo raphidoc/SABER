@@ -241,7 +241,7 @@ wavelength <- seq(400,750,10)
 #=======================================================================================================
 
 #1.5 Viewing geometry in degrees
-view = 0
+view = 30
 sun_above  = 45
 sun = sunzen_below(sun_zen_aove = sun_above) #Make sure you pass "sun" for subsurface calculation
 

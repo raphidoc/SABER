@@ -7,13 +7,20 @@ library(plot3D)
 library(coda)
 library(bayesplot)
 
+source("./R/SABER_forward_fast.R")
+source("./R/lee_forward_fast.R")
+source("./R/solve.objective.inverse_fast.R")
+
 quiet <- function(x) { 
   sink(tempfile()) 
   on.exit(sink()) 
   invisible(force(x)) 
 } 
 
-runBayes <- function(obsdata, rrs_type, max_par, min_par, 
+inverse_runBayes <- function(obsdata, rrs_type, max_par, min_par, 
+                     param_lab = c("chl","adg443","bbp555", 
+                                   "H",  rep(paste0("fa", (1:rb_count))), 
+                                   "pop_sd"),
                      constrain_config = c("const_bbp" = F, "cost_bgc"=F, "cost_IOP"=F),
                      qaa_slope, manual_slope, 
                      manual_slope_val= c("s_g"=0.014, "s_d"=0.003, "gamma"=0.5),
@@ -175,8 +182,9 @@ runBayes <- function(obsdata, rrs_type, max_par, min_par,
       upper.b = upper.bound_bayes, 
     )))
     
-    # Fit.optimized.ssobj.batch <- c(inverse_output[[1]]$estimates,
-    #                                inverse_output[[1]]$`sd(+/-)`)
+    cat(paste0("\033[0;32m Expected parameters obtained from gradient-based optimization::::", 
+               paste0(signif(inverse_output[[1]]$estimates, digits = 2), collapse = ","),
+               "\033[0m","\n"))
     
     bayessetup <- createBayesianSetup(prior = NULL,
                                       likelihood = LL_unconstr_bayes,
@@ -184,9 +192,7 @@ runBayes <- function(obsdata, rrs_type, max_par, min_par,
                                       best = inverse_output[[1]]$estimates, 
                                       upper = upper.bound#[c(1:3,length(lower.bound))]
                                       ,
-                                      names = c("chl","adg443","bbp555", 
-                                                "H",  rep(paste0("fa", (1:rb_count))), 
-                                                "pop_sd"),
+                                      names = param_lab,
                                       parallel = F)
     
   } else {
@@ -197,15 +203,13 @@ runBayes <- function(obsdata, rrs_type, max_par, min_par,
                                       , 
                                       upper = upper.bound#[c(1:3,length(lower.bound))]
                                       ,
-                                      names = c("chl","adg443","bbp555", 
-                                                "H",  rep(paste0("fa", (1:rb_count))), 
-                                                "pop_sd"),
+                                      names = param_lab,
                                       parallel = F)
     
   }
   
   cat(paste0("\033[0;34m @@@@@@@@@@ TEST Bayesian Set-UP @@@@@@@@@ \033[0m","\n"))
-  checkBayesianSetup(bayessetup) #Test if the setup is initiated for theta pars
+  print(checkBayesianSetup(bayessetup)) #Test if the setup is initiated for theta pars
   
   max_iter = iter_count ; burn_in = max_iter/4; chain_burn = burn_in/3
   
@@ -300,7 +304,7 @@ runBayes <- function(obsdata, rrs_type, max_par, min_par,
       coord_fixed(ratio = asp_rat, xlim = c(xmin, xmax), 
                   ylim = c(ymin, ymax), expand = FALSE, clip = "on") +
      
-      annotate("text",x=550, y= 0.9*ymax, label = mcmc_label, parse=T, size=5, color="black")+
+      annotate("text",x=550, y= 0.9*ymax, label = mcmc_label, parse=T, size=3, color="black")+
       theme(plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
             axis.text.x = element_text(size = 20, color = 'black', angle = 0), 
             axis.text.y = element_text(size = 20, color = 'black', angle = 0), 
@@ -328,6 +332,13 @@ runBayes <- function(obsdata, rrs_type, max_par, min_par,
     print(g1)
     
   }
+  
+  MLE <- data.table("param" = param_lab,
+                    "estimates" = MAP_bayes$parametersMAP,
+                    "95% C.I." = sd_bayes)
+  
+  print("The inversion retrieved parameters are:")
+  prmatrix(MLE)
   
   return(bayes_output)
   

@@ -299,8 +299,8 @@ Saber_forward <-  function(chl=4.96, acdom440=0.9322314, anap440=0.07, bbp.550=0
   #--------------------------------------------------------------------------
   ## Remote sensing reflectance below the surface
   #--------------------------------------------------------------------------
-  geometry <- snell_law(view = view, sun = sun)
-  sun_w <- geometry$sun_w; view_w <- geometry$view_w; rho_L <- geometry$rho_L
+  geometry_below <- snell_law(view = view, sun = sun)
+  sun_w <- geometry_below$sun_w; view_w <- geometry_below$view_w; rho_L <- geometry_below$rho_L
   
   if (verbose == TRUE) {
     print("Viewing Geometry and Fresnel reflectance below surface calculated")
@@ -475,12 +475,17 @@ Saber_forward <-  function(chl=4.96, acdom440=0.9322314, anap440=0.07, bbp.550=0
   abs_WV <-  Hmisc::approxExtrap(x =absWV.wavelength, y =absWV.wv, xout = lambda, method = "linear")$y
   
   # angles from deg to rad
+  geometry_above = snell_law(view = 30, sun = 30)
   
-  view_rad=view*(180/pi); # rad
-  sun_rad=sun*(180/pi);   # rad
+   view_rad=geometry_above$view_w # rad
+   sun_rad=geometry_above$sun_w   # rad
+   rho_L_above = geometry_above$rho_L
+  
+  # view_rad = 30 
+  # sun_rad = 30
   
   # Downwelling Irradiance [mW/m^2 nm]
-  M <- 1/(cos(sun_rad)+(0.50572*((90+ 6.079975-sun)^(-1.253))))
+  M <- 1/(cos(sun_rad)+(0.50572*((90+ 6.079975-sun_rad)^(-1.253))))
   M1 <-  (M*P)/1013.25
   Moz <-  1.0035/ (((cos(sun_rad)^2)+0.007)^0.5)
   
@@ -507,7 +512,10 @@ Saber_forward <-  function(chl=4.96, acdom440=0.9322314, anap440=0.07, bbp.550=0
   Twv <-  exp((-0.2385*abs_WV*WV*M)/((1+(20.07*abs_WV*WV*M))^0.45))
   
   
-  B3 <- 0.82 - (0.1417*alpha); B1 <-  B3*(1.459 +(B3*(0.1595+(0.4129*B3)))); B2 <-  B3*(0.0783 +(B3*(-0.3824-(0.5874*B3))))
+  B3 <- 0.82 - (0.1417*alpha)
+  B1 <-  B3*(1.459 +(B3*(0.1595+(0.4129*B3))))
+  B2 <-  B3*(0.0783 +(B3*(-0.3824-(0.5874*B3))))
+  
   Fa <-  1-(0.5*exp((B1+(B2*cos(sun_rad)))*cos(sun_rad)))
   
   Edd <-  E0*Tr*Taa*Tas*Toz*To*Twv*cos(sun_rad)
@@ -521,7 +529,8 @@ Saber_forward <-  function(chl=4.96, acdom440=0.9322314, anap440=0.07, bbp.550=0
   Ls <-  (g_dd*Edd) + (g_dsr*Edsr) + (g_dsa*Edsa)# [mW/sr m^2 nm]
   
   # Remote sensing reflectance above the surface [1/sr]
-  Rrs_above <-  rho_L*(Ls/Ed)
+  
+  Rrs_above <-  rho_L_above*(Ls/Ed)
   
   if (verbose == TRUE) {
     print(paste0("Skyglint calculated from ", min(lambda), " nm to ", max(lambda), " nm."))
