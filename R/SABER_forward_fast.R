@@ -387,7 +387,7 @@ Saber_forward_fast <-  function(use_true_IOPs = T, #Set TRUE if actual spectral 
     
     #Plot the fitted a_t-w
     if (plot == TRUE) {
-      plot(a_non_water_df$wave, a_non_water_df$a, xlab="wavelength", 
+      plot(a_non_water_df$wave, a_non_water_df$at_w, xlab="wavelength", 
            ylab="non-water absorption [m^-1]")
       lines(lambda, a_non_water_interp, col="red", lwd=3)
     }

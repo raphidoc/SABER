@@ -46,7 +46,8 @@ solve.objective.inverse.shallow.final.fast <- function(
     #,batch=FALSE, pop.sd=FALSE
     ){
   
-  initial_rb_length = length(initial[5:(length(initial)-1)])
+  #initial_rb_length = length(initial[5:(length(initial)-1)])
+  initial_rb_length = 3
   
   
   if (auto_spectral_slope == TRUE & manual_spectral_slope == TRUE) {
@@ -92,7 +93,7 @@ solve.objective.inverse.shallow.final.fast <- function(
             use_manual_slope =manual_spectral_slope,
             manual_slope =  manual_spectral_slope_vals,
             
-            verbose = F, wavelength = wave
+            verbose = F, wavelength = wave,plot = F
           )
           
         } else {
@@ -115,7 +116,7 @@ solve.objective.inverse.shallow.final.fast <- function(
             use_manual_slope =manual_spectral_slope,
             manual_slope =  manual_spectral_slope_vals,
             
-            verbose = F, wavelength = wave
+            verbose = F, wavelength = wave, plot = F
           )
         }
         
@@ -152,7 +153,7 @@ solve.objective.inverse.shallow.final.fast <- function(
               use_manual_slope =manual_spectral_slope,
               manual_slope =  manual_spectral_slope_vals,
               
-              verbose = F, wavelength = wave
+              verbose = F, wavelength = wave, plot = F
             )
             
           
@@ -177,7 +178,7 @@ solve.objective.inverse.shallow.final.fast <- function(
             use_manual_slope =manual_spectral_slope,
             manual_slope =  manual_spectral_slope_vals,
             
-            verbose = F, wavelength = wave
+            verbose = F, wavelength = wave, plot = F
           )
         }
         
@@ -542,18 +543,18 @@ solve.objective.inverse.shallow.final.fast <- function(
       }
       
       #Instantiate initial values
-      par0 = c(chl = initial[1], adg440 = initial[2], bbp550 = initial[3], 
+      par0 = c(#chl = initial[1], adg440 = initial[2], bbp550 = initial[3], 
                  
-                z = initial[4], 
-                initial[5:(4+initial_rb_length)],
+                z = initial[1], 
+                initial[2:(1+initial_rb_length)],
                 pop.sd = initial[length(initial)])
       
-      par0_constrained = par0[-(1:3)]
+      par0_constrained = par0
       
       
       cat(paste0("\033[0;33m","####################CONSTRAINED INVERSION#########################","\033[0m","\n"))
       
-      cat(paste0("\033[0;32m","Initial values are: zB=", par0[4],",  RB={", toString(as.numeric(par0[5:(length(par0)-1)])),"},  population.sigma=", par0[length(par0)],"\033[0m","\n"))
+      cat(paste0("\033[0;32m","Initial values are: zB=", par0[1],",  RB={", toString(as.numeric(par0[2:(length(par0)-1)])),"},  population.sigma=", par0[length(par0)],"\033[0m","\n"))
       
       
       cat(paste0("\033[0;41m","#################### OPTIMIZATION INITIALIZING #########################","\033[0m","\n"))
@@ -570,8 +571,8 @@ solve.objective.inverse.shallow.final.fast <- function(
         
         print("L-BFGS-B Optimization will be used for inversion")
         MLE_estimates = optim(par = as.numeric(par0_constrained), fn = NLL_constr, data = obsdata, 
-                              lower = as.numeric(lower.b[-(1:3)]),     # Lower bound on parameters
-                              upper = as.numeric(upper.b[-(1:3)]),  # Upper bound on parameters
+                              lower = as.numeric(lower.b),     # Lower bound on parameters
+                              upper = as.numeric(upper.b),  # Upper bound on parameters
                               #gr = grad.calculate,
                               method = method.opt,
                               control = list(#fnscale = 1, 
@@ -870,7 +871,7 @@ solve.objective.inverse.shallow.final.fast <- function(
              pop.sd = initial[length(initial)])
     
     
-    cat(paste0("\033[0;33m","####################CONSTRAINED INVERSION#########################","\033[0m","\n"))
+    cat(paste0("\033[0;33m","####################UNCONSTRAINED INVERSION#########################","\033[0m","\n"))
     
     cat(paste0("\033[0;32m","Initial values are: [chl]=",par0[1], ", adg(440)=",par0[2], ", bbp(555)=", par0[3], ", zB=", par0[4],",  RB={", toString(as.numeric(par0[5:(length(par0)-1)])),"},  population.sigma=", par0[length(par0)],"\033[0m","\n"))
     

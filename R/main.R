@@ -1260,7 +1260,7 @@ if (type_Rrs_below == "deep" & constrain.bbp == "FALSE") {
     obj.fn = obj[1],
     
     auto_spectral_slope = F,
-    manual_spectral_slope = F, 
+    manual_spectral_slope = T, 
     
     manual_spectral_slope_vals = c("s_g"=0.014, "s_d"=0.003, "gamma"=0.46),
     

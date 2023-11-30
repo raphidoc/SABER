@@ -287,7 +287,7 @@ if (constrain.shallow  == TRUE) {
     source("./R/SABER_forward_fast.R")
     source("./R/solve.objective.inverse_fast.R")
     source("./R/saber.inversion.vector.parallel.R")
-    apply(data_split[[i]], 1, doOptimization_shallow_BGC_const,
+    apply(data_split[[i]], 1, doOptimization_shallow_BGC_const_back,
           par0 = par0, wl = wavelength, 
           sa_model = "lee98", obj_fn = obj[3], 
           opt_method = methods.opt[4]
@@ -310,7 +310,7 @@ if (constrain.shallow  == TRUE) {
     source("./R/SABER_forward_fast.R")
     source("./R/solve.objective.inverse_fast.R")
     source("./R/saber.inversion.vector.parallel.R")
-    apply(data_split[[i]], 1, doOptimization_shallow_unconst,
+    apply(data_split[[i]], 1, doOptimization_shallow_unconst_back,
           par0 = par0, wl = wavelength, 
           sa_model = "am03", obj_fn = obj[1], 
           opt_method = methods.opt[4]

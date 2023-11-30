@@ -23,7 +23,8 @@ inverse_runBayes <- function(obsdata, rrs_type, max_par, min_par,
                                    "pop_sd"),
                      constrain_config = c("const_bbp" = F, "cost_bgc"=F, "cost_IOP"=F),
                      qaa_slope, manual_slope, 
-                     manual_slope_val= c("s_g"=0.014, "s_d"=0.003, "gamma"=0.5),
+                     bbp_const_val, bgc_const_val, iop_const_path,
+                     manual_slope_vals= c("s_g"=0.014, "s_d"=0.003, "gamma"=0.5),
                      iter_count, sampler_mcmc,
                      wavelngth_sim, sa_model, hybrid_mode, plot_rrs){
   
@@ -34,14 +35,29 @@ inverse_runBayes <- function(obsdata, rrs_type, max_par, min_par,
   
   cat(paste0("\033[0;34m**************************************************************************\033[0m","\n"))
   cat(paste0("\033[0;34m MODEL CONSTRAINTS ::::\033[0m","\n"))
-  cat(paste0("\033[0;32m","Backscatter constrain: [chl]=",constrain_config[1],"\033[0m","\n"))
-  cat(paste0("\033[0;32m","Biogeochemical variable constrain: [chl]=",constrain_config[2],"\033[0m","\n"))
-  cat(paste0("\033[0;32m","IOP constrain: [chl]=",constrain_config[3],"\033[0m","\n"))
+  
+  cat(paste0("\033[0;32m","Backscatter constrain: ",constrain_config[1],"\033[0m","\n"))
+  if (constrain_config[1] == T) {
+    cat(paste0("\033[0;32m","bbp(555) constrained value: ",bbp_const_val,"\033[0m","\n"))
+  }
+  
+  cat(paste0("\033[0;32m","Biogeochemical variable constrain: ",constrain_config[2],"\033[0m","\n"))
+  if (constrain_config[2] == T) {
+    cat(paste0("\033[0;32m","BGC constrained value: ",bgc_const_val,"\033[0m","\n"))
+  }
+  cat(paste0("\033[0;32m","IOP constrain: ",constrain_config[3],"\033[0m","\n"))
+  if (constrain_config[3] == T) {
+    cat(paste0("\033[0;32m","Spectral IOP paths: ",paste0(iop_const_path, collapse = ","),"\033[0m","\n"))
+  }
+  
   cat(paste0("\033[0;34m==========================================================================\033[0m","\n"))
   cat(paste0("\033[0;34m SPECTRAL SLOPE SETTINGS ::::\033[0m","\n"))
-  cat(paste0("\033[0;32m","Slope for QAA : [chl]=",qaa_slope,"\033[0m","\n"))
-  cat(paste0("\033[0;32m","Slope from user: [chl]=",manual_slope,"\033[0m","\n"))
-  cat(paste0("\033[0;32m","Slope values: [chl]=",manual_slope_val,"\033[0m","\n"))
+  cat(paste0("\033[0;32m","Slope for QAA: ",qaa_slope,"\033[0m","\n"))
+  cat(paste0("\033[0;32m","Slope from user: ",manual_slope,"\033[0m","\n"))
+  if (manual_slope == TRUE) {
+    
+    cat(paste0("\033[0;32m","Slope values: ",manual_slope_vals,"\033[0m","\n"))
+  }
   cat(paste0("\033[0;34m==========================================================================\033[0m","\n"))
   cat(paste0("\033[0;34m ANCILIARY ::::\033[0m","\n"))
   cat(paste0("\033[0;32m","Rrs type: ",rrs_type,"\033[0m","\n"))
@@ -59,70 +75,269 @@ inverse_runBayes <- function(obsdata, rrs_type, max_par, min_par,
   Sys.sleep(1)
   
   initial = max_par
-  initial_rb_length = length(initial[5:(length(initial)-1)])
+  #initial_rb_length = length(initial[5:(length(initial)-1)])
+  initial_rb_length = 3
   
-  LL_unconstr_bayes = function(pars) {
+  #bbp constrained Inversion
+  if (constrain_config[1] == T) {
     
-    # Values predicted by the forward model
-    if (sa_model == "am03") {
-      Gpred = Saber_forward_fast(
-        use_true_IOPs = F, 
-        
-        chl = pars[1], 
-        a_dg = pars[2],
-        bbp.550 = pars[3],
-        
-        z = pars[4],
-        rb.fraction = as.numeric(pars[5:(4+initial_rb_length)]),
-        
-        
-        Rrs_input_for_slope = obsdata,
-        
-        slope.parametric = qaa_slope,
-        
-        
-        use_manual_slope =manual_slope,
-        manual_slope =  manual_spectral_slope_vals,
-        
-        verbose = F, wavelength = wavelngth_sim
-      )
+    LL_unconstr_bayes = function(pars) {
       
-    } else {
-      Gpred = lee_forward_fast(
-        use_true_IOPs = F, 
+      # Values predicted by the forward model
+      if (sa_model == "am03") {
+        Gpred = Saber_forward_fast(
+          use_true_IOPs = F, 
+          a_non_water_path = iop_const_path[1],
+          bb_non_water_path = iop_const_path[2],
+          
+          chl = pars[1], 
+          a_dg = pars[2],
+          bbp.550 = bbp_const_val,
+          
+          z = pars[4],
+          rb.fraction = as.numeric(pars[5:(4+initial_rb_length)]),
+          
+          
+          Rrs_input_for_slope = obsdata,
+          
+          slope.parametric = qaa_slope,
+          
+          
+          use_manual_slope =manual_slope,
+          manual_slope =  manual_slope_vals,
+          
+          verbose = F, wavelength = wavelngth_sim
+        )
         
-        chl = pars[1], 
-        a_dg = pars[2],
-        bbp.550 = pars[3],
-        
-        z = pars[4],
-        rb.fraction = as.numeric(pars[5:(4+initial_rb_length)]),
-        
-        
-        Rrs_input_for_slope = obsdata,
-        
-        slope.parametric = qaa_slope,
-        
-        
-        use_manual_slope =manual_slope,
-        manual_slope =  manual_spectral_slope_vals,
-        
-        verbose = F, wavelength = wavelngth_sim
-      )
+      } else {
+        Gpred = lee_forward_fast(
+          use_true_IOPs = F, 
+          
+          chl = bgc_const_val[1], 
+          a_dg = bgc_const_val[2],
+          bbp.550 = bgc_const_val[3],
+          
+          z = pars[1],
+          rb.fraction = as.numeric(pars[2:(1+initial_rb_length)]),
+          
+          
+          Rrs_input_for_slope = obsdata,
+          
+          slope.parametric = qaa_slope,
+          
+          
+          use_manual_slope =manual_slope,
+          manual_slope =  manual_slope_vals,
+          
+          verbose = F, wavelength = wavelngth_sim
+        )
+      }
+      
+      # Negative log-likelihood
+      smull = sum(dnorm(x = 10000*obsdata, mean = 10000*Gpred[[1]]$Rrs, sd = pars[length(pars)], 
+                        log = TRUE), na.rm = T)
+      return(smull)
     }
     
-    # Negative log-likelihood
-    smull = sum(dnorm(x = 10000*obsdata, mean = 10000*Gpred[[1]]$Rrs, sd = pars[length(pars)], 
-                      log = TRUE), na.rm = T)
-    return(smull)
+  } else {
+    
+    #IOP constrained Inversion
+    if (constrain_config[3] == T) {
+      
+      LL_unconstr_bayes = function(pars) {
+        
+        # Values predicted by the forward model
+        if (sa_model == "am03") {
+          Gpred = Saber_forward_fast(
+            use_true_IOPs = T, 
+            a_non_water_path = iop_const_path[1],
+            bb_non_water_path = iop_const_path[2],
+            
+            chl = bgc_const_val[1], 
+            a_dg = bgc_const_val[2],
+            bbp.550 = bgc_const_val[3],
+            
+            z = pars[1],
+            rb.fraction = as.numeric(pars[2:(1+initial_rb_length)]),
+            
+            
+            Rrs_input_for_slope = obsdata,
+            
+            slope.parametric = qaa_slope,
+            
+            
+            use_manual_slope =manual_slope,
+            manual_slope =  manual_slope_vals,
+            
+            verbose = F, wavelength = wavelngth_sim
+          )
+          
+        } else {
+          Gpred = lee_forward_fast(
+            use_true_IOPs = F, 
+            
+            chl = bgc_const_val[1], 
+            a_dg = bgc_const_val[2],
+            bbp.550 = bgc_const_val[3],
+            
+            z = pars[1],
+            rb.fraction = as.numeric(pars[2:(1+initial_rb_length)]),
+            
+            
+            Rrs_input_for_slope = obsdata,
+            
+            slope.parametric = qaa_slope,
+            
+            
+            use_manual_slope =manual_slope,
+            manual_slope =  manual_slope_vals,
+            
+            verbose = F, wavelength = wavelngth_sim
+          )
+        }
+        
+        # Negative log-likelihood
+        smull = sum(dnorm(x = 10000*obsdata, mean = 10000*Gpred[[1]]$Rrs, sd = pars[length(pars)], 
+                          log = TRUE), na.rm = T)
+        return(smull)
+      }
+      
+    } else {
+      
+      #Constrained Inversion
+      if (constrain_config[2] == T) {
+        
+        LL_unconstr_bayes = function(pars) {
+          
+          # Values predicted by the forward model
+          if (sa_model == "am03") {
+            Gpred = Saber_forward_fast(
+              use_true_IOPs = F, 
+              
+              chl = bgc_const_val[1], 
+              a_dg = bgc_const_val[2],
+              bbp.550 = bgc_const_val[3],
+              
+              z = pars[1],
+              rb.fraction = as.numeric(pars[2:(1+initial_rb_length)]),
+              
+              
+              Rrs_input_for_slope = obsdata,
+              
+              slope.parametric = qaa_slope,
+              
+              
+              use_manual_slope =manual_slope,
+              manual_slope =  manual_slope_vals,
+              
+              verbose = F, wavelength = wavelngth_sim
+            )
+            
+          } else {
+            Gpred = lee_forward_fast(
+              use_true_IOPs = F, 
+              
+              chl = bgc_const_val[1], 
+              a_dg = bgc_const_val[2],
+              bbp.550 = bgc_const_val[3],
+              
+              z = pars[1],
+              rb.fraction = as.numeric(pars[2:(1+initial_rb_length)]),
+              
+              
+              Rrs_input_for_slope = obsdata,
+              
+              slope.parametric = qaa_slope,
+              
+              
+              use_manual_slope =manual_slope,
+              manual_slope =  manual_slope_vals,
+              
+              verbose = F, wavelength = wavelngth_sim
+            )
+          }
+          
+          # Negative log-likelihood
+          smull = sum(dnorm(x = 10000*obsdata, mean = 10000*Gpred[[1]]$Rrs, sd = pars[length(pars)], 
+                            log = TRUE), na.rm = T)
+          return(smull)
+        }
+        
+      } else {
+        
+        #Unconstrained Inversion
+        if (all(constrain_config) == F) {
+          LL_unconstr_bayes = function(pars) {
+            
+            # Values predicted by the forward model
+            if (sa_model == "am03") {
+              Gpred = Saber_forward_fast(
+                use_true_IOPs = F, 
+                
+                chl = pars[1], 
+                a_dg = pars[2],
+                bbp.550 = pars[3],
+                
+                z = pars[4],
+                rb.fraction = as.numeric(pars[5:(4+initial_rb_length)]),
+                
+                
+                Rrs_input_for_slope = obsdata,
+                
+                slope.parametric = qaa_slope,
+                
+                
+                use_manual_slope =manual_slope,
+                manual_slope =  manual_slope_vals,
+                
+                verbose = F, wavelength = wavelngth_sim
+              )
+              
+            } else {
+              Gpred = lee_forward_fast(
+                use_true_IOPs = F, 
+                
+                chl = pars[1], 
+                a_dg = pars[2],
+                bbp.550 = pars[3],
+                
+                z = pars[4],
+                rb.fraction = as.numeric(pars[5:(4+initial_rb_length)]),
+                
+                
+                Rrs_input_for_slope = obsdata,
+                
+                slope.parametric = qaa_slope,
+                
+                
+                use_manual_slope =manual_slope,
+                manual_slope =  manual_slope_vals,
+                
+                verbose = F, wavelength = wavelngth_sim
+              )
+            }
+            
+            # Negative log-likelihood
+            smull = sum(dnorm(x = 10000*obsdata, mean = 10000*Gpred[[1]]$Rrs, sd = pars[length(pars)], 
+                              log = TRUE), na.rm = T)
+            return(smull)
+          }
+        }
+        
+      }
+      
+    }
+    
   }
   
-  #Instantiate inversion objective function and the optimization scheme 
   
+  
+  #Instantiate inversion objective function and the optimization scheme 
+  #browser()
   inv_bound = create_init_bound(rrs_inv_type = rrs_type, manual_par0 = T, 
-                                constrain.bbp = model_config[1], 
-                                constrain.shallow.bgc = model_config[2], 
-                                constrain.shallow.iop = model_config[3], 
+                                constrain.bbp = constrain_config[1], 
+                                constrain.shallow.bgc = constrain_config[2], 
+                                constrain.shallow.iop = constrain_config[3], 
                                 pop.sd =  "unknown",
                                 
                                 init_par = rowMeans(matrix(c(max_par,min_par), 
@@ -151,17 +366,18 @@ inverse_runBayes <- function(obsdata, rrs_type, max_par, min_par,
   
   if (hybrid_mode == TRUE) {
     
-    cat(paste0("\033[0;34m ENTERING HYBRID MODE ::::\033[0m","\n"))
+    cat(paste0("\033[0;34m EXECUTING HYBRID MODE ::::\033[0m","\n"))
+    cat(paste0("\033[0;41m CAUTION: DONT RUN UNLESS UNCONSTRAINED SHALLOW WATER INVERSION ::::\033[0m","\n"))
     
     inverse_output <- quiet(suppressWarnings(solve.objective.inverse.shallow.final.fast(
       
       wave = wavelngth_sim, 
       
-      constrain.shallow.iop = model_config[3],  
+      constrain.shallow.iop = constrain_config[3],  
       
       unconstrained = T,
       
-      constrained.bgc = model_config[2], 
+      constrained.bgc = constrain_config[2], 
       constrain.bgc.value = NA,
       
       
@@ -171,7 +387,7 @@ inverse_runBayes <- function(obsdata, rrs_type, max_par, min_par,
       auto_spectral_slope = qaa_slope,
       manual_spectral_slope = manual_slope, 
       
-      manual_spectral_slope_vals = manual_slope_val,
+      manual_spectral_slope_vals = manual_slope_vals,
       
       sa.model = sa_model, 
       
@@ -188,9 +404,9 @@ inverse_runBayes <- function(obsdata, rrs_type, max_par, min_par,
     
     bayessetup <- createBayesianSetup(prior = NULL,
                                       likelihood = LL_unconstr_bayes,
-                                      lower = lower.bound,#[c(1:3,length(lower.bound))] 
+                                      lower = lower.bound_bayes,#[c(1:3,length(lower.bound))] 
                                       best = inverse_output[[1]]$estimates, 
-                                      upper = upper.bound#[c(1:3,length(lower.bound))]
+                                      upper = upper.bound_bayes#[c(1:3,length(lower.bound))]
                                       ,
                                       names = param_lab,
                                       parallel = F)
@@ -199,9 +415,9 @@ inverse_runBayes <- function(obsdata, rrs_type, max_par, min_par,
     
     bayessetup <- createBayesianSetup(prior = NULL,
                                       likelihood = LL_unconstr_bayes,
-                                      lower = lower.bound#[c(1:3,length(lower.bound))]
+                                      lower = lower.bound_bayes#[c(1:3,length(lower.bound))]
                                       , 
-                                      upper = upper.bound#[c(1:3,length(lower.bound))]
+                                      upper = upper.bound_bayes#[c(1:3,length(lower.bound))]
                                       ,
                                       names = param_lab,
                                       parallel = F)
@@ -221,15 +437,16 @@ inverse_runBayes <- function(obsdata, rrs_type, max_par, min_par,
   cat(paste0("\033[0;34m @@@@@@@@@@ MCMC START @@@@@@@@@ \033[0m","\n"))
   out <- runMCMC(bayesianSetup = bayessetup, settings = settings, sampler = sampler_mcmc )
   
-  sd_c1 = apply(out[["chain"]][[1]][-1,1:8], 2, sd)
-  sd_c2 = apply(out[["chain"]][[2]][-1,1:8], 2, sd)
-  sd_c3 = apply(out[["chain"]][[3]][-1,1:8], 2, sd)
+  sd_c1 = apply(out[["chain"]][[1]][-1,1:length(upper.bound_bayes)], 2, sd)
+  sd_c2 = apply(out[["chain"]][[2]][-1,1:length(upper.bound_bayes)], 2, sd)
+  sd_c3 = apply(out[["chain"]][[3]][-1,1:length(upper.bound_bayes)], 2, sd)
   
   sd_bayes = rowMeans(matrix(c(sd_c1,sd_c2,sd_c3), 
                              ncol=3))
   MAP_bayes = MAP(out, start = burn_in
   )
   bayes_output = c(MAP_bayes$parametersMAP, sd_bayes)
+  names(bayes_output) = c(param_lab, paste0("sd_", param_lab))
   cat(paste0("\033[0;34m @@@@@@@@@@ MCMC FINISHED @@@@@@@@@ \033[0m","\n"))
   summary(out, start = burn_in)
   
@@ -254,7 +471,7 @@ inverse_runBayes <- function(obsdata, rrs_type, max_par, min_par,
       
       
       use_manual_slope =manual_slope,
-      manual_slope =  manual_spectral_slope_vals,
+      manual_slope =  manual_slope_vals,
       
       verbose = F, wavelength = wavelngth_sim
     )
@@ -335,10 +552,14 @@ inverse_runBayes <- function(obsdata, rrs_type, max_par, min_par,
   
   MLE <- data.table("param" = param_lab,
                     "estimates" = MAP_bayes$parametersMAP,
-                    "95% C.I." = sd_bayes)
+                    "95% C.I.(+/-)" = sd_bayes)
   
   print("The inversion retrieved parameters are:")
   prmatrix(MLE)
+  
+  cat(paste0("\033[0;33m","###################################################################","\033[0m","\n"))
+  cat(paste0("\033[0;39m","########### INVERSION IS COMPLETED #######","\033[0m","\n"))
+  cat(paste0("\033[0;32m","###################################################################","\033[0m","\n"))
   
   return(bayes_output)
   
