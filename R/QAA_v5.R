@@ -1,4 +1,4 @@
-QAA.v5 <- function(waves, Rrs)
+QAA.v5 <- function(waves, Rrs, translate_subsurf=T)
 {
   #wl  <- c(412,443,490,510,555,670)
   bbw <- Riops::spectral.bw(waves) * 0.5
@@ -38,9 +38,14 @@ QAA.v5 <- function(waves, Rrs)
     }
   }
   
+  if (translate_subsurf == T) {
+    #  STEP 0 - compute RRS to below Sea Surface
+    rrs <-  Rrs / (0.52 + 1.7*Rrs)
+    
+  } else {
+    rrs = Rrs
+  }
   
-  #  STEP 0 - compute RRS to below Sea Surface
-  rrs <-  Rrs / (0.52 + 1.7*Rrs)
   
   # Step 1 - Compute  bb/a+bb ratio
   X <-  (-g0 + sqrt(g0^2 + 4*g1*rrs)) / (2*g1)
@@ -75,8 +80,11 @@ QAA.v5 <- function(waves, Rrs)
   a_phi_443 = a_phi[ix443]
   
   chl_est = (a_phi_443/0.06)^(1/0.65) #Estimate Chlorophyll-a
+  bbp_est = bb - bbw #Estimate spectral bbp
+  a_nw_est = a - aw #Estimate spectral non-water absorption
   
-  return(list(a=a,bb=bb, s_cdm=s_cdm, a_dg_443 = a_dg_443, 
+  return(list(a=a,bb=bb, bbp = bbp_est, a_nw = a_nw_est,
+              s_cdm=s_cdm, a_dg_443 = a_dg_443, 
               a_phi= a_phi, chl = chl_est,
               b_bp_555=bbp.ref))
   

@@ -323,80 +323,80 @@ doOptimization_shallow_unconst <- function(obsdata, init_par, max_par, min_par,
 
 
 ############################################################################################
-#Instantiate inversion objective function and the optimization scheme 
-pop.sd = "unknown" ;constrain.bbp= F
-constrain.shallow.bgc = F ; constrain.shallow.iop = T; manual_par0 = T
-#type_Rrs_below = "shallow"
-
-inv_bound = create_init_bound(rrs_inv_type = type_Rrs_below, manual_par0 = manual_par0, 
-                              constrain.bbp = constrain.bbp, 
-                              constrain.shallow.bgc = constrain.shallow.bgc, 
-                              constrain.shallow.iop = constrain.shallow.iop, 
-                              pop.sd =  pop.sd, 
-                              init_par = c(sapply(param_vec, mean ), 0.5,0.5,0.5,0.05),
-                              upper_par = c(sapply(param_vec, max), 1,1,1,10),
-                              lower_par = c(sapply(param_vec, min ), 0.0,0.0,0.0,0.00001)
-)
-
-par0 = inv_bound$par0 ; upper.bound = inv_bound$upper.bound  
-lower.bound = inv_bound$lower.bound
-
-doOptimization_deep_const(obsdata = obsdata, 
-                          bbp_const_val = 0.007,
-                            max_par = upper.bound,
-                            min_par = lower.bound, 
-                            init_par = par0, wavelength_sim = wavelength, 
-                            QAA_mode = F,
-                            qaa_prefit = F, qaa_slope = F, manual_slope = T, 
-                            manual_slope_vals = c("s_g"= 0.014, "s_d"= 0.003, "gamma"=0.5),
-                            opt_method = methods.opt[4],
-                            sa_model = "am03", 
-                            obj_fn = obj.fn )
-
-doOptimization_deep_unconst(obsdata = obsdata, 
-                            max_par = upper.bound,
-                            min_par = lower.bound, 
-                            init_par = par0, wavelength_sim = wavelength, 
-                            QAA_mode = F,
-                            qaa_prefit = F, qaa_slope = F, manual_slope = T, 
-                            manual_slope_vals = c("s_g"= 0.014, "s_d"= 0.003, "gamma"=0.5),
-                            opt_method = methods.opt[4],
-                            sa_model = "am03", 
-                            obj_fn = obj.fn )
-
-doOptimization_shallow_BGC_const(obsdata = obsdata, 
-                            max_par = upper.bound,
-                            min_par = lower.bound, bgc_const_val = c(4.96, 1, 0.007),
-                            init_par = par0, wavelength_sim = wavelength, 
-                            QAA_mode = F,
-                            qaa_prefit = F, qaa_slope = F, manual_slope = F, 
-                            manual_slope_vals = c(0.014, 0.003, 0.5),
-                            opt_method = methods.opt[4],
-                            sa_model = "am03", 
-                            obj_fn = obj.fn )
-
-doOptimization_shallow_IOP_const(obsdata = obsdata, 
-                                 max_par = upper.bound,
-                                 min_par = lower.bound, bgc_const_val = c(4.96, 1, 0.007),
-                                 iop_const_path = config_list$` constrain_iop`,
-                                 init_par = par0, wavelength_sim = wavelength, 
-                                 QAA_mode = F,
-                                 qaa_prefit = F, qaa_slope = F, manual_slope = F, 
-                                 manual_slope_vals = c(0.014, 0.003, 0.5),
-                                 opt_method = methods.opt[4],
-                                 sa_model = "am03", 
-                                 obj_fn = obj.fn )
-
-doOptimization_shallow_unconst(obsdata = obsdata, 
-                            max_par = upper.bound,
-                            min_par = lower.bound, bgc_const_val = c(4.96, 1, 0.007),
-                            init_par = par0, wavelength_sim = wavelength, 
-                            QAA_mode = F,
-                            qaa_prefit = F, qaa_slope = F, manual_slope = F, 
-                            manual_slope_vals = c(0.014, 0.003, 0.5),
-                            opt_method = methods.opt[4],
-                            sa_model = "am03", 
-                            obj_fn = obj.fn )
+# #Instantiate inversion objective function and the optimization scheme 
+# pop.sd = "unknown" ;constrain.bbp= F
+# constrain.shallow.bgc = F ; constrain.shallow.iop = T; manual_par0 = T
+# #type_Rrs_below = "shallow"
+# 
+# inv_bound = create_init_bound(rrs_inv_type = type_Rrs_below, manual_par0 = manual_par0, 
+#                               constrain.bbp = constrain.bbp, 
+#                               constrain.shallow.bgc = constrain.shallow.bgc, 
+#                               constrain.shallow.iop = constrain.shallow.iop, 
+#                               pop.sd =  pop.sd, 
+#                               init_par = c(sapply(param_vec, mean ), 0.5,0.5,0.5,0.05),
+#                               upper_par = c(sapply(param_vec, max), 1,1,1,10),
+#                               lower_par = c(sapply(param_vec, min ), 0.0,0.0,0.0,0.00001)
+# )
+# 
+# par0 = inv_bound$par0 ; upper.bound = inv_bound$upper.bound  
+# lower.bound = inv_bound$lower.bound
+# 
+# doOptimization_deep_const(obsdata = obsdata, 
+#                           bbp_const_val = 0.007,
+#                             max_par = upper.bound,
+#                             min_par = lower.bound, 
+#                             init_par = par0, wavelength_sim = wavelength, 
+#                             QAA_mode = F,
+#                             qaa_prefit = F, qaa_slope = F, manual_slope = T, 
+#                             manual_slope_vals = c("s_g"= 0.014, "s_d"= 0.003, "gamma"=0.5),
+#                             opt_method = methods.opt[4],
+#                             sa_model = "am03", 
+#                             obj_fn = obj.fn )
+# 
+# doOptimization_deep_unconst(obsdata = obsdata, 
+#                             max_par = upper.bound,
+#                             min_par = lower.bound, 
+#                             init_par = par0, wavelength_sim = wavelength, 
+#                             QAA_mode = F,
+#                             qaa_prefit = F, qaa_slope = F, manual_slope = T, 
+#                             manual_slope_vals = c("s_g"= 0.014, "s_d"= 0.003, "gamma"=0.5),
+#                             opt_method = methods.opt[4],
+#                             sa_model = "am03", 
+#                             obj_fn = obj.fn )
+# 
+# doOptimization_shallow_BGC_const(obsdata = obsdata, 
+#                             max_par = upper.bound,
+#                             min_par = lower.bound, bgc_const_val = c(4.96, 1, 0.007),
+#                             init_par = par0, wavelength_sim = wavelength, 
+#                             QAA_mode = F,
+#                             qaa_prefit = F, qaa_slope = F, manual_slope = F, 
+#                             manual_slope_vals = c(0.014, 0.003, 0.5),
+#                             opt_method = methods.opt[4],
+#                             sa_model = "am03", 
+#                             obj_fn = obj.fn )
+# 
+# doOptimization_shallow_IOP_const(obsdata = obsdata, 
+#                                  max_par = upper.bound,
+#                                  min_par = lower.bound, bgc_const_val = c(4.96, 1, 0.007),
+#                                  iop_const_path = config_list$` constrain_iop`,
+#                                  init_par = par0, wavelength_sim = wavelength, 
+#                                  QAA_mode = F,
+#                                  qaa_prefit = F, qaa_slope = F, manual_slope = F, 
+#                                  manual_slope_vals = c(0.014, 0.003, 0.5),
+#                                  opt_method = methods.opt[4],
+#                                  sa_model = "am03", 
+#                                  obj_fn = obj.fn )
+# 
+# doOptimization_shallow_unconst(obsdata = obsdata, 
+#                             max_par = upper.bound,
+#                             min_par = lower.bound, bgc_const_val = c(4.96, 1, 0.007),
+#                             init_par = par0, wavelength_sim = wavelength, 
+#                             QAA_mode = F,
+#                             qaa_prefit = F, qaa_slope = F, manual_slope = F, 
+#                             manual_slope_vals = c(0.014, 0.003, 0.5),
+#                             opt_method = methods.opt[4],
+#                             sa_model = "am03", 
+#                             obj_fn = obj.fn )
 
 ########################################################################################
 inverse_runGrad <- function(obsdata, rrs_type,
@@ -584,38 +584,38 @@ inverse_runGrad <- function(obsdata, rrs_type,
   return(inverse_output)
 }
 
-#Instantiate inversion objective function and the optimization scheme 
-pop.sd = "unknown" ;constrain.bbp= F
-constrain.shallow.bgc = F ; constrain.shallow.iop = F; manual_par0 = T
-type_Rrs_below = "shallow"
-
-inv_bound = create_init_bound(rrs_inv_type = type_Rrs_below, manual_par0 = manual_par0, 
-                              constrain.bbp = constrain.bbp, 
-                              constrain.shallow.bgc = constrain.shallow.bgc, 
-                              constrain.shallow.iop = constrain.shallow.iop, 
-                              pop.sd =  pop.sd, 
-                              init_par = c(2,1,0.007,5,0.5,0.5,0.5,0.05),
-                              upper_par = c(sapply(param_vec, max), 1,1,1,10),
-                              lower_par = c(sapply(param_vec, min ),0.0,0.0,0.0,0.00001)
-)
-
-par0 = inv_bound$par0 ; upper.bound = inv_bound$upper.bound  
-lower.bound = inv_bound$lower.bound
-
-test_inv = inverse_runGrad(obsdata = obsdata, rrs_type = type_Rrs_below,
-                max_par = upper.bound,
-                min_par = lower.bound, 
-                init_par = par0,
-                param_lab = c("chl","adg443","bbp555", 
-                              "H",  rep(paste0("fa", (1:rb_count))), 
-                              "pop_sd"), 
-                constrain_config = c(F, F, T), bgc_const_val = c(4.96,1.003,0.007), 
-                iop_const_path = config_list$` constrain_iop`,
-                qaa_prefit = F, QAA_mode = F, qaa_slope = F, manual_slope = F, 
-                manual_slope_vals = c("s_g"=0.014, "s_d"=0.003, "gamma"=0.46),
-                wavelength_sim =  wavelength,
-                sa_model = "am03", obj_fn = obj.fn, opt_method = methods.opt[4] 
-                )
+# #Instantiate inversion objective function and the optimization scheme 
+# pop.sd = "unknown" ;constrain.bbp= F
+# constrain.shallow.bgc = F ; constrain.shallow.iop = F; manual_par0 = T
+# type_Rrs_below = "shallow"
+# 
+# inv_bound = create_init_bound(rrs_inv_type = type_Rrs_below, manual_par0 = manual_par0, 
+#                               constrain.bbp = constrain.bbp, 
+#                               constrain.shallow.bgc = constrain.shallow.bgc, 
+#                               constrain.shallow.iop = constrain.shallow.iop, 
+#                               pop.sd =  pop.sd, 
+#                               init_par = c(2,1,0.007,5,0.5,0.5,0.5,0.05),
+#                               upper_par = c(sapply(param_vec, max), 1,1,1,10),
+#                               lower_par = c(sapply(param_vec, min ),0.0,0.0,0.0,0.00001)
+# )
+# 
+# par0 = inv_bound$par0 ; upper.bound = inv_bound$upper.bound  
+# lower.bound = inv_bound$lower.bound
+# 
+# test_inv = inverse_runGrad(obsdata = obsdata, rrs_type = type_Rrs_below,
+#                 max_par = upper.bound,
+#                 min_par = lower.bound, 
+#                 init_par = par0,
+#                 param_lab = c("chl","adg443","bbp555", 
+#                               "H",  rep(paste0("fa", (1:rb_count))), 
+#                               "pop_sd"), 
+#                 constrain_config = c(F, F, T), bgc_const_val = c(4.96,1.003,0.007), 
+#                 iop_const_path = config_list$` constrain_iop`,
+#                 qaa_prefit = F, QAA_mode = F, qaa_slope = F, manual_slope = F, 
+#                 manual_slope_vals = c("s_g"=0.014, "s_d"=0.003, "gamma"=0.46),
+#                 wavelength_sim =  wavelength,
+#                 sa_model = "am03", obj_fn = obj.fn, opt_method = methods.opt[4] 
+#                 )
 
 ###############################################################################################################
 
@@ -706,8 +706,8 @@ doOptimization_deep_unconst_back <- function(obsdata, par0_base, wl, qaa_prefit,
   }
 }
 
-doOptimization_deep_unconst(obsdata = obsdata, par0_base = par0, wl = wavelength, 
-                            qaa_prefit = F, QAA_mode = F, sa_model = "am03", obj_fn = obj.fn)
+# doOptimization_deep_unconst(obsdata = obsdata, par0_base = par0, wl = wavelength, 
+#                             qaa_prefit = F, QAA_mode = F, sa_model = "am03", obj_fn = obj.fn)
 
 #===================================================================
 ### Unconstrained inversion for shallow water

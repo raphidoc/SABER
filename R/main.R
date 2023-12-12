@@ -99,6 +99,7 @@ library(data.table)
 library(ggalt)
 library(ggExtra)
 library(suncalc)
+library(viridis)
 #-------------------------------------------------------------------------------------------
 #Function to read EXCEL sheet
 read_excel_allsheets <- function(filename, tibble = FALSE) {
@@ -113,7 +114,8 @@ read_excel_allsheets <- function(filename, tibble = FALSE) {
 }
 
 #Function to read and load IOCCG data-set
-read_IOCCG_data <- function(filepath = paste0(getwd(),"/data/IOP_AOP_Sun60.xls")){
+read_IOCCG_data <- function(wave_adg = 440, wave_bbp = 550,
+                            filepath = paste0(getwd(),"/data/IOP_AOP_Sun60.xls")){
   
   insitu.data.HL <- read_excel_allsheets(filename = filepath)
   
@@ -127,15 +129,24 @@ read_IOCCG_data <- function(filepath = paste0(getwd(),"/data/IOP_AOP_Sun60.xls")
   #chl, acdom440, anap440 & bbp550 from IOCCG dataset 
   chldata <- insitu.data.HL$a_ph[-1,1]
   
-  acdom440data <- insitu.data.HL$a_g[which(names(insitu.data.HL$a_g[1,]) == "440")]
+  acdom440data <- insitu.data.HL$a_g[which(names(insitu.data.HL$a_g[1,]) == wave_adg)]
   
-  anap440data <- insitu.data.HL$a_dm[which(names(insitu.data.HL$a_dm[1,]) == "440")]
+  anap440data <- insitu.data.HL$a_dm[which(names(insitu.data.HL$a_dm[1,]) == wave_adg)]
   
-  bbp550data <- insitu.data.HL$bb[which(names(insitu.data.HL$bb[1,]) == "550")] -
-    as.numeric(water.data$bb_w[water.data$wavelength == 550])
+  bbp550data <- insitu.data.HL$bb[which(names(insitu.data.HL$bb[1,]) == wave_bbp)] -
+    as.numeric(water.data$bb_w[water.data$wavelength == wave_bbp])
   
-  return(data.frame("chl"=chldata, "acdom440"= acdom440data$`440`,
-                            "anap440"= anap440data$`440`, "bbp550"= bbp550data$`550`))
+  acdom_name = paste0("acdom",wave_adg); anap_name = paste0("anap",wave_adg)
+  bbp_name = paste0("bbp",wave_bbp)
+  
+  outdata = data.frame("chl"= chldata,
+             "acdom" = acdom440data,
+             "anap" = anap440data, 
+             "bbp" = bbp550data)
+  
+  names(outdata) = c("chl", acdom_name, anap_name, bbp_name)
+  
+  return(outdata)
   
 }
                               
@@ -491,7 +502,6 @@ if (insitu.present == TRUE) {
   idx_rb = grep(Rb_files, pattern = paste0("Rb_spectral_data_",statname, ".csv$"))
 }
 
-
 #Estimate [chl] from O'Rilley
 # rrs <- insitu.data
 
@@ -653,6 +663,11 @@ lines(wavelength, rrs.forward.lee.fast, lwd=2, col="green4", type="l", ylim=c(0,
 #lines(wavelength, rrs.forward.am.param.conc.dg_comp_sicf_fdom, lty="dashed", col="green")
 
 # #4.3.4.1. full spectral IOPs are provided and no SICF+fDOM
+
+Saber_forward_fast(use_true_IOPs = T, a_non_water_path = config_list$` constrain_iop`[1], 
+                   bb_non_water_path = config_list$` constrain_iop`[2], 
+                   Rrs_input_for_slope = F,z = 2, rb.fraction = fA.set)
+
 # forward.op.am.param.conc.true_iop <- Saber_forward_final(use_true_IOPs = T, 
 #                                       a_non_water_path = IOP_files[idx_a],
 #                                       bb_non_water_path = IOP_files[idx_bb],
@@ -1118,48 +1133,48 @@ if (pop.sd == "unknown" & type_Rrs_below == "shallow" & constrain.shallow.bgc ==
 
 #TEST inversion model with slower forward model
 
-# forward.op.am.param.conc.dg_comp_sicf_fdom <- Saber_forward_final( 
-#                                 use_true_IOPs = F,
-#                                 
-#                                 a_non_water_path = IOP_files[idx_a],
-#                                 bb_non_water_path = IOP_files[idx_bb],
-#                                 
-#                                 chl = Fit.input$chl, 
-#                                 acdom440 = Fit.input$acdom.440, 
-#                                 anap440 = Fit.input$anap.440, 
-#                                 a_dg =   NULL  ,
-#                                 bbp.550 = Fit.input$bbp.550, 
-#                                 
-#                                 #z = iop_aop_data$zB_COPS,
-#                                 z=zB,
-#                                 rb.fraction = fA.set,
-#                                 use_spectral_rb = F, 
-#                                 spectral_rb_path = Rb_files[idx_rb],
-#                                 
-#                                 
-#                                 #realdata = rrs.forward.am,
-#                                 realdata = surface_rrs_translate(Rrs = insitu.data),
-#                                 
-#                                 dg_composite = T,
-#                                 
-#                                 slope.parametric = F,
-#                                 use_spectral_shape_chl = F,
-#                                 use_spectral_shape_dg = T,
-#                                 
-#                                 
-#                                 use_manual_slope =F,
-#                                 manual_slope = c("s_g"=0.016, "s_d"=0.01160, "gamma"=0.5),
-#                                 
-#                                 sicf = F, q_phi = 0.05, 
-#                                 
-#                                 fDOM = F,
-#                                 sunzen_Ed = -99, 
-#                                 lat_Ed = 49.02487, lon_Ed = -68.37059,
-#                                 date_time_Ed = "2019-08-18 20:59 GMT", 
-#                                 Ed_fDOM_path = "./data/input-spectra/Ed_HL.csv",
-#                                 use_fDOM_rad = F,
-#                                 
-#                                 verbose = T, plot = F, realdata.exist = T)
+forward.op.am.param.conc.dg_comp_sicf_fdom <- Saber_forward_final(
+                                use_true_IOPs = F,
+
+                                a_non_water_path = IOP_files[idx_a],
+                                bb_non_water_path = IOP_files[idx_bb],
+
+                                chl = Fit.input$chl,
+                                acdom440 = Fit.input$acdom.440,
+                                anap440 = Fit.input$anap.440,
+                                a_dg =   NULL  ,
+                                bbp.550 = Fit.input$bbp.550,
+
+                                #z = iop_aop_data$zB_COPS,
+                                z=zB,
+                                rb.fraction = fA.set,
+                                use_spectral_rb = F,
+                                spectral_rb_path = Rb_files[idx_rb], 
+
+
+                                #realdata = rrs.forward.am,
+                                #realdata = surface_rrs_translate(Rrs = insitu.data),
+
+                                dg_composite = T,
+
+                                slope.parametric = F,
+                                use_spectral_shape_chl = F,
+                                use_spectral_shape_dg = T,
+
+
+                                use_manual_slope =F,
+                                manual_slope = c("s_g"=0.016, "s_d"=0.01160, "gamma"=0.5),
+
+                                sicf = F, q_phi = 0.05,
+
+                                fDOM = F,
+                                sunzen_Ed = -99,
+                                lat_Ed = 49.02487, lon_Ed = -68.37059,
+                                date_time_Ed = "2019-08-18 20:59 GMT",
+                                Ed_fDOM_path = "./data/input-spectra/Ed_HL.csv",
+                                use_fDOM_rad = F,
+
+                                verbose = T, plot = F, realdata.exist = F)
 # 
 # rrs.forward.am.param.conc.dg_comp_sicf_fdom <- forward.op.am.param.conc.dg_comp_sicf_fdom[[1]]$Rrs #Extract AM03 modeled Rrs
 # obsdata = rrs.forward.am.param.conc.dg_comp_sicf_fdom
@@ -1306,6 +1321,7 @@ if (type_Rrs_below == "shallow" & constrain.shallow.bgc == TRUE) {
 #IOP constrained
 if (type_Rrs_below == "shallow" & constrain.shallow.iop == TRUE) {
   inverse_output_shallow_constr <- suppressWarnings(solve.objective.inverse.shallow.final.fast(
+    wave = wavelength,
     constrain.shallow.iop = T, 
     abs_path = abs_path, bb_path = bb_path,
     

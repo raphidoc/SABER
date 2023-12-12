@@ -1,3 +1,68 @@
+
+source("./R/saber_forward_parametric_conc_wise.R") #FINAL VERSION
+source("./R/SABER_forward_fast.R") #FASTEST VERSION
+
+#Inelastic Scattering Models
+source("./R/SABER.sicf.R")
+source("./R/SABER.fdom.R")
+source("./R/inelastic.wavelength.redistribution.R")
+
+#QAAv5 for IOP and Spectral slopes
+source("./R/QAA_v5.R")
+
+#Inverse Am03 model with residual function
+#source("./R/saber_inverse.R")
+
+#Sun Earth Geometry and Downwelling Irradiance 
+source("./R/snell_law.R")
+source("./R/gregg_carder_ed.R")
+
+#Spectral Bottom Reflectance Retrieval
+source("./R/retrive.rb.spectral.wise.R")
+source("./R/generate.rb.spectral.R")
+source("./R/read.surface.IOPs.wise.R")
+source("./R/retrieve.rb.spectral.minimal.R")
+
+#Gradient Based Inverse Functions
+source("./R/solve.objective.inverse.final.R") 
+source("./R/solve.objective.inverse_fast.R") #FINAL VERSION
+
+#MCMC Based Inverse Functions
+source("./R/mcmc.functions.R")
+source("./R/saber.inversion.vector.parallel.R")
+source("./R/mcmc_bayes_parallel.R")
+#-------------------------------------------------------------------------------------------
+library(dplyr)
+library(readxl)
+library(stats4)
+library(MASS)
+library(dglm)
+library(fitdistrplus)
+library(Riops)
+library(Cops)
+library(ggplot2)
+library(rho)
+library(marqLevAlg)
+library(BayesianTools)
+library(coda)
+library(stats)
+library(Deriv)
+library(mcmc)
+library(plot3D)
+library(limSolve)
+library(nloptr)
+library(minpack.lm)
+library(pracma)
+library(alabama)
+library(data.table)
+library(ggalt)
+library(ggExtra)
+library(suncalc)
+library(viridis)
+
+#=======================================================================
+# Function to read the configuration file for inversion
+#=======================================================================
 read_inv_param <- function(inv_config_file){
   
   inv_config = read.table(file = inv_config_file, sep=",", header = T,colClasses = "character")
@@ -42,6 +107,7 @@ read_inv_param <- function(inv_config_file){
 
 }
 
+#test_param = read_inv_param(inv_config_file = "./data/inversion_config.txt")
 
 #=======================================================================
 # Function to create initial values and bounds for inversion
@@ -191,21 +257,24 @@ create_init_bound <- function(pop.sd = "unknown",
   return(list("par0"=par0, "upper.bound"=upper.bound, "lower.bound"=lower.bound))
 }
 
-inv_bound = create_init_bound(rrs_inv_type = rrs_type, manual_par0 = T, 
-                              constrain.bbp = F, 
-                              constrain.shallow.bgc = T, 
-                              constrain.shallow.iop = F, 
-                              pop.sd =  "unknown",
-                              
-                              init_par = rowMeans(matrix(c(max_par,min_par), 
-                                                         ncol=2)),
-                              upper_par = max_par,
-                              lower_par = min_par
-)
+# inv_bound = create_init_bound(rrs_inv_type = rrs_type, manual_par0 = T, 
+#                               constrain.bbp = F, 
+#                               constrain.shallow.bgc = T, 
+#                               constrain.shallow.iop = F, 
+#                               pop.sd =  "unknown",
+#                               
+#                               init_par = rowMeans(matrix(c(max_par,min_par), 
+#                                                          ncol=2)),
+#                               upper_par = max_par,
+#                               lower_par = min_par
+# )
+# 
+# par0 = inv_bound$par0 ; upper_bound = inv_bound$upper.bound  
+# lower_bound= inv_bound$lower.bound
 
-par0 = inv_bound$par0 ; upper_bound = inv_bound$upper.bound  
-lower_bound= inv_bound$lower.bound
-
+#=======================================================================
+# A single Function to perform the inversion as per the configuration
+#=======================================================================
 run_inverse_mode <- function(rrs_input, 
                              wavelength_input, 
                              inv_config_file = "./data/inversion_config.txt"){
@@ -319,7 +388,15 @@ run_inverse_mode <- function(rrs_input,
   return(inv_output)
 }
 
-run_inverse_mode(rrs_input = obsdata, wavelength_input = wavelength)
+#=======================================================================
+# Test the inversion function
+#=======================================================================
+run_inverse_mode(rrs_input = obsdata #+ rnorm.trunc(n = length(obsdata), mean = 0, 
+                                             #sd = sd(obsdata), min = 0)*0.05 
+                      , wavelength_input = wavelength)
 
+run_inverse_mode(rrs_input = as.numeric(rrs.forward.SABER[1,]), 
+                 wavelength_input = wavelength)
+param_vec[100,]
 
 
