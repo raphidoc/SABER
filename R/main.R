@@ -72,6 +72,8 @@ source("./R/solve.objective.inverse_fast.R") #FINAL VERSION
 
 #MCMC Based Inverse Functions
 source("./R/mcmc.functions.R")
+
+source("./R/plot.scatterplot.validation.R")
 #-------------------------------------------------------------------------------------------
 library(dplyr)
 library(readxl)
@@ -1152,7 +1154,7 @@ forward.op.am.param.conc.dg_comp_sicf_fdom <- Saber_forward_final(
                                 spectral_rb_path = Rb_files[idx_rb], 
 
 
-                                #realdata = rrs.forward.am,
+                                realdata = obsdata,
                                 #realdata = surface_rrs_translate(Rrs = insitu.data),
 
                                 dg_composite = T,
@@ -1174,7 +1176,7 @@ forward.op.am.param.conc.dg_comp_sicf_fdom <- Saber_forward_final(
                                 Ed_fDOM_path = "./data/input-spectra/Ed_HL.csv",
                                 use_fDOM_rad = F,
 
-                                verbose = T, plot = F, realdata.exist = F)
+                                verbose = T, plot = F, realdata.exist = T)
 # 
 # rrs.forward.am.param.conc.dg_comp_sicf_fdom <- forward.op.am.param.conc.dg_comp_sicf_fdom[[1]]$Rrs #Extract AM03 modeled Rrs
 # obsdata = rrs.forward.am.param.conc.dg_comp_sicf_fdom

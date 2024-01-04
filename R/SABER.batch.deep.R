@@ -6,169 +6,6 @@
 #=================================================================================================================
 rm(list=ls(all=TRUE))
 
-require(dplyr)
-require(readxl)
-require(stats4)
-require(MASS)
-require(dglm)
-library(fitdistrplus)
-require(Riops)
-require(Cops)
-library(lmodel2)
-
-setwd("/home/musk0001/R_inverse_wasi")
-
-#=====================================================
-# Function for goodness of fit for inversion retrieved
-# parameters for QAA and SABER
-#=====================================================
-summary_stat <- function(input_var ) {
-  summary_temp = summary(input_var)
-  desc_stat = data_frame("min" = summary_temp[1], "max" = summary_temp[length(summary_temp)],
-                         "sd" = sd(input_var), "mean" = summary_temp[4], 
-                         "median" = summary_temp[3], "mode" = Mode(input_var),
-                         "skewness" = skewness(input_var), "kurtosis" = kurtosis(input_var))
-  
-  return(desc_stat)
-}
-#=====================================================
-# Function for goodness of fit for inversion retrieved
-# parameters for QAA and SABER
-#=====================================================
-goodness_of_fit <- function(actual, predicted, bbp.exist = F, take_log = T) {
-  
-  
-  if (take_log == TRUE) {
-    
-    #BIAS
-    bias_chl = Metrics::bias(actual = log10(actual$chl), #chl
-                             predicted = log10(predicted$chl))
-    
-    bias_adg443 = Metrics::bias(actual = log10(actual$adg443), #adg443
-                                predicted = log10(predicted$adg443))
-    
-    
-    #%-bias
-    p_bias_chl = Metrics::percent_bias(actual = log10(actual$chl), #chl
-                                       predicted = log10(predicted$chl))
-    
-    p_bias_adg443 = Metrics::percent_bias(actual = log10(actual$adg443), #adg443
-                                          predicted = log10(predicted$adg443))
-    
-    #RMSE
-    rmse_chl = Metrics::rmse(actual = log10(actual$chl), #chl
-                             predicted = log10(predicted$chl))
-    
-    rmse_adg443 = Metrics::rmse(actual = log10(actual$adg443), #adg443
-                                predicted = log10(predicted$adg443))
-    
-    #R^2
-    yx.lmodel2_chl <- lmodel2(log10(predicted$chl) ~ log10(actual$chl)) #chl
-    
-    r_square_chl = yx.lmodel2_chl$rsquare
-    slope_chl = yx.lmodel2_chl$regression.results$Slope[2]
-    
-    yx.lmodel2_adg443 <- lmodel2(log10(predicted$adg443) ~ log10(actual$adg443)) #adg443
-    
-    r_square_adg443 = yx.lmodel2_adg443$rsquare
-    slope_adg443 = yx.lmodel2_adg443$regression.results$Slope[2]
-    
-    if (bbp.exist == T) {
-      bias_bbp555 = Metrics::bias(actual = log10(actual$bbp555), #bbp555
-                                  predicted = log10(predicted$bbp555))
-      
-      p_bias_bbp555 = Metrics::percent_bias(actual = log10(actual$bbp555), #bbp555
-                                            predicted = log10(predicted$bbp555))
-      
-      rmse_bbp555 = Metrics::rmse(actual = log10(actual$bbp555), #bbp555
-                                  predicted = log10(predicted$bbp555))
-      
-      yx.lmodel2_bbp555 <- lmodel2(log10(predicted$bbp555) ~ log10(actual$bbp555)) #bbp555
-      
-      r_square_bbp555 = yx.lmodel2_bbp555$rsquare
-      slope_bbp555 = yx.lmodel2_bbp555$regression.results$Slope[2]
-      
-    }
-    
-    
-  } else {
-    
-    #BIAS
-    bias_chl = Metrics::bias(actual = actual$chl, #chl
-                             predicted = predicted$chl)
-    
-    bias_adg443 = Metrics::bias(actual = actual$adg443, #adg443
-                                predicted = predicted$adg443)
-    
-    
-    #%-bias
-    p_bias_chl = Metrics::percent_bias(actual = actual$chl, #chl
-                                       predicted = predicted$chl)
-    
-    p_bias_adg443 = Metrics::percent_bias(actual = actual$adg443, #adg443
-                                          predicted = predicted$adg443)
-    
-    #RMSE
-    rmse_chl = Metrics::rmse(actual = actual$chl, #chl
-                             predicted = predicted$chl)
-    
-    rmse_adg443 = Metrics::rmse(actual = actual$adg443, #adg443
-                                predicted = predicted$adg443)
-    
-    #R^2
-    yx.lmodel2_chl <- lmodel2((predicted$chl) ~ (actual$chl)) #chl
-    
-    r_square_chl = yx.lmodel2_chl$rsquare
-    slope_chl = yx.lmodel2_chl$regression.results$Slope[2]
-    
-    yx.lmodel2_adg443 <- lmodel2((predicted$adg443) ~ (actual$adg443)) #adg443
-    
-    r_square_adg443 = yx.lmodel2_adg443$rsquare
-    slope_adg443 = yx.lmodel2_adg443$regression.results$Slope[2]
-    
-    if (bbp.exist == T) {
-      bias_bbp555 = Metrics::bias(actual = actual$bbp555, #bbp555
-                                  predicted = predicted$bbp555)
-      
-      p_bias_bbp555 = Metrics::percent_bias(actual = actual$bbp555, #bbp555
-                                            predicted = predicted$bbp555)
-      
-      rmse_bbp555 = Metrics::rmse(actual = actual$bbp555, #bbp555
-                                  predicted = predicted$bbp555)
-      
-      yx.lmodel2_bbp555 <- lmodel2((predicted$bbp555) ~ (actual$bbp555)) #bbp555
-      
-      r_square_bbp555 = yx.lmodel2_bbp555$rsquare
-      slope_bbp555 = yx.lmodel2_bbp555$regression.results$Slope[2]
-      
-    }
-  }
-  
-  
-  if (bbp.exist == T) {
-    bias = c(bias_chl, bias_adg443, bias_bbp555)
-    p_bias = c(p_bias_chl, p_bias_adg443, p_bias_bbp555)
-    rmse = c(rmse_chl, rmse_adg443, rmse_bbp555)
-    r_square = c(r_square_chl, r_square_adg443, r_square_bbp555)
-    slope = c(slope_chl, slope_adg443, slope_bbp555)
-    errorstat = data.frame(bias, p_bias, rmse, r_square, slope)
-    errorstat$parameter = c("chl", "adg443", "bbp555")
-    
-  } else {
-    bias = c(bias_chl, bias_adg443)
-    p_bias = c(p_bias_chl, p_bias_adg443)
-    rmse = c(rmse_chl, rmse_adg443)
-    r_square = c(r_square_chl, r_square_adg443)
-    slope = c(slope_chl, slope_adg443)
-    errorstat = data.frame(bias, p_bias, rmse, r_square, slope)
-    errorstat$parameter = c("chl", "adg443")
-    
-  }
-  
-  return(errorstat)
-  
-}
-
 # ====================================================
 # 1. For IOCCG 2003 dataset
 # ====================================================
@@ -181,13 +18,22 @@ names(water.data) <- c("wavelength", "a_w", "bb_w")
 
 #Store spectral slopes
 a_g_vec = insitu.data$a_g$Sg ; a_g_HL_mean = mean(a_g_vec)
-a_d_vec = insitu.data$a_d$Sd; a_d_HL_mean = mean(a_d_vec) ; a_dg_HL_mean = a_g_HL_mean + a_d_HL_mean
+a_d_vec = insitu.data$a_d$Sd; a_d_HL_mean = mean(a_d_vec) 
+a_dg_HL_mean = a_g_HL_mean + a_d_HL_mean
 
 
-HL.deep.iop = read_IOCCG_data()
+HL.deep.iop = read_IOCCG_data(wave_adg = 440, wave_bbp = 550)
 
 #sub-surface (0^-) Rrs
-rrs.HL <- as.matrix(insitu.data$r_rs); rrs.HL.wl <- as.numeric(names(insitu.data$r_rs))
+rrs.HL <- as.matrix(insitu.data$r_rs)
+#rrs.HL <- as.matrix(insitu.data$Rrs)
+rrs.HL.wl <- as.numeric(names(insitu.data$r_rs))
+rrs.HL = as.data.frame(rrs.HL)
+names(rrs.HL) = paste0("lam", rrs.HL.wl)
+write.csv(file = "./data/IOCCG_Rrs_interp.csv", rrs.HL, row.names = F, 
+          col.names = T,  quote = F)
+
+#rrs.HL <- as.matrix(insitu.data$Rrs); rrs.HL.wl <- as.numeric(names(insitu.data$r_rs))
 
 rrs.HL_plot = as.data.frame(rrs.HL)
 names(rrs.HL_plot) = rrs.HL.wl
@@ -289,7 +135,8 @@ for (j in 1:dim(rrs.HL)[1]) {
                                 auto_spectral_slope = F,
                                 manual_spectral_slope = T, 
                                 
-                                manual_spectral_slope_vals = c("s_g"=a_g_vec[i], "s_d"=a_d_vec[i], "gamma"=1),
+                                manual_spectral_slope_vals = c("s_g"=a_g_vec[i], 
+                                                               "s_d"=a_d_vec[i], "gamma"=1),
                                 
                                 method.opt = methods.opt[4],
                                 lower.b = lower.bound,
@@ -313,8 +160,9 @@ write.csv(file = "./Outputs/SABER_param_IOCCG.csv", x=Fit.optimized.ssobj.batch,
 #Create data-frame to store QAA outputs
 Fit.optimized.qaa.ioccg <- data.frame("chl"=0, 
                                       "adg.440"=0,
-                                      "bbp550"=0
-)
+                                      "bbp550"=0)
+
+fit_bbp_spectral <- t(as.data.frame(rep(0, length(wavelength))))
 
 negative_status_vec_qaa = vector()
 
@@ -366,25 +214,27 @@ for (j in 1:dim(rrs.HL)[1]) {
     
   }
   
-  qaa_output = QAA.v5(waves = wavelength, Rrs = rrs_inverse_input)
+  qaa_output = QAA.v5(waves = wavelength, Rrs = rrs_inverse_input, translate_subsurf = F)
   ix443 = which.min(abs(443 - wavelength))
   a_ph_443 = qaa_output$a_phi[ix443]
   
-  chl_est = (a_ph_443/0.06)^(1/0.65)
+  #chl_est = (a_ph_443/0.06)^(1/0.65)
   
-  par0 = c(chl = chl_est, adg440 =qaa_output$a_dg_443, 
+  par0 = c(chl = qaa_output$chl, adg440 =qaa_output$a_dg_443, 
            bbp550 = qaa_output$b_bp_555)
   
   if (any(par0 == Inf) | any(is.na(par0))) {
     print("QAA failed, default mean values wil be used")
-    par0 = c(chl = mean(HL.deep.iop$chl), adg440 = mean(HL.deep.iop$acdom440 + HL.deep.iop$anap440), 
+    par0 = c(chl = mean(HL.deep.iop$chl), 
+             adg440 = mean(HL.deep.iop$acdom440 + HL.deep.iop$anap440), 
              bbp550 = mean(HL.deep.iop$bbp550, na.rm = T))
     
     
   } 
   
   Fit.optimized.qaa.ioccg <- rbind(Fit.optimized.qaa.ioccg, par0)
-  cat(paste0("\033[0;43m","############### QAA FINISHED for ", j, " no. spectra ################","\033[0m","\n"))
+  fit_bbp_spectral = rbind(fit_bbp_spectral, qaa_output$bbp)
+  #cat(paste0("\033[0;43m","############### QAA FINISHED for ", j, " no. spectra ################","\033[0m","\n"))
   
 }
 
@@ -393,6 +243,11 @@ Fit.optimized.qaa.ioccg <- Fit.optimized.qaa.ioccg[-1,]
 write.csv(file = "./Outputs/QAA_param_IOCCG.csv", x=Fit.optimized.qaa.ioccg, sep = ",", quote = F,
           row.names = F, col.names = T)
 
+fit_bbp_spectral <- fit_bbp_spectral[-1,]
+colnames(fit_bbp_spectral) = paste0("lam", wavelength)
+write.csv(file = "./Outputs/QAA_bbp_IOCCG.csv", x=fit_bbp_spectral, sep = ",", quote = F,
+          row.names = F, col.names = T)
+fit_bbp_spectral = as.data.frame(fit_bbp_spectral)
 
 #---------------------------------------------
 ### 1.3 #Validate inversion parameters
@@ -401,7 +256,7 @@ fit_param_saber = read.csv("./Outputs/SABER_param_IOCCG.csv", header = T)
 fit_param_qaa = read.csv("./Outputs/QAA_param_IOCCG.csv", header = T)
 iop_param_qc = HL.deep.iop
 iop_param_qc$adg443 = iop_param_qc$acdom440 + iop_param_qc$anap440
-
+write.csv(file ="./data/bgc_ioccg.csv", iop_param_qc, row.names = F, col.names = T, quote = F)
 #====================
 # 1.3.1 Plot [chl]
 #====================
@@ -776,10 +631,13 @@ rrs_nomad_qc_interp_df_iop_idx = rrs_nomad_qc_interp_df[rrs_nomad_qc_interp_df$i
 
 rrs_nomad_final = rrs_nomad_qc_interp_df_iop_idx[-(21:22)]
 iop_nomad_qc$adg443  = iop_nomad_qc$ag443 + iop_nomad_qc$ad443
+write.csv(file ="./data/bgc_nomad.csv", iop_nomad_qc, row.names = F, col.names = T, quote = F)
 
 rrs_nomad_plot = rrs_nomad_final[-(which.max(rrs_nomad_final$Rrs_555)),]
 names(rrs_nomad_plot) = nomad_wave
 
+write.csv(file = "./data/Nomad_Rrs_interp.csv", rrs_nomad_final, row.names = F, 
+          col.names = T,  quote = F)
 
 rrs_nomad_plot$id = seq(1, length(rrs_nomad_plot$`405`), 1)
 
@@ -1108,7 +966,8 @@ zprime <- merge(zprime, bbp.555_nomad_long, by=c("id", "variable"))
 
 names(zprime) <- c("id", "param", "SABER", "QAA", "IOCCG")
 
-rm(bbp.555_saber, bbp.555_saber_long, bbp.555_qaa, bbp.555_qaa_long, bbp.555_nomad, bbp.555_nomad_long )
+rm(bbp.555_saber, bbp.555_saber_long, bbp.555_qaa, bbp.555_qaa_long, 
+   bbp.555_nomad, bbp.555_nomad_long )
 
 # Plot the validation
 legend_title <- element_blank()
@@ -1377,10 +1236,6 @@ ggsave(paste0("./outputs/nomad_adg443_valid_v2.png"), plot = g,
 # 2.4 Statistics on the goodness of Fit for inversion 
 # retrieved parameters
 #----------------------------------------------------
-
-
-
-
 # ########### 2.5 TEST Plot for bbp555
 # plot(log10(Fit.optimized.ssobj.nomad$bbp550), 
 #      log10(Fit.optimized.qaa.nomad$bbp550), xlim=c(-4,4), ylim=c(-4,4), 
