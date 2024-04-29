@@ -1,4 +1,4 @@
-
+library(ggplot2)
 jacobian_data = read.csv("./Jacobian/deep/jacobian_chl-1_cdom-0.5_nap-0.04.csv", 
                          header = T)
 
@@ -7,10 +7,15 @@ jacobian_data$wl = wavelength
 
 hl.wl = reshape2::melt(data = jacobian_data, id.vars = "wl")
 
-g = ggplot(hl.wl, aes(fill=variable, y=abs(value), x=wl)) + 
+hl.wl$value = abs(1/hl.wl$value)
+hl.wl$value = hl.wl$value/max(hl.wl$value)
+g = ggplot(hl.wl, aes(fill=variable, y=abs(log10(value)), x=wl)) + 
   geom_bar(position="stack", stat="identity")+
-  xlab("Wavelength")+
-  ylab("Standard error")+
+  scale_fill_manual(values = c("green4", "yellow3", "blue4"), labels = c("[chl]",
+                                                                         "aCDOM(443)",
+                                                                         "aNAP(443)"))+
+  xlab("Wavelength [nm]")+
+  ylab("Standard error [%]")+
   # scale_fill_manual(labels = c(expression(paste(italic("[chl]"))),
   #                              expression(paste("a"[italic("CDOM")](440))),
   #                              expression(paste("a"[italic("NAP")](440)))),
@@ -23,7 +28,7 @@ g = ggplot(hl.wl, aes(fill=variable, y=abs(value), x=wl)) +
         axis.title.y = element_text(size = 20),
         axis.ticks.length = unit(.25, "cm"),
         plot.caption = element_text(face="bold", hjust = 0, size = 15, color = 'black'),
-        legend.position=c(0.75, 0.85),
+        legend.position=c(0.15, 0.85),
         legend.direction = "vertical",
         legend.title = element_blank(),
         legend.text = element_text(colour = "black", size = 15, face = "plain"),

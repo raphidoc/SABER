@@ -291,6 +291,7 @@ if (!(all(length(rb$wavelength) == length(wavelength)) && all(rb$wavelength == w
 }
 rb = rb_interp
 rm(rb_interp)
+
 fA1=0.5; # aerial fraction 1 
 fA2=0.25; # aerial fraction 2 
 fA3=0.25; # aerial fraction 3, i.e. fa1+fa2+fa3 = 1
@@ -1190,7 +1191,7 @@ forward.saber.fast = Saber_forward_fast(use_true_IOPs = F, use_manual_slope = F,
                                         bbp.550 = Fit.input$bbp.550, 
                                         
                                         slope.parametric = F, 
-                                        Rrs_input_for_slope = obsdata,
+                                        Rrs_input_for_slope = NULL,
                                         
                                         z = zB,
                                         rb.fraction = fA.set,

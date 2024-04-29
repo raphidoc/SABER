@@ -31,7 +31,7 @@ source("./R/solve.objective.inverse_fast.R") #FINAL VERSION
 source("./R/mcmc.functions.R")
 source("./R/saber.inversion.vector.parallel.R")
 source("./R/mcmc_bayes_parallel.R")
-#-------------------------------------------------------------------------------------------
+
 library(dplyr)
 library(readxl)
 library(stats4)
@@ -59,10 +59,123 @@ library(ggalt)
 library(ggExtra)
 library(suncalc)
 library(viridis)
+library(doParallel)
+library(sensitivity)
 
-#=======================================================================
-# Function to read the configuration file for inversion
-#=======================================================================
+# Function to trnaslate above water Sun Zenith angle to sub-surface Zenith angle ----                         
+sunzen_below = function(sun_zen_aove=45){
+  sun_zen_below_rad = asin(sin(sun_zen_aove*(pi/180))/1.333)
+  sun_zen_below_deg = sun_zen_below_rad*(180/pi)
+  return(sun_zen_below_deg)
+}
+
+# Function to translate Rrs0+ to Rrs0- ----
+surface_rrs_translate <-  function(Rrs) { 
+  rrs = Rrs / (0.52 + 1.7*Rrs)
+  return(rrs)
+}
+
+
+# Global Declarations ----
+
+
+## Water type and wavelength specifications ----
+type_case_water = 2
+type_Rrs_below = "shallow"
+type_Rrs_below_rb = "shallow"
+type_Rrs_water = "below_surface"
+wavelength <- seq(400,750,10)
+
+
+## Plotting specifications ----
+plot=FALSE #Set TRUE when the ggplot2 outputs needed to be saved onto disk
+
+
+## Inversion specifications ----
+preFit = FALSE
+
+use.lklhood= TRUE
+use.wise.prior = FALSE 
+use.nomad.prior = TRUE
+use.ioccg.prior = FALSE
+
+## Sun-sensor geometry specifications ----
+view = 30
+sun_above  = 45
+sun = sunzen_below(sun_zen_aove = sun_above) #Make sure you pass "sun" for subsurface calculation
+
+## Shallow parameters specifications ----
+
+### Water depth ----
+zB=2
+
+### Areal fraction of bottom reflectance ----
+
+# fA0=0; # constant (Excluded from Model) 
+# fA1=0.2; # sand
+# fA2=0.2; # sediment
+# fA3=0; # Chara contraria
+# fA4=0.6; # Potamogeton perfoliatus
+# fA5=0; # Potamogeton pectinatus
+#fA.set= c(fA1,fA2,fA3,fA4,fA5)
+
+use_WASI_rb = FALSE
+use_WISE_Man_rb = TRUE
+use_algae_WISE_rb = FALSE
+
+if (use_WISE_Man_rb == TRUE) {
+  load("./data/WISE-Man.RData")
+  
+} else {
+  load("./data/algae-WISE.RData")
+}
+
+if (!(all(length(rb$wavelength) == length(wavelength)) && all(rb$wavelength == wavelength))) {
+  rb_interp = data.frame("wavelength" = wavelength,
+                         "class1" = approx(rb$wavelength, rb$class1, xout = wavelength)$y,
+                         "class2" = approx(rb$wavelength, rb$class2, xout = wavelength)$y,
+                         "class3" = approx(rb$wavelength, rb$class3, xout = wavelength)$y
+  )
+  
+}
+rb = rb_interp
+rm(rb_interp)
+
+fA1=0.5; # aerial fraction 1 
+fA2=0.25; # aerial fraction 2 
+fA3=0.25; # aerial fraction 3, i.e. fa1+fa2+fa3 = 1
+
+fA.set= c(fA1,fA2,fA3)
+
+source("./R/retrive.rb.spectral.R")
+source("./R/generate.rb.spectral.R")
+
+## Atmospheric specifications ----
+
+### Irradiance intensities [1/sr] ----
+g_dd=0.05; g_dsr=0; g_dsa=0;
+
+### Intensities of light sources ----
+f_dd= 1; f_ds= 1;
+
+### Angstrom exponent ----
+alpha = 1.317;
+
+### Atmospheric pressure ----
+P = 1013.25; # [mbar]
+
+### Relative Humidity ----
+RH = 0.60;
+
+### Scale height for ozone ----
+Hoz = 0.300; # [cm]
+
+### Scale height of the precipitate water in the atmosphere ----
+WV= 2.500; # [cm]
+
+
+# Function to read the configuration file for inversion ----
+
 read_inv_param <- function(inv_config_file){
   
   inv_config = read.table(file = inv_config_file, sep=",", header = T,colClasses = "character")
@@ -71,34 +184,35 @@ read_inv_param <- function(inv_config_file){
   mode = as.character(trimws(inv_config$param_vals[2]))
   
   param_name = as.character(trimws((unlist((strsplit(inv_config$param_vals[3],";"))))))
-  min_par = as.numeric((unlist((strsplit(inv_config$param_vals[4],";")))))
-  max_par = as.numeric((unlist((strsplit(inv_config$param_vals[5],";")))))
-  init_par = as.numeric((unlist((strsplit(inv_config$param_vals[6],";")))))
+  rb_type = as.character(trimws((unlist((strsplit(inv_config$param_vals[4],";"))))))
+  min_par = as.numeric((unlist((strsplit(inv_config$param_vals[5],";")))))
+  max_par = as.numeric((unlist((strsplit(inv_config$param_vals[6],";")))))
+  init_par = as.numeric((unlist((strsplit(inv_config$param_vals[7],";")))))
   
-  constrain_config = as.logical(trimws((unlist((strsplit(inv_config$param_vals[7],";"))))))
+  constrain_config = as.logical(trimws((unlist((strsplit(inv_config$param_vals[8],";"))))))
   names(constrain_config) = c("const_bbp", "const_bgc", "const_IOP")
-  constrain_bbp_val = as.numeric(inv_config$param_vals[8])
-  constrain_bgc_val = as.numeric(trimws((unlist((strsplit(inv_config$param_vals[9],";"))))))
+  constrain_bbp_val = as.numeric(inv_config$param_vals[9])
+  constrain_bgc_val = as.numeric(trimws((unlist((strsplit(inv_config$param_vals[10],";"))))))
   names(constrain_bgc_val) = c("chl", "adg443", "bbp555")
-  constrain_iop = as.character(trimws((unlist((strsplit(inv_config$param_vals[10],";"))))))
+  constrain_iop = as.character(trimws((unlist((strsplit(inv_config$param_vals[11],";"))))))
   
-  qaa_mode = as.logical(trimws(inv_config$param_vals[11]))
-  qaa_prefit = as.logical(trimws(inv_config$param_vals[12]))
+  qaa_mode = as.logical(trimws(inv_config$param_vals[12]))
+  qaa_prefit = as.logical(trimws(inv_config$param_vals[13]))
   
-  auto_slope = as.logical(trimws(inv_config$param_vals[13]))
-  manual_slope  =  as.logical(trimws(inv_config$param_vals[14]))
-  manual_slope_vals = as.numeric((unlist((strsplit(inv_config$param_vals[15],";")))))
+  auto_slope = as.logical(trimws(inv_config$param_vals[14]))
+  manual_slope  =  as.logical(trimws(inv_config$param_vals[15]))
+  manual_slope_vals = as.numeric((unlist((strsplit(inv_config$param_vals[16],";")))))
   names(manual_slope_vals) = c("s_g", "s_d", "gamma")
   
-  sa_model = as.character(trimws((unlist((strsplit(inv_config$param_vals[16],";"))))))
-  obj_fn = as.character(trimws((unlist((strsplit(inv_config$param_vals[17],";"))))))
-  opt_method = as.character(trimws((unlist((strsplit(inv_config$param_vals[18],";"))))))
+  sa_model = as.character(trimws((unlist((strsplit(inv_config$param_vals[17],";"))))))
+  obj_fn = as.character(trimws((unlist((strsplit(inv_config$param_vals[18],";"))))))
+  opt_method = as.character(trimws((unlist((strsplit(inv_config$param_vals[19],";"))))))
   
-  iter_count = as.numeric(trimws(inv_config$param_vals[19]))
-  sampler_mcmc = as.character(trimws(inv_config$param_vals[20]))
-  hybrid_mode = as.logical(trimws(inv_config$param_vals[21]))
+  iter_count = as.numeric(trimws(inv_config$param_vals[20]))
+  sampler_mcmc = as.character(trimws(inv_config$param_vals[21]))
+  hybrid_mode = as.logical(trimws(inv_config$param_vals[22]))
   
-  config_list = list(rrs_type, mode, param_name, min_par, max_par, init_par, constrain_config,
+  config_list = list(rrs_type, mode, param_name, rb_type, min_par, max_par, init_par, constrain_config,
                      constrain_bbp_val, constrain_bgc_val, constrain_iop, qaa_mode,
                      qaa_prefit, auto_slope, manual_slope, manual_slope_vals, 
                      sa_model,obj_fn, opt_method, iter_count, sampler_mcmc, hybrid_mode )
@@ -109,9 +223,9 @@ read_inv_param <- function(inv_config_file){
 
 #test_param = read_inv_param(inv_config_file = "./data/inversion_config.txt")
 
-#=======================================================================
-# Function to create initial values and bounds for inversion
-#=======================================================================
+
+# Function to create initial values and bounds for inversion ----
+
 rb_count = length(fA.set)
 create_init_bound <- function(pop.sd = "unknown", 
                               constrain.bbp= F,
@@ -135,9 +249,9 @@ create_init_bound <- function(pop.sd = "unknown",
                               
                               rrs_inv_type = "deep"){
   
-  #-------------------------------------
+  
   # Initial values for deep water 
-  #-------------------------------------
+  
   if (pop.sd == "unknown" & rrs_inv_type == "deep" & manual_par0 == TRUE & constrain.bbp == "TRUE") {# <<MANUAL INPUT>>
     par0 = c(chl = init_par[1],
              adg = init_par[2], 
@@ -172,9 +286,9 @@ create_init_bound <- function(pop.sd = "unknown",
     
   }  
   
-  #--------------------------------------
+  
   # Initial values for shallow water
-  #--------------------------------------
+  
   rb_count = length(fA.set)
   rep(0.5, rb_count)
   rb_c = paste0("rb", (1:rb_count))
@@ -272,9 +386,9 @@ create_init_bound <- function(pop.sd = "unknown",
 # par0 = inv_bound$par0 ; upper_bound = inv_bound$upper.bound  
 # lower_bound= inv_bound$lower.bound
 
-#=======================================================================
-# A single Function to perform the inversion as per the configuration
-#=======================================================================
+
+# A single Function to perform the inversion as per the configuration ----
+
 run_inverse_mode <- function(rrs_input, 
                              wavelength_input, 
                              inv_config_file = "./data/inversion_config.txt"){
@@ -335,6 +449,31 @@ run_inverse_mode <- function(rrs_input,
     type_Rrs_below = "shallow"
     assign(x = "type_Rrs_below", value = type_Rrs_below, envir = .GlobalEnv)
     
+    load("./data/EGSL_bottom.RData")
+    
+    column_numbers <- which(names(rb) %in% config_list$` rb_types`)
+    
+    rb = rb[c(1,column_numbers)]
+    names(rb) = c("wavelength", "class1", "class2", "class3")
+    
+    if (!(all(length(rb$wavelength) == length(wavelength_input)) && all(rb$wavelength == wavelength_input))) {
+      
+      print(paste0("Rb wavelength has " , length(rb$wavelength), " bands; Rrs wavelength has ", length(wavelength_input) ))
+      
+      rb_interp = data.frame("wavelength" = wavelength,
+                             "class1" = approx(rb$wavelength, rb$class1, xout = wavelength_input)$y,
+                             "class2" = approx(rb$wavelength, rb$class2, xout = wavelength_input)$y,
+                             "class3" = approx(rb$wavelength, rb$class3, xout = wavelength_input)$y
+      )
+      
+    }
+    rb = rb_interp
+    rm(rb_interp)
+    
+    assign(x = "rb", value = rb, envir = .GlobalEnv)
+    
+    #browser()
+    
     if (config_list$` mode` == "use_grad") {
         
         inv_output = inverse_runGrad(rrs_type = config_list$` rrs_type`, 
@@ -388,15 +527,16 @@ run_inverse_mode <- function(rrs_input,
   return(inv_output)
 }
 
-#=======================================================================
-# Test the inversion function
-#=======================================================================
-run_inverse_mode(rrs_input = obsdata #+ rnorm.trunc(n = length(obsdata), mean = 0, 
-                                             #sd = sd(obsdata), min = 0)*0.05 
-                      , wavelength_input = wavelength)
 
-run_inverse_mode(rrs_input = as.numeric(rrs.forward.SABER[1,]), 
-                 wavelength_input = wavelength)
-param_vec[100,]
+# Test the inversion function ----
+
+# run_inverse_mode(rrs_input = obsdata #+ rnorm.trunc(n = length(obsdata), mean = 0, 
+#                                              #sd = sd(obsdata), min = 0)*0.05 
+#                       , wavelength_input = wavelength)
+# 
+# run_inverse_mode(rrs_input = as.numeric(rrs.forward.SABER[1,]), 
+#                  wavelength_input = wavelength)
+# param_vec[100,]
+
 
 

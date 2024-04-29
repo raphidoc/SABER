@@ -467,7 +467,7 @@ acc_deep_param = rbind(chl_insitu_saber_acc_owt, chl_insitu_qaa_acc_owt,
                        bbp555_insitu_saber_acc_owt, bbp555_insitu_qaa_acc_owt, 
                        bbp555_synthetic_saber_acc_owt, bbp555_synthetic_qaa_acc_owt)
 
-#write.csv(file = "./outputs/accuracy_metrics_OWT.csv", acc_deep_param, quote = F, row.names = F)
+write.csv(file = "./outputs/accuracy_metrics_OWT_v2.csv", acc_deep_param, quote = F, row.names = F)
 
 ## For H ----
 

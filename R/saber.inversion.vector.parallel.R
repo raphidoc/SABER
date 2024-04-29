@@ -623,7 +623,7 @@ inverse_runGrad <- function(obsdata, rrs_type,
 # Unconstrained inversion for deep water (with QAA support)
 #===================================================================
 doOptimization_deep_unconst_back <- function(obsdata, par0_base, wl, qaa_prefit, QAA_mode, 
-                                        sa_model, obj_fn) {
+                                        sa_model, obj_fn, sub_surf_translate) {
   
   #Assign the inversion vector of rrs
   rrs_inverse_input = obsdata
@@ -632,7 +632,8 @@ doOptimization_deep_unconst_back <- function(obsdata, par0_base, wl, qaa_prefit,
     
     if (qaa_prefit == TRUE) {
       print("QAA PREFIT : ON")
-      qaa_output = QAA.v5(waves = wavelength, Rrs = rrs_inverse_input)
+      qaa_output = QAA.v5(waves = wavelength, Rrs = rrs_inverse_input, 
+                          translate_subsurf = sub_surf_translate)
       par0 = c(chl = qaa_output$chl, adg440 =qaa_output$a_dg_443, 
                bbp550 = qaa_output$b_bp_555, "pop_sd" = par0_base[length(par0_base)])
       
@@ -692,7 +693,8 @@ doOptimization_deep_unconst_back <- function(obsdata, par0_base, wl, qaa_prefit,
   } else {
     
     
-    qaa_output = QAA.v5(waves = wl, Rrs = rrs_inverse_input)
+    qaa_output = QAA.v5(waves = wl, Rrs = rrs_inverse_input, 
+                        translate_subsurf = sub_surf_translate)
     Fit.optimized.ssobj.batch = c(chl = qaa_output$chl, adg443 =qaa_output$a_dg_443, 
              bbp555 = qaa_output$b_bp_555)
     
