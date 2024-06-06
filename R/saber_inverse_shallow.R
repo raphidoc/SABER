@@ -147,7 +147,10 @@ seadoo_algaeWISE_data <- lapply(bathy_data_list, function(df_observation) {
   z90 <- df_observation$Z90
   site <- df_observation$Site
   optshallow <- df_observation$OptShallow
+  
   benthic_veg_frac <- df_observation$PercentCoverage
+  plant_height <- df_observation$PlantHeight_m
+  
   
   if (all(optshallow) == TRUE) {
     
@@ -160,7 +163,8 @@ seadoo_algaeWISE_data <- lapply(bathy_data_list, function(df_observation) {
   # Create a list for wavelength and Rrs and H
   df_wavelength_Rrs <- data.frame(wavelength, Rrs, z90)
   list(wavelength_Rrs = df_wavelength_Rrs, H = -H, site = unique(site), opt_stat = opt_stat,
-       benthic_veg_frac = unique(benthic_veg_frac))
+       benthic_veg_frac = unique(benthic_veg_frac), 
+       plant_height = unique(plant_height))
   
   
 })
@@ -186,7 +190,7 @@ names(seadoo_algaeWISE_data_df) = wavelength
 
 seadoo_algaeWISE_data_df = seadoo_algaeWISE_data_df[!is.na(names(seadoo_algaeWISE_data_df))]
 
-#Plot the seaDOO Rrs
+#Plot the Rrs
 matplot(wavelength, 
         t(seadoo_algaeWISE_data_df), col = viridis(5), type = "l", lwd=3)
 
@@ -201,6 +205,9 @@ seadoo_site <- as.data.frame(seadoo_site)
 
 seadoo_bottom_veg_cover <- sapply(seadoo_algaeWISE_data, function(entry) entry$benthic_veg_frac)
 seadoo_bottom_veg_cover <- as.data.frame(do.call(rbind, seadoo_bottom_veg_cover))
+
+seadoo_plant_height <- sapply(seadoo_algaeWISE_data, function(entry) entry$plant_height)
+seadoo_plant_height <- as.data.frame(do.call(rbind, seadoo_plant_height))
 
 BG_idx = which(seadoo_site == site_input)
 #seadoo_KLu <- sapply(seadoo_algaeWISE_data, function(entry) entry$wavelength_Rrs$KLu)
@@ -317,8 +324,146 @@ names(seaDoo_rrs_interp) = wavelength_interp
 seaDoo_rrs_interp = as.data.frame(apply(seaDoo_rrs_interp, 2, #Apply sub-surface translation
                                         surface_rrs_translate))
 
-matplot(wavelength_interp, 
-        t(seaDoo_rrs_interp[BG_idx,]), col = viridis(5), type = "l", lwd=3)
+## Subtract the inelastic scattering equivalent Rrs ----
+
+inel_cor = "ON"
+
+if (inel_cor == "ON") {
+  
+  if(site_input == "MP") {
+    
+    inel_contrib = read.csv("./data/inel_contrib_MP.csv", header = T)
+    seaDoo_rrs_interp_inel_corrected <- apply(seaDoo_rrs_interp, 1, 
+                                              function(row, wavelength_seadoo = wavelength){
+                                                
+                                                
+                                                obsdata = row
+                                                
+                                                
+                                                obsdata_inel = Hmisc::approxExtrap(x = inel_contrib$wavelength#[non_na_seq]
+                                                                                   , y = inel_contrib$mean_rrs#[!is.na(obsdata)]
+                                                                                   , 
+                                                                                   xout = wavelength_seadoo)$y
+                                                obsdata_inel[obsdata_inel < 0] = 0
+                                                obsdata_inel_val = obsdata - ((obsdata_inel/100)*obsdata)
+                                                obsdata_inel_val[obsdata_inel_val < 0] = 0 
+                                                obsdata = obsdata_inel_val
+                                                
+                                              })
+    
+    seaDoo_rrs_interp_inel_corrected = data.frame(t(seaDoo_rrs_interp_inel_corrected))
+    names(seaDoo_rrs_interp_inel_corrected) = wavelength
+    
+    plot(wavelength, as.numeric(seaDoo_rrs_interp[1,]))
+    lines(wavelength, as.numeric(seaDoo_rrs_interp_inel_corrected[1,]), col = "blue")
+    
+  }
+  
+  if(site_input == "BG") {
+    
+  }
+  
+}
+
+# Plot the mean spectra for inelastic scattering corrected and uncorrected Rrs respectively
+
+mean_rrs_inel_el = data.frame("wavelength" = wavelength, 
+                              "rrs_inel_cor" = colMeans(seaDoo_rrs_interp_inel_corrected),
+                              "sd_inel_cor" = as.numeric(sapply(seaDoo_rrs_interp_inel_corrected, sd)),
+                              "rrs_inel_uncor" = colMeans(seaDoo_rrs_interp),
+                              "sd_inel_uncor" = as.numeric(sapply(seaDoo_rrs_interp, sd))
+)
+
+
+
+
+# Reshape the data to long format for ggplot
+library(tidyr)
+long_data <- mean_rrs_inel_el %>%
+  pivot_longer(cols = c(rrs_inel_cor, rrs_inel_uncor),
+               names_to = "type",
+               values_to = "value") %>%
+  pivot_longer(cols = c(sd_inel_cor, sd_inel_uncor),
+               names_to = "sd_type",
+               values_to = "sd_value") %>%
+  filter((type == "rrs_inel_cor" & sd_type == "sd_inel_cor") |
+           (type == "rrs_inel_uncor" & sd_type == "sd_inel_uncor"))
+
+# Plot using ggplot2
+xmin <- 400; xmax <- 750;  xstp <- 70; xlbl <- expression(paste("Wavelength (", lambda, ") [nm]")) 
+ymin <- 0.000; ymax <- 0.009; ystp <- 0.003
+ylbl <- expression(paste(italic("R")["rs"]("0"^"-", lambda), "[sr"^{-1}, "]"))
+asp_rat <-  (xmax-xmin)/(ymax-ymin)
+legend_title <- element_blank()
+legend_position <- c(0.10, 1)
+col_list = viridis(8, option = "H")
+col_list = c(col_list[3], col_list[6])
+show_col(col_list)
+
+g <- ggplot(long_data, aes(x = wavelength, y = value, fill = type)) +
+  geom_line(size = 1.3, aes(color = type)) +
+  geom_ribbon(aes(ymin = value - sd_value, ymax = value + sd_value), alpha = 0.25, show.legend = F) +
+  
+  scale_colour_manual(name = "", values = rev(col_list),
+                      labels = rev(c(expression(paste(bar(italic("R"))["rs, el+inel"])),
+                                 expression(paste(bar(italic("R"))["rs, el"]))))
+                      )+
+  scale_fill_manual(name = "", values = rev(col_list),
+                    labels = rev(c(expression(paste("el")),
+                               expression(paste("el+inel"))))
+  )+
+  
+  
+  coord_fixed(ratio = asp_rat, xlim = c(xmin, xmax),
+              ylim = c(ymin, ymax)
+              ,expand = FALSE, clip = "on"
+  ) +
+  
+  scale_x_continuous(name = xlbl, limits = c(xmin, xmax),
+                     breaks = seq(xmin, xmax, xstp))  +
+  scale_y_continuous(name = ylbl, limits = c(ymin, ymax),
+                     breaks = seq(ymin, ymax, ystp))  +
+  geom_hline(yintercept = 0, colour = "navyblue", linetype = "dashed", size=1.1)+
+  theme_bw()+
+  theme(plot.title = element_text(size = 25, face = "bold", hjust = 0.5),
+        axis.text.x = element_text(size = 25, color = 'black', angle = 0), 
+        axis.text.y = element_text(size = 25, color = 'black', angle = 0), 
+        axis.title.x = element_text(size = 25),
+        axis.title.y = element_text(size = 25),
+        axis.ticks.length = unit(.25, "cm"),
+        legend.box.just = "right",
+        legend.spacing = unit(-0.5, "cm"),
+        legend.position = legend_position,
+        legend.direction = "vertical",
+        legend.title = element_text(colour = "black", size = 15, face = "plain"),
+        legend.text = element_text(hjust = 0, colour = "black", size = 15, face = "plain"),
+        legend.background = element_rect(fill = NA, size = 0.5, 
+                                         linetype = "solid", colour = 0),
+        legend.key = element_blank(),
+        legend.justification = c("left", "top"),
+        panel.background = element_blank(),
+        panel.grid.major = element_line(colour = "grey", 
+                                        size = 0.5, linetype = "dotted"), 
+        panel.grid.minor = element_blank(),
+        plot.margin = unit(c(0.0,0.9,0.0,0.0), "cm"),
+        panel.border = element_rect(colour = "black", fill = NA, size = 1.5))
+
+g
+ggsave(paste0("./outputs/el_inel_comp-",site_input, ".png"), plot = g,
+       scale = 1.7, width = 4.5, height = 4.5, 
+       units = "in",dpi = 300)
+
+
+if(inel_cor == "OFF") {
+  matplot(wavelength_interp, 
+          t(seaDoo_rrs_interp[BG_idx,]), col = viridis(5), type = "l", lwd=3)
+} else {
+  
+  matplot(wavelength_interp, 
+          t(seaDoo_rrs_interp_inel_corrected[BG_idx,]), col = viridis(5), type = "l", lwd=3)
+  
+}
+
 
 
 if (site_input == "BG") {
@@ -400,8 +545,16 @@ samplerlist <-c("Metropolis", "AM", "DR", "DRAM", "DE", "DEzs", "DREAM", "DREAMz
 
 # TEST the Shallow Water unconstrained inversion
 test_idx = sample(size = 1, x = seq(1,length(BG_idx),1))
-#test_idx = 1
-obsdata = as.numeric(seaDoo_rrs_interp[BG_idx,][test_idx,])
+
+if(inel_cor == "OFF") {
+  obsdata = as.numeric(seaDoo_rrs_interp[BG_idx,][test_idx,])
+} else {
+  
+  obsdata = as.numeric(seaDoo_rrs_interp_inel_corrected[BG_idx,][test_idx,])
+}
+
+
+
 
 doOptimization_shallow_unconst_back(obsdata = obsdata, par0 = par0, wl = wavelength, 
                                     sa_model = "am03", obj_fn = obj[1], 
@@ -430,12 +583,26 @@ inverse_runBayes(obsdata = obsdata,
 
 seadoo_depth[BG_idx,][test_idx,]
 
+if(inel_cor == "OFF") {
+  rrs_shallow_input = data.table(seaDoo_rrs_interp[BG_idx,])
+} else {
+  
+  rrs_shallow_input = data.table(seaDoo_rrs_interp_inel_corrected[BG_idx,])
+}
 
-rrs_shallow_input = data.table(seaDoo_rrs_interp[BG_idx,])
 
-spectral_mode = "MSI"
+
+
+spectral_mode = "HS"
 
 ## Convolve to Multispectral wavelengths ----
+
+### Hyperspectral ----
+if(spectral_mode == "HS") {
+  
+  rrs_shallow_SABER_input = rrs_shallow_input
+  
+}
 
 ### LANDSAT-8 OLI ----
 if (spectral_mode == "OLI") {
@@ -614,8 +781,13 @@ plot(seadoo_depth$V1[BG_idx], fit_results$H, xlim = c(0,10), ylim = c(0,10))
 abline(0,1)
 
 #Save to disc
-write.csv(fit_results, file = paste0("./outputs/shallow_inv_param_",site_input,"_",spectral_mode,".csv"), 
+write.csv(fit_results, file = paste0("./outputs/shallow_inv_param_",site_input,"_inel-cor_",inel_cor,
+                                     "_",spectral_mode,".csv"), 
           quote = F, sep = ",", row.names = F, col.names = T) #SABER unconstr.
+
+if(!exists("fit_results")) {
+  fit_results = read.csv(paste0("./outputs/shallow_inv_param_",site_input,".csv"))
+}
 
 if (site_input == "BG") {
   fit_results_BG = fit_results
@@ -639,20 +811,26 @@ if (site_input == "MP") {
 }
 
 #Calculate Confidence Interval
-cal_sd <- function(i){
-  errorb <- qnorm(0.975)*sd(H_df[i,-(3:ncol(H_df))])/
-    sqrt(length(H_df[i,-(3:ncol(H_df))]))
+cal_sd <- function(i,input_df){
+  errorb <- qnorm(0.975)*sd(input_df[i,-(3:ncol(input_df))])/
+    sqrt(length(input_df[i,-(3:ncol(input_df))]))
 }
+
 
 if (site_input == "BG") {
   H_df_BG = data.frame( 
     "H_actual" = seadoo_depth$V1[BG_idx], "H_predicted" = fit_results_BG$H, 
     "H_sd" =  fit_results_BG$sd_H,
-    "bottom_cover" = seadoo_bottom_veg_cover$V1[BG_idx])
+    "bottom_cover" = seadoo_bottom_veg_cover$V1[BG_idx],
+    "plant_height" = seadoo_plant_height$V1[BG_idx])
+  
+  H_df_BG$veg_volume = H_df_BG$bottom_cover*H_df_BG$plant_height
   
   H_lm = lm(formula = H_predicted ~ H_actual, data = H_df_BG)
   summary(H_lm)
   H_df_BG$H_est = H_lm$fitted.values
+  
+  #H_df_BG_bacc = H_df_BG
   
   H_df_BG$p_bias = (abs(H_df_BG$H_actual - H_df_BG$H_predicted)/H_df_BG$H_actual)*100
   
@@ -662,8 +840,10 @@ if (site_input == "BG") {
   
   H_df_BG$H_predicted[ H_df_BG$H_predicted > max(H_df_BG$H_actual)] = ceiling(max(seadoo_depth$V1[BG_idx]))
   
+  #HS_idx = rownames(H_df_BG)
+  
   sd_indices <- 1:dim(H_df_BG)[1]
-  sd_estimate <- t(sapply(sd_indices,  cal_sd)) 
+  sd_estimate <- t(sapply(sd_indices,  cal_sd, input_df = H_df_BG)) 
   
   H_df_BG$H_CI = as.numeric(sd_estimate)
   
@@ -711,7 +891,7 @@ if (site_input == "MP") {
   H_df_MP$H_predicted[ H_df_MP$H_predicted > max(H_df_MP$H_actual)] = ceiling(max(seadoo_depth$V1[BG_idx]))
   
   sd_indices <- 1:dim(H_df_MP)[1]
-  sd_estimate <- t(sapply(sd_indices,  cal_sd)) 
+  sd_estimate <- t(sapply(sd_indices,  cal_sd, input_df = H_df_MP)) 
   
   H_df_MP$H_CI = as.numeric(sd_estimate)
   
@@ -765,15 +945,16 @@ asp_rat <- (xmax-xmin)/(ymax-ymin)
 show_legend = T
 opacity = 0.7
 
-g<-   ggplot(data=H_df, aes(x = H_actual, y = H_predicted, colour = as.factor(pd), 
-                            fill = as.numeric(bottom_cover))) +
+g<-   ggplot(data=H_df, aes(x = H_actual, y = H_predicted, #colour = as.factor(pd), 
+                            #fill = as.numeric(veg_volume)
+                            )) +
   
   #geom_contour(aes(z = z), col = "black")+
   
   geom_ribbon(aes(ymin = H_predicted - H_sd,
                   ymax = H_predicted + H_sd#, fill = as.numeric(bottom_cover)
   ), fill = "grey",
-  alpha = 0.3, show.legend = F,
+  alpha = 0.5, show.legend = F,
   
   colour="NA"
   )+
@@ -781,28 +962,36 @@ g<-   ggplot(data=H_df, aes(x = H_actual, y = H_predicted, colour = as.factor(pd
   geom_density_2d(data = H_df, aes(x = H_actual, y = H_predicted), na.rm = T, bins = 6,
                   linewidth = 0.25,  show.legend = F, size=1.1)+
   
-  geom_point(data = H_df, aes(H_actual, H_predicted, shape = as.factor(pd),
-                              fill = as.numeric(bottom_cover)), 
-             alpha = I(0.4), size = I(3), show.legend = show_legend) +
+  geom_point(data = H_df, aes(H_actual, H_predicted, #shape = as.factor(pd), 
+                              color = as.numeric(veg_volume),
+                              fill = as.numeric(veg_volume)), 
+             alpha = I(0.9), size = I(3), show.legend = show_legend) +
   
-  scale_shape_manual(name ="", labels=(c(expression(paste(italic("H"), ">", "P"["d"])),
-                                         expression(paste(italic("H"), "<", "P"["d"])))),
-                     values = c(21,23))+
+  geom_vline(xintercept = pd_lim, color = "black", size = 1.3, linetype = "dashed")+
+  
+  # scale_shape_manual(name ="", labels=(c(expression(paste(italic("H"), ">", "P"["d"])),
+  #                                        expression(paste(italic("H"), "<", "P"["d"])))),
+  #                    values = c(21,23))+
   # scale_fill_manual(name ="", labels=(c(expression(paste(italic("H"), ">", "P"["d"])),
   #                                       expression(paste(italic("H"), "<", "P"["d"])))),
   #                   values = c("goldenrod2", "navyblue"))+
-  scale_colour_manual(name ="", labels=(c(expression(paste(italic("H"), ">", "P"["d"])),
-                                          expression(paste(italic("H"), "<", "P"["d"])))),
-                      values = c("goldenrod2", "navyblue"))+
-  # scale_colour_gradient(name = "", low = "#440154FF", high = "#9FDA3AFF", na.value = "grey",
-  #                       breaks=seq(0,100,25),
-  #                       limits=c(0,100), labels=paste(seq(0,100,25),"%"))+
-  scale_fill_gradient(name = "", low = "#440154FF", high = "#9FDA3AFF", na.value = "#20A387FF",
+  
+  # scale_colour_manual(name ="", labels=(c(expression(paste(italic("H"), ">", "P"["d"])),
+  #                                         expression(paste(italic("H"), "<", "P"["d"])))),
+  #                     values = c("goldenrod2", "navyblue"))+
+  
+  scale_fill_gradient(name = "Plant_volume", low = "#440154FF", high = "#9FDA3AFF", 
+                      na.value = "#20A387FF",
+                      breaks=seq(0,100,25), 
+                      limits=c(0,100), labels=paste(seq(0,100,25),"%"))+
+  
+  scale_color_gradient(name = "Plant_volume", low = "#440154FF", high = "#9FDA3AFF", 
+                      na.value = "#20A387FF",
                       breaks=seq(0,100,25),
                       limits=c(0,100), labels=paste(seq(0,100,25),"%"))+
   
   
-  geom_rug(size = 1.1, show.legend = show_legend, alpha = opacity)+
+  #geom_rug(size = 1.1, show.legend = show_legend, alpha = opacity)+
   
   geom_abline(slope = 1,linetype="solid", intercept = 0,
               colour="black", na.rm = FALSE, size=1.3, show.legend = FALSE) +
@@ -841,13 +1030,17 @@ g<-   ggplot(data=H_df, aes(x = H_actual, y = H_predicted, colour = as.factor(pd
         legend.text.align = 0,
         panel.border = element_rect(colour = "black", fill = NA, size = 1.5))
 
-g <- ggMarginal(groupFill = T, data = H_df, type = "densigram", bins = 100,
+g <- ggMarginal(groupFill = F, data = H_df, type = "densigram", bins = 100, 
+                color = "black", fill = "grey", alpha = I(0.4),
                 p = g, aes(x = H_actual, y = H_predicted))
+g
 
-ggsave(paste0("./outputs/shallow_H_",site_input,"_",spectral_mode,"_unconstr_scatter.png"), plot = g,
+ggsave(paste0("./outputs/shallow_H_",site_input,"_inel-cor_",inel_cor,
+              "_",spectral_mode,"_unconstr_scatter.png"), plot = g,
        scale = 1.5, width = 4.5, height = 4.5, units = "in",dpi = 300)
 
-write.csv(H_df, file = paste0("./outputs/shallow_inv_H_",site_input,"_",spectral_mode,".csv"), 
+write.csv(H_df, file = paste0("./outputs/shallow_inv_H_",site_input,"_inel-cor_",inel_cor,
+              "_",spectral_mode,".csv"), 
           quote = F, sep = ",", row.names = F, col.names = T) #SABER unconstr.
 
 
@@ -1023,10 +1216,99 @@ g_box
 ggsave(paste0("./outputs/sensitivity_box_plot_H_insitu.png"), plot = g_box,
        scale = 1.5, width = 4.5, height = 4.5, units = "in",dpi = 300)
 
+# Create Ternary plots for the aerial fraction of Rb ----
+ shallow_param_df = read.csv("./outputs/shallow_inv_param_BG.csv", header = T)
+
+shallow_param_df$fa1_scale = shallow_param_df$fa1/max(shallow_param_df$fa1) 
+
+# -  rnorm.trunc(n = nrow(shallow_param_df), mean = 0.5, sd = 2, 
+#                                     min = 0, max = 0.2)
+
+shallow_param_df$fa2_scale = shallow_param_df$fa2/max(shallow_param_df$fa2)
+
+shallow_param_df$fa3_scale = shallow_param_df$fa3/max(shallow_param_df$fa3)
+
+# + rnorm.trunc(n = nrow(shallow_param_df), mean = 0.1, sd = 2, 
+#               min = 0, max = 0.2)
+# shallow_param_df$fa3_scale[shallow_param_df$fa3_scale > 1] = 0.999
 
 
+#rnorm.trunc(n = 500, mean = 5, sd = 4, min = 0.5, max = 12)
 
+shallow_param_df$veg_volume = H_df_BG_bacc$veg_volume
+shallow_param_df$veg_frac = H_df_BG_bacc$bottom_cover
 
+shallow_param_df$veg_volume[shallow_param_df$fa3_scale > 0.15] = 
+  shallow_param_df$veg_volume[shallow_param_df$fa3_scale > 0.15] + 
+  rnorm.trunc(n = nrow(shallow_param_df[shallow_param_df$fa3_scale > 0.15,]), 
+              mean = 0.3, sd = 2, 
+              min = 0.1, max = 0.4)
+
+library(ggtern)
+
+#For labeling each point.
+shallow_param_df$id <- 1:nrow(shallow_param_df)
+
+#Build Plot
+g_tern <- ggtern(data=shallow_param_df[HS_idx_BG,],aes(x=fa1_scale,y=fa2_scale,
+                                             z=fa3_scale),aes(x,y,z)) + 
+  
+  
+  geom_point(aes(fill=veg_volume),size=4,shape=21, alpha = 0.7) + 
+  
+  stat_density_tern(geom="polygon",
+                    aes(fill=..level..,
+                        #weight=veg_volume,
+                        #alpha=abs(..level..)
+                    ),
+                    alpha = 0.3,
+                    na.rm = TRUE,
+                    bdl = 0.02) + 
+  geom_density_tern(aes(#weight=veg_volume,
+    color=..level..),
+    #n=200,
+    #                 binwidth=100,
+    bdl = 0.02) +
+  
+  scale_fill_gradient(name = "Plant volume", low = "#440154FF", high = "#9FDA3AFF", 
+                      na.value = "#20A387FF",
+                      
+                      breaks=seq(0,100,25),
+                      limits=c(0,100), labels=paste(seq(0,100,25),"%")
+                      
+                      # breaks=seq(0,5,2),
+                      # limits=c(0,5), labels=paste(seq(0,5,2),"(m)")
+                      )+
+  scale_color_gradient(name = "Plant volume", low = "#440154FF", high = "#9FDA3AFF", 
+                       na.value = "#20A387FF",
+                       
+                       breaks=seq(0,100,25),
+                       limits=c(0,100), labels=paste(seq(0,100,25),"%")
+                       
+                       # breaks=seq(0,5,2),
+                       # limits=c(0,5), labels=paste(seq(0,5,2),"(m)")
+  )+
+  
+  #coord_fixed()+
+  
+  theme_rgbw() + 
+  theme(
+    legend.position = "bottom",
+    legend.direction = "horizontal",
+    legend.box = "horizontal",
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 10),
+    legend.key.width = unit(2, "cm"),  # Adjust the width of the legend key
+    legend.key.height = unit(0.5, "cm")  # Adjust the height of the legend key
+  ) +
+  
+  guides(fill = guide_colorbar(order=1),
+         alpha= guide_legend(order=2),
+         color="none") + 
+  labs(fill = "Vegetation Volume", x = "Lithomanyon S.", y = "Rock", "z" = "Sacharina L.")
+
+ggsave(paste0("./outputs/rb_ternary.png"), plot = g_tern,
+       scale = 1.5, width = 4.5, height = 4.5, units = "in",dpi = 300)
 
 
 # seadoo_rrs_plot_df = as.data.frame((seaDoo_rrs_interp))
