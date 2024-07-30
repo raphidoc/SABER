@@ -389,6 +389,21 @@ write.csv(x = H_df, file = "./outputs/inv_H_shallow_synth_full_bayes.csv",
 # Plot validation from saved .csv
 #-----------------------------------------------------------------------------------------
 
+
+
+shallow_inv_param_saber = read.csv("./outputs/inv_param_shallow_synth_full_bayes.csv",
+                                   header = T)
+
+shallow_inv_param_hope = read.csv("./outputs/inv_param_shallow_synth_lee.csv",
+                                   header = T)
+
+
+calc_inversion_metrics(actual = param_vec$bbp555, predicted = shallow_inv_param_saber$bbp555)
+
+
+
+
+
 H_shallow_synth_saber <- read.csv("./outputs/inv_H_shallow_synth_full_bayes.csv", header = T)
 H_shallow_synth_saber$sa_model = "SABER"
 

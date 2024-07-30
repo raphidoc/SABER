@@ -107,18 +107,33 @@ save(rb, file = "./data/WISE-Man.RData")
 # Generate Algae_WISE Rb-endmembers
 #======================================================
 #1.7 Load Algae-WISE bottom reflectance
-algae_rb = read.csv("./data/Rb_AlgaeWISE.csv", header = T) #This data has been accidentally replaced with wrong one
-algae_rb$type = paste0(algae_rb$Target, algae_rb$Background)
+year = 2023
 
-bottom_type = unique(algae_rb$Target)
-bottom_type = bottom_type[-(c(2,4))]
+if(year == 2022){
+  
+  algae_rb = read.csv("./data/Rb_AlgaeWISE.csv", header = T) #This data has been accidentally replaced with wrong one
+  algae_rb$type = paste0(algae_rb$Target, algae_rb$Background)
+  
+  bottom_type = unique(algae_rb$Target)
+  bottom_type = bottom_type[-(c(2,4))]
+  
+} else {
+  
+  algae_rb = read.csv("./data/bottom_reflectance_2023-08-25.csv", header = T)
+  
+  
+  bottom_type = unique(algae_rb$target)
+  bottom_type = bottom_type[-(c(2,4))]
+  
+}
+
 
 xmin = 400; xmax= 800; xstp=100
 ymin= 0; ymax=100;ystp= signif(ymax/5, digits = 2)
 asp_rat <- (xmax-xmin)/(ymax-ymin)
 
-g <- ggplot(data = algae_rb, aes(x = algae_rb$Lambda, y = algae_rb$rho, color = algae_rb$type)) + 
-  geom_line(show.legend = T, lwd=1.5)+
+g <- ggplot(data = algae_rb, aes(x = algae_rb$lambda, y = algae_rb$rho, color = algae_rb$target)) + 
+  geom_line(show.legend = T, lwd=1.1)+
   scale_x_continuous(name = expression(paste("Wavelength(", lambda, ")[nm]")), limits = c(xmin, xmax), 
                      breaks = seq(xmin, xmax, xstp))  +
   scale_y_continuous(name =expression(paste(italic("a"),{}["t-w"],"(",lambda,",", 0^"-",")[", m^-1,"]")) , limits = c(ymin, ymax),
@@ -150,11 +165,11 @@ g <- ggplot(data = algae_rb, aes(x = algae_rb$Lambda, y = algae_rb$rho, color = 
 g
 
 #Split Rb data
-bottom_type_list = split(algae_rb, algae_rb$Target)
+bottom_type_list = split(algae_rb, algae_rb$target)
 
 # Create a list where each entry contains a data frame with wavelength and Rb
 Rb_algaeWISE <- lapply(bottom_type_list, function(df_observation) {
-  wavelength <- unique(df_observation$Lambda)
+  wavelength <- unique(df_observation$lambda)
   Rb_df <- matrix(df_observation$rho, nrow=512, byrow = F)
   Rb = rowMeans(Rb_df, na.rm = T)
   
@@ -194,8 +209,8 @@ rm(algae_rb, bottom_type_list, bottom_type, Rb_df_interp)
 Rb_long = reshape2::melt(Rb_set, id.vars="wavelength")
 names(Rb_long) = c("wavelength","class","rb")
 
-xmin = 400; xmax= 700; xstp=50
-ymin= 0; ymax=0.3;ystp= signif(ymax/5, digits = 2)
+xmin = 400; xmax= 750; xstp=50
+ymin= 0; ymax=1;ystp= signif(ymax/5, digits = 2)
 asp_rat <- (xmax-xmin)/(ymax-ymin)
 
 legend_position <- c(0.35, 0.98)
@@ -209,11 +224,13 @@ g1 <- ggplot(data = Rb_long[Rb_long$class != "Touffue",],
   scale_y_continuous(name =expression(paste(italic("R"),{}["B"],"(",lambda,")")) , 
                      limits = c(ymin, ymax),
                      breaks = seq(ymin, ymax, ystp))+ 
-  scale_color_viridis(name = "", discrete = T, 
-                      labels = c(expression(paste(italic("Lithothamnium sp."))), 
-                                                          "Rock", 
-                                 expression(paste(italic("Saccharina latissima"))) 
-                      ))+
+  scale_color_viridis(name = "", discrete = T
+                      # , 
+                      # labels = c(expression(paste(italic("Lithothamnium sp."))), 
+                      #                                     "Rock", 
+                      #            expression(paste(italic("Saccharina latissima"))) 
+                      #)
+)+
   coord_fixed(ratio = asp_rat, xlim = c(xmin, xmax), 
               ylim = c(ymin, ymax), expand = FALSE, clip = "on") +
   theme(plot.title = element_text(size = 25, face = "bold", hjust = 0.5),
@@ -240,11 +257,49 @@ g1 <- ggplot(data = Rb_long[Rb_long$class != "Touffue",],
         plot.margin = unit(c(0.0,0.9,0.0,0.0), "cm"),
         panel.border = element_rect(colour = "black", fill = NA, size = 1.5))
 g1
-ggsave("./outputs/rb_algaewise.png", plot = g1, scale = 1.7, width = 4.5, height = 4.5, 
+ggsave(paste0("./outputs/rb_algaewise_",year,".png"), plot = g1, scale = 1.7, 
+       width = 4.5, height = 4.5, 
        units = "in",dpi = 300)
 
-rb = Rb_set[-(5)]
-names(rb) = c("wavelength", "class1", "class2", "class3")
-write.csv(rb, file = "./data/Rb_algaeWISE_endmembers.csv", col.names = T, row.names = F, 
-          quote = FALSE)
-save(rb, file = "./data/algae-WISE.RData")
+if(year = 2022) {
+  
+  rb = Rb_set[-(5)]
+  names(rb) = c("wavelength", "class1", "class2", "class3")
+  write.csv(rb, file = "./data/Rb_algaeWISE_endmembers.csv", col.names = T, row.names = F, 
+            quote = FALSE)
+  save(rb, file = "./data/algae-WISE.RData")
+  
+} else {
+  
+  
+  benthic_classes <- colnames(Rb_set)[-1]
+  
+  combinations <- combn(benthic_classes, 3, simplify = FALSE)
+  
+  # Function to get initials of benthic class names
+  get_initials <- function(name) {
+    initials <- toupper(substr(name, 1, 1))
+    paste(initials, collapse = "")
+  }
+  
+  combination_Rbs <- lapply(combinations, function(cols) {
+    #Rb_set %>% dplyr::select(wavelength, all_of(cols))
+    rb <- Rb_set %>% dplyr::select(c("wavelength", cols))
+    initials <- paste(cols[1], cols[2], cols[3], collpase = "_")#get_initials(cols)
+    filename <- paste0("./data/Rb_algaewise_2023_", initials, ".csv")
+    
+    write.csv(rb, file = filename, row.names = FALSE, quote = F)
+    save(rb, file = paste0("./data/Rb_algaewise_2023_", initials, ".RData"))
+  })
+  
+  
+  
+  
+  rb = Rb_set[-(5)]
+  names(rb) = c("wavelength", "class1", "class2", "class3")
+  write.csv(rb, file = "./data/Rb_algaeWISE_endmembers.csv", col.names = T, row.names = F, 
+            quote = FALSE)
+  save(rb, file = "./data/algae-WISE_2023.RData")
+  
+}
+

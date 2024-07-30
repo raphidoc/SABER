@@ -462,9 +462,9 @@ inverse_runGrad <- function(obsdata, rrs_type,
   cat(paste0("\033[0;34m**************************************************************************\033[0m","\n"))
   Sys.sleep(1)
   
-  type_Rrs_below = rrs_type
   
-  inv_bound = create_init_bound(rrs_inv_type = type_Rrs_below, manual_par0 = T, 
+  
+  inv_bound = create_init_bound(rrs_inv_type = rrs_type, manual_par0 = T, 
                                 constrain.bbp = constrain_config[1], 
                                 constrain.shallow.bgc = constrain_config[2], 
                                 constrain.shallow.iop = constrain_config[3], 
@@ -479,7 +479,10 @@ inverse_runGrad <- function(obsdata, rrs_type,
   
   #browser()
   
-  if (type_Rrs_below == "deep") {
+  if (rrs_type == "deep") {
+    type_Rrs_below = "deep"
+    
+    assign(x = "type_Rrs_below", value = type_Rrs_below, envir = .GlobalEnv)
     
     #browser()
     
@@ -519,7 +522,11 @@ inverse_runGrad <- function(obsdata, rrs_type,
     }
     
   
-  if (type_Rrs_below == "shallow") {
+  if (rrs_type == "shallow") {
+    
+    type_Rrs_below = "shallow"
+    
+    assign(x = "type_Rrs_below", value = type_Rrs_below, envir = .GlobalEnv)
     
     
     if (constrain_config[3] == TRUE && (all(constrain_config[-3])) == FALSE) {
@@ -604,17 +611,18 @@ inverse_runGrad <- function(obsdata, rrs_type,
 # 
 # test_inv = inverse_runGrad(obsdata = obsdata, rrs_type = type_Rrs_below,
 #                 max_par = upper.bound,
-#                 min_par = lower.bound, 
+#                 min_par = lower.bound,
 #                 init_par = par0,
-#                 param_lab = c("chl","adg443","bbp555", 
-#                               "H",  rep(paste0("fa", (1:rb_count))), 
-#                               "pop_sd"), 
-#                 constrain_config = c(F, F, T), bgc_const_val = c(4.96,1.003,0.007), 
-#                 iop_const_path = config_list$` constrain_iop`,
-#                 qaa_prefit = F, QAA_mode = F, qaa_slope = F, manual_slope = F, 
+#                 param_lab = c("chl","adg443","bbp555",
+#                               "H",  rep(paste0("fa", (1:rb_count))),
+#                               "pop_sd"),
+#                 constrain_config = c(F, F, F), bgc_const_val = c(4.96,1.003,0.007),
+#                 iop_const_path = c("./data/Rb_spectral/surface_iops/abs_surf_OUT-R09.csv",
+#                                    "./data/Rb_spectral/surface_iops/bb_surf_OUT-R09.csv"),
+#                 qaa_prefit = F, QAA_mode = F, qaa_slope = F, manual_slope = F,
 #                 manual_slope_vals = c("s_g"=0.014, "s_d"=0.003, "gamma"=0.46),
 #                 wavelength_sim =  wavelength,
-#                 sa_model = "am03", obj_fn = obj.fn, opt_method = methods.opt[4] 
+#                 sa_model = "am03", obj_fn = obj.fn, opt_method = methods.opt[4]
 #                 )
 
 ###############################################################################################################

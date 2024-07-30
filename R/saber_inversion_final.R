@@ -61,6 +61,7 @@ library(suncalc)
 library(viridis)
 library(doParallel)
 library(sensitivity)
+library(lubridate)
 
 # Function to trnaslate above water Sun Zenith angle to sub-surface Zenith angle ----                         
 sunzen_below = function(sun_zen_aove=45){
@@ -452,6 +453,7 @@ run_inverse_mode <- function(rrs_input,
     load("./data/EGSL_bottom.RData")
     
     column_numbers <- which(names(rb) %in% config_list$` rb_types`)
+    print(paste0("The set benthic classes are : ", config_list$` rb_types`))
     
     rb = rb[c(1,column_numbers)]
     names(rb) = c("wavelength", "class1", "class2", "class3")

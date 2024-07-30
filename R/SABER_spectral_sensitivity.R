@@ -317,12 +317,13 @@ rrs_shallow_cops = as.data.frame(t(rrs_shallow_cops))
 plot(wavelength, as.numeric(rrs_shallow_input[345,]), type = "l", lwd = 2)
 lines(wavelength_MSI, as.numeric(rrs_shallow_MSI[345,]), col = "red3", lwd = 2)
 lines(wavelength_OLI, as.numeric(rrs_shallow_OLI[345,]), col = "navyblue", lwd = 2)
+lines(wavelength_ENMAP[1:60], as.numeric(rrs_shallow_ENMAP[345,]), col = "goldenrod2", lwd = 2)
 
 xmin <- 400; xmax <- 750;  xstp <- 50
 xlbl <- expression(paste("Wavelength (", lambda, ") [nm]")) 
 ymin <- 0; ymax <- 0.0025
 ystp <- ymax/5
-ylbl <- expression(paste(italic("R")["rs"]("0"^"-", lambda)^"shallow"[italic("synth")], "[sr"^{-1}, "]"))
+ylbl <- expression(paste(italic("R")["rs"]("0"^"-", lambda)^"shallow"[italic("obs")], "[sr"^{-1}, "]"))
 asp_rat <-  (xmax-xmin)/(ymax-ymin)
 legend_title <- element_blank()
 legend_position <- c(0.70, 0.98)
@@ -333,20 +334,27 @@ g <- ggplot()+
               ylim = c(ymin, ymax)
               ,expand = FALSE, clip = "on"
   ) +
-  geom_line(data = data.frame("wavelength"= wavelength, "WISE" = as.numeric(rrs_shallow_input[345,])),
-            aes(x = wavelength, y = WISE, color = "WISE"), show.legend = T, size = 1.1)+
+  geom_line(data = data.frame("wavelength"= wavelength, "HOCR" = as.numeric(rrs_shallow_input[55,])),
+            aes(x = wavelength, y = HOCR, color = "HOCR"), show.legend = T, size = 1.1)+
   
-  geom_line(data = data.frame("wavelength"= wavelength_MSI, "MSI" = as.numeric(rrs_shallow_MSI[345,])),
+  geom_line(data = data.frame("wavelength"= wavelength_MSI, "MSI" = as.numeric(rrs_shallow_MSI[55,])),
             aes(x = wavelength, y = MSI, color = "MSI"), show.legend = T, size=1.1)+
-  geom_point(data = data.frame("wavelength"= wavelength_MSI, "MSI" = as.numeric(rrs_shallow_MSI[345,])),
+  geom_point(data = data.frame("wavelength"= wavelength_MSI, "MSI" = as.numeric(rrs_shallow_MSI[55,])),
             aes(x = wavelength, y = MSI, color = "MSI"), show.legend = T, size=2)+
   
-  geom_line(data = data.frame("wavelength"= wavelength_OLI, "OLI" = as.numeric(rrs_shallow_OLI[345,])),
+  geom_line(data = data.frame("wavelength"= wavelength_OLI, "OLI" = as.numeric(rrs_shallow_OLI[55,])),
              aes(x = wavelength, y = OLI, color = "OLI"), show.legend = T, size=1.1)+
-  geom_point(data = data.frame("wavelength"= wavelength_OLI, "OLI" = as.numeric(rrs_shallow_OLI[345,])),
+  geom_point(data = data.frame("wavelength"= wavelength_OLI, "OLI" = as.numeric(rrs_shallow_OLI[55,])),
             aes(x = wavelength, y = OLI, color = "OLI"), show.legend = T, size=2)+
   
-  scale_color_manual(name = "", values = rev(c("black", "navyblue", "goldenrod2")))+
+  geom_line(data = data.frame("wavelength"= wavelength_ENMAP[1:60], 
+                              "ENMAP" = as.numeric(rrs_shallow_ENMAP[55,])),
+            aes(x = wavelength, y = ENMAP, color = "ENMAP"), show.legend = T, size=1.1)+
+  geom_point(data = data.frame("wavelength"= wavelength_ENMAP[1:60], 
+                               "ENMAP" = as.numeric(rrs_shallow_ENMAP[55,])),
+             aes(x = wavelength, y = ENMAP, color = "ENMAP"), show.legend = T, size=2)+
+  
+  scale_color_manual(name = "", values = rev(c("black", "navyblue", "goldenrod2", "seagreen")))+
   scale_x_continuous(name = xlbl, limits = c(xmin, xmax),
                      breaks = seq(xmin, xmax, xstp))  +
   #scale_y_log10()+
@@ -377,7 +385,7 @@ g <- ggplot()+
         panel.border = element_rect(colour = "black", fill = NA, size = 1.5))
 
 g
-ggsave("./outputs/shallow_rrs_WISE_MSI_OLI.png", plot = g,scale = 1.7, width = 4.5, height = 4.5, 
+ggsave("./outputs/shallow_rrs_HOCR_MSI_OLI_ENMAP.png", plot = g,scale = 1.7, width = 4.5, height = 4.5, 
        units = "in",dpi = 300)
 
 # Run SABER inversion on the simulated Rrs ----

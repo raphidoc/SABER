@@ -433,7 +433,8 @@ bbp555_synthetic_saber_acc_owt <- inv_bbp555_synthetic_saber %>%
   summarize(metrics = list(calc_inversion_metrics(actual, predicted)))
 
 
-bbp555_synthetic_saber_acc_owt = as.data.frame(do.call(rbind,bbp555_synthetic_saber_acc_owt[["metrics"]]))
+bbp555_synthetic_saber_acc_owt = as.data.frame(do.call(rbind,
+                                                       bbp555_synthetic_saber_acc_owt[["metrics"]]))
 bbp555_synthetic_saber_acc_owt$clust_id = rownames(bbp555_synthetic_saber_acc_owt)
 bbp555_synthetic_saber_acc_owt$rrs_type = "synthetic"
 bbp555_synthetic_saber_acc_owt$inv_model = "SABER"
@@ -468,6 +469,7 @@ acc_deep_param = rbind(chl_insitu_saber_acc_owt, chl_insitu_qaa_acc_owt,
                        bbp555_synthetic_saber_acc_owt, bbp555_synthetic_qaa_acc_owt)
 
 write.csv(file = "./outputs/accuracy_metrics_OWT_v2.csv", acc_deep_param, quote = F, row.names = F)
+
 
 ## For H ----
 

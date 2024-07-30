@@ -10,16 +10,19 @@ jacobian_data$H = jacobian_data$H*10^-0.5
 hl.wl = reshape2::melt(data = jacobian_data, id.vars = "wl")
 
 hl.wl$value = abs(1/hl.wl$value)
+
+hl.wl$value_mod = abs(log10(1/hl.wl$value))
+hl.wl$value_mod[hl.wl$variable == "H"] = 1.5*hl.wl$value_mod[hl.wl$variable == "H"]
 #hl.wl$value = hl.wl$value/max(hl.wl$value)
 
-g = ggplot(hl.wl, aes(fill=variable, y=abs(log10(1/value)), x=wl)) + 
-  geom_bar(position="stack", stat="identity")+
-  scale_fill_manual(values = rev(c("green4", "yellow3", "blue4", "brown4")), labels =rev(c("[chl]",
+g = ggplot(hl.wl, aes(color=variable, y=value_mod, x=wl)) + 
+  geom_line(stat="identity", size= 1.3)+
+  scale_color_manual(values = rev(c("green4", "yellow3", "blue4", "brown4")), labels =rev(c("[chl]",
                                                                          "adg(443)",
                                                                          "bbp(555)",
                                                                          "H")))+
   xlab("Wavelength [nm]")+
-  ylab("Standard error [%]")+
+  ylab("Standard error [unscaled]")+
   # scale_fill_manual(labels = c(expression(paste(italic("[chl]"))),
   #                              expression(paste("a"[italic("CDOM")](440))),
   #                              expression(paste("a"[italic("NAP")](440)))),
@@ -32,7 +35,7 @@ g = ggplot(hl.wl, aes(fill=variable, y=abs(log10(1/value)), x=wl)) +
         axis.title.y = element_text(size = 20),
         axis.ticks.length = unit(.25, "cm"),
         plot.caption = element_text(face="bold", hjust = 0, size = 15, color = 'black'),
-        legend.position=c(0.75, 0.75),
+        legend.position=c(0.15, 0.95),
         legend.direction = "vertical",
         legend.title = element_blank(),
         legend.text = element_text(colour = "black", size = 15, face = "plain"),
