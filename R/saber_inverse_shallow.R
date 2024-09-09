@@ -2,7 +2,7 @@
 # Read shallow water database  ----
 
 site_input = "BG"
-year = 2023
+year = 2022
 
 if (year == 2022) {
   

@@ -43,7 +43,7 @@ interp_rb <- function(wavelength_input, bottom_type = c("Mud_2019", "Sand_2019",
 # Read shallow water database  ----
 
 site_input = "BG"
-year = 2023
+year = 2022
 
 if (year == 2022) {
   
@@ -406,17 +406,29 @@ inv_bound = create_init_bound(rrs_inv_type = type_Rrs_below, manual_par0 = manua
                               constrain.shallow.bgc = constrain.shallow.bgc, 
                               constrain.shallow.iop = constrain.shallow.iop, 
                               pop.sd =  pop.sd, 
-                              init_par = c(mean(seadoo_chl$seadoo_chl), 0.25, 
-                                           0.003,#mean(seadoo_depth$V1[BG_idx]), 
-                                           mean(seadoo_depth$seadoo_depth, na.rm = T),
+                              init_par = c(#mean(seadoo_chl$seadoo_chl[BG_idx], na.rm = T),
+                                          mean(seadoo_chl$V1[BG_idx], na.rm = T), 
+                                           0.25, 
+                                           0.003,
+                                           mean(seadoo_depth$V1[BG_idx], na.rm = T), 
+                                           #mean(seadoo_depth$seadoo_depth, na.rm = T),
+                                           
                                            0.5,0.5,0.5,0.05),
-                              upper_par = c(max(seadoo_chl$seadoo_chl), 0.5, 0.005,
-                                            #max(seadoo_depth$V1[BG_idx]), 
-                                            max(seadoo_depth$seadoo_depth, na.rm = T),
+                              
+                              upper_par = c(#max(seadoo_chl$seadoo_chl[BG_idx], na.rm = T),
+                                            max(seadoo_chl$V1[BG_idx], na.rm = T), 
+                                            0.5, 
+                                            0.005,
+                                            max(seadoo_depth$V1[BG_idx], na.rm = T), 
+                                            #max(seadoo_depth$seadoo_depth, na.rm = T),
                                             1,1,1,10),
-                              lower_par = c(min(seadoo_chl$seadoo_chl), 0.1, 0.001,
-                                            #min(seadoo_depth$V1[BG_idx]),
-                                            min(seadoo_depth$seadoo_depth, na.rm = T),
+                              
+                              lower_par = c(min(seadoo_chl$V1[BG_idx], na.rm = T),
+                                            #min(seadoo_chl$seadoo_chl[BG_idx], na.rm = T), 
+                                            0.05, 
+                                            0.001,
+                                            min(seadoo_depth$V1[BG_idx], na.rm = T),
+                                            #min(seadoo_depth$seadoo_depth, na.rm = T),
                                             0.0,0.0,0.0,0.00001)
 )
 
@@ -432,17 +444,24 @@ methods.opt <- c("Nelder-Mead", "BFGS", "CG", "L-BFGS-B", "SANN",
 samplerlist <-c("Metropolis", "AM", "DR", "DRAM", "DE", "DEzs", "DREAM", "DREAMzs", "SMC")
 
 
+na_idx = is.na(seadoo_chl$V1)
+
 # TEST the Shallow Water unconstrained inversion
 set.seed(345)
 test_idx = sample(size = 50, x = seq(1,length(BG_idx),1))
 
 if(inel_cor == "OFF") {
   #obsdata = as.numeric(seaDoo_rrs_interp[BG_idx,][test_idx,])
-  obsdata = (seaDoo_rrs_interp[test_idx,])
+  obsdata = (seaDoo_rrs_interp[BG_idx,][test_idx,])
 } else {
   
   obsdata = as.numeric(seaDoo_rrs_interp_inel_corrected[test_idx,])
 }
+
+insitu_val = data.frame("chl" = seadoo_chl$V1[BG_idx][test_idx],
+                        "H" = seadoo_depth$V1[BG_idx][test_idx],
+                        "vsf700" = seadoo_vsf700$V1[BG_idx][test_idx]
+                        )
 
 Rb_set = read.csv("./data/EGSL_Rb.csv", header = T)
 benthic_classes_2019 <- colnames(Rb_set)[grep("2019", colnames(Rb_set))]
