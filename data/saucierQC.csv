@@ -1,0 +1,30 @@
+Station,ACS.data,BB9.data,a.good,bb.good,c.good,station.keep,comments
+MAN-F01,T,T,F,T,F,F,bad attenuation data
+MAN-F05,T,T,F,T,F,F,bad attenuation data
+MAN-F11,T,T,F,T,F,F,bad attenuation data
+MAN-F18,T,T,F,T,F,F,bad attenuation data
+MAN-F21,T,T,T,T,T,T,acceptable data
+MAN-F22,T,T,T,T,T,T,acceptable data
+MAN-R21,T,F,F,F,F,F,no bb data
+MAN-R22,T,T,T,T,T,T,acceptable data
+MAN-R23,T,T,T,T,T,T,acceptable data
+MAN-R24,T,T,T,T,F,F,error in mckee correction resulting in NA c data
+MAN-R25,T,T,T,T,T,T,acceptable data
+MAN-F0,T,T,T,T,T,T,acceptable data
+MAN-F03.5,T,T,T,T,T,T,acceptable data
+MAN-F08,T,T,T,T,T,T,acceptable data
+MAN-F14,T,T,T,T,T,T,acceptable data
+MAN-F16,T,F,F,F,F,F,no bb data
+MAN-R11.5,T,T,T,T,F,F,the c data is converging at higher wavelengths when compared among depths. Need to verify
+MAN-R12B,T,T,T,T,T,T,acceptable data
+MAN-R13,T,T,T,T,T,T,acceptable data
+MAN-R15,T,T,T,T,T,T,bb data is very fluctuating
+MAN-R02,T,F,F,F,F,F,no bb data
+MAN-R04,T,T,NA,NA,NA,F,the binning fails at any given depth interval. The predloess counters NA in sequence
+OUT-R07,T,T,T,T,T,T,the IOPs varry in convergent nature at depths; might be affected by stratification
+OUT-R08,T,T,T,T,T,T,acceptable data
+OUT-R09,T,T,T,T,T,T,acceptable data
+OUT-R10,T,T,T,F,F,F,error in bb data processing
+MAN-R06,T,T,T,T,T,T,acceptable data
+MAN-R07,T,T,T,T,T,T,acceptable data
+MAN-R08,T,T,T,T,T,F,very sparse data

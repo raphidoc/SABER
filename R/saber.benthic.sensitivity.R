@@ -42,12 +42,13 @@ interp_rb <- function(wavelength_input, bottom_type = c("Mud_2019", "Sand_2019",
 
 # Read shallow water database  ----
 
-site_input = "BG"
+site_input = "MP"
 year = 2022
 
 if (year == 2022) {
   
   bathy_data = read.csv("./data/bathy_db_long.csv", header = T)
+  bathy_data_wide = read.csv("./data/bathy_db_wide.csv", header = T)
   
 }
 
@@ -631,7 +632,8 @@ process_combination <- function(obsdata, idx) {
 }
 
 # Create a grid of all combinations of i and j
-combinations_grid <- expand.grid(i = seq_along(combinations$V1), j = seq_along(spectral_slope_vec$ag))
+combinations_grid <- expand.grid(i = seq_along(combinations$V1), 
+                                 j = seq_along(spectral_slope_vec$ag))
 
 # Function to process each observation
 process_observation <- function(obsdata) {

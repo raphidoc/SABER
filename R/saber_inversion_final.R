@@ -41,7 +41,7 @@ library(fitdistrplus)
 library(Riops)
 library(Cops)
 library(ggplot2)
-library(rho)
+#library(rho)
 library(marqLevAlg)
 library(BayesianTools)
 library(coda)
@@ -62,6 +62,7 @@ library(viridis)
 library(doParallel)
 library(sensitivity)
 library(lubridate)
+library(tidyr)
 
 # Function to trnaslate above water Sun Zenith angle to sub-surface Zenith angle ----                         
 sunzen_below = function(sun_zen_aove=45){
@@ -124,23 +125,23 @@ use_WASI_rb = FALSE
 use_WISE_Man_rb = TRUE
 use_algae_WISE_rb = FALSE
 
-if (use_WISE_Man_rb == TRUE) {
-  load("./data/WISE-Man.RData")
-  
-} else {
-  load("./data/algae-WISE.RData")
-}
-
-if (!(all(length(rb$wavelength) == length(wavelength)) && all(rb$wavelength == wavelength))) {
-  rb_interp = data.frame("wavelength" = wavelength,
-                         "class1" = approx(rb$wavelength, rb$class1, xout = wavelength)$y,
-                         "class2" = approx(rb$wavelength, rb$class2, xout = wavelength)$y,
-                         "class3" = approx(rb$wavelength, rb$class3, xout = wavelength)$y
-  )
-  
-}
-rb = rb_interp
-rm(rb_interp)
+# if (use_WISE_Man_rb == TRUE) {
+#   load("./data/WISE-Man.RData")
+#   
+# } else {
+#   load("./data/algae-WISE.RData")
+# }
+# 
+# if (!(all(length(rb$wavelength) == length(wavelength)) && all(rb$wavelength == wavelength))) {
+#   rb_interp = data.frame("wavelength" = wavelength,
+#                          "class1" = approx(rb$wavelength, rb$class1, xout = wavelength)$y,
+#                          "class2" = approx(rb$wavelength, rb$class2, xout = wavelength)$y,
+#                          "class3" = approx(rb$wavelength, rb$class3, xout = wavelength)$y
+#   )
+#   
+# }
+# rb = rb_interp
+# rm(rb_interp)
 
 fA1=0.5; # aerial fraction 1 
 fA2=0.25; # aerial fraction 2 
@@ -462,7 +463,7 @@ run_inverse_mode <- function(rrs_input,
       
       print(paste0("Rb wavelength has " , length(rb$wavelength), " bands; Rrs wavelength has ", length(wavelength_input) ))
       
-      rb_interp = data.frame("wavelength" = wavelength,
+      rb_interp = data.frame("wavelength" = wavelength_input,
                              "class1" = approx(rb$wavelength, rb$class1, xout = wavelength_input)$y,
                              "class2" = approx(rb$wavelength, rb$class2, xout = wavelength_input)$y,
                              "class3" = approx(rb$wavelength, rb$class3, xout = wavelength_input)$y

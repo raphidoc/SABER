@@ -1119,10 +1119,14 @@ plot_inversion_validation_singlevar_contour_multcruise_OWT <- function(input_df,
 # FINAL version for uni-variate linear scale scatter plot for inversion
 # ===================================================================================
 plot_inversion_validation_singlevar_linear_contour <- function(input_df, 
+                                                               input_x,
+                                                               input_y,
                                                                xmin, xmax, xlabel, 
                                                                ylabel, 
+                                                               station_anotate, 
                                                                uncertainty = "CI", opacity = 0.3, 
-                                                               plot_col, xstp,
+                                                               plot_col, xstp, ystp,
+                                                               legend_position = c(0.6,0.3),
                                                                #label_list = c("GLORIA","MERMAID","SEABASS", "NOMAD", "AERONET-OC"),
                                                                #shape_list = c(21,22,23,24,25),
                                                                show_legend, hist_count = 30){
@@ -1135,22 +1139,23 @@ plot_inversion_validation_singlevar_linear_contour <- function(input_df,
   
   asp_rat <- (xmax-xmin)/(ymax-ymin)
   
-  g<-   ggplot(data=d, aes(x = H_actual, y = H_predicted)) +
+  g<-   ggplot(data=d, aes(x = .data[[input_x]], y = .data[[input_y]])) +
     #geom_contour(aes(z = z), col = "black")+
     
     
-    geom_density_2d(data = d, aes(x = H_actual, y = H_predicted),na.rm = T, bins = 6,
+    geom_density_2d(data = d, aes(x = .data[[input_x]], y = .data[[input_y]]),na.rm = T, bins = 6,
                     linewidth = 0.25, colour = "black", show.legend = F, size=1.1)+
     
-    geom_point(data = d, aes(H_actual, H_predicted), shape=21, fill=plot_col,
-               alpha = I(opacity), size = I(3), show.legend = show_legend) +
+    geom_point(data = d, aes(.data[[input_x]], .data[[input_y]]), shape=21, fill=plot_col,
+               alpha = I(opacity), size = I(4), show.legend = show_legend) +
     
+    geom_text(data = d, aes(label=as.character(station)),hjust=0, vjust=0, angle= 0, check_overlap = F)+
     
-    geom_ribbon(data = d, aes(x = H_actual, y = H_predicted, 
-                              ymin = (H_predicted - .data[[uncertainty]]),
-                              ymax = (H_predicted + .data[[uncertainty]])),
+    geom_ribbon(data = d, aes(x = .data[[input_x]], y = .data[[input_y]], 
+                              ymin = (.data[[input_y]] - .data[[uncertainty]]),
+                              ymax = (.data[[input_y]] + .data[[uncertainty]])),
                 fill = "navyblue",
-                alpha = opacity, show.legend = F,
+                alpha = 0.3, show.legend = F,
                 colour="NA"
     )+
     
@@ -1165,9 +1170,9 @@ plot_inversion_validation_singlevar_linear_contour <- function(input_df,
     
     coord_fixed(ratio = asp_rat, xlim = c(xmin, xmax), 
                 ylim = c(ymin, ymax), expand = FALSE, clip = "on") +
-    scale_x_continuous(name = xlbl, limits = c(xmin, xmax), 
+    scale_x_continuous(name = xlabel, limits = c(xmin, xmax), 
                        breaks = seq(xmin, xmax, xstp)) +
-    scale_y_continuous(name = ylbl, limits = c(ymin, ymax), 
+    scale_y_continuous(name = ylabel, limits = c(ymin, ymax), 
                        breaks = seq(ymin, ymax, ystp)) +
     
     theme_bw() +

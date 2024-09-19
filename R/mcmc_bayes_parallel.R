@@ -505,7 +505,7 @@ inverse_runBayes <- function(obsdata, rrs_type, max_par, min_par,
                 linetype = "dashed",
                 size=1.3,show.legend = TRUE)+
       
-      scale_colour_viridis(discrete = T,
+      scale_colour_manual(values = c("red3", "blue3"),
                            labels = c(expression(paste(italic("R")["rs,obs"])),
                                      
                                      expression(paste(italic("R")["rs,MAP"]))) 
