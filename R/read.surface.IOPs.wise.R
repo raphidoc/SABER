@@ -263,7 +263,8 @@ read.surface.IOPs.wise <- function(absdata_kildir = "./data/Rb_spectral/absorpti
 }
 
 #=======================================================================================
-get_in_situ_params <- function(station_name = "OUT-F18", use_bb_nup = TRUE) {
+get_in_situ_params <- function(station_name = "OUT-F18", get_only_labdata = F,
+                               use_bb_nup = TRUE) {
   
   statname = station_name
   #Load WISE-Man BGC data
@@ -280,6 +281,7 @@ get_in_situ_params <- function(station_name = "OUT-F18", use_bb_nup = TRUE) {
                          "depth"=a_d$depth,"wavelength"=a_d$wavelength, 
                          "a_phi"=a_p$ap - a_d$ad,
                          "a_cdom"=a_g$ag, "a_nap"=a_d$ad,
+                         "a_dg" = a_g$ag + a_d$ad,
                          "a_total"=a_t)
   
   rm(a_t)
@@ -289,82 +291,97 @@ get_in_situ_params <- function(station_name = "OUT-F18", use_bb_nup = TRUE) {
   
   invivo_chl = bgc_wiseman$Chl[bgc_wiseman$station == statname & bgc_wiseman$depth < 1]
   
-  #Load relevant backscatter
-  if (use_bb_nup == TRUE ) {
+  if(get_only_labdata == TRUE){
     
-    #invisible(capture.output(test_IOP_func = suppressWarnings(read.surface.IOPs.wise(station.args = statname))))  
-    test_IOP_func = suppressWarnings(read.surface.IOPs.wise(station.args = statname, verbose = F))
-    bbdata = test_IOP_func$bb_data
+    print("No backscatter data will be imported...")
     
-    #### Compute bbp and bb spectral slope
-    if (length(bbdata$wave) == 6) {
-      sensor_wl = c(394, 420, 470, 532, 620, 700)
-      x = 555/sensor_wl
-      print("HS-6 VSF is used")
-    }
-    if (length(bbdata$wave) == 9) {
-      sensor_wl = c(412, 440, 488, 510, 532, 595, 650, 676, 715)
-      x = 555/sensor_wl
-      print("BB-9 VSF is used")
-    }
+    return(list("abs_invivo"= invivo_abs, "chl_invivo" = invivo_chl))
     
-    #nz=length(IOP.fitted.down$Depth)
-    nz=1 #As we only are interested for surface bb
-    bbP555.down =rep(0,nz)
-    nuP.down    =rep(0,nz)
-    
-    for (i in 1:nz) {
-      #y = IOP.fitted.down$HS6$bbP[i,]
-      y = as.numeric(as.matrix(bbdata$bbp)[,i])
-      y[y < 0] = NA
-      y[y > 0.1] = NA
-      if (any(is.na(y))) {
-        bbP555.down[i]=NA
-        nuP.down[i]=NA
-      } else {
-        model = nls(y~b*x^z, start = list(b = y[3], z = 1),data=data.frame(x,y), 
-                    control=list(maxiter=100, warnOnly=T))
-        bbP555.down[i]=coef(model)[1]
-        nuP.down[i]=coef(model)[2]
-      }
-    }
   } else {
-    print("WARNING!!! ONLY USE WHEN QC CHECKED DEPTH PROFILE IS AVAILABLE")
     
-    bbpath = list.files(path = "./data/Rb_spectral/backscatter/", 
-                        pattern = "2019*", full.names = T, )
-    idx = grep(statname, bbpath)
-    if (is.na(idx)) {
-      print("The backscatter csv file is not available on disc, use generate.IOP.DB.funcmode.R function to generate compatiable bb file-structure")
+    #Load relevant backscatter
+    if (use_bb_nup == TRUE ) {
+      
+      #invisible(capture.output(test_IOP_func = suppressWarnings(read.surface.IOPs.wise(station.args = statname))))  
+      test_IOP_func = suppressWarnings(read.surface.IOPs.wise(station.args = statname, verbose = F))
+      bbdata = test_IOP_func$bb_data
+      
+      #### Compute bbp and bb spectral slope
+      if (length(bbdata$wave) == 6) {
+        sensor_wl = c(394, 420, 470, 532, 620, 700)
+        x = 555/sensor_wl
+        print("HS-6 VSF is used")
+      }
+      if (length(bbdata$wave) == 9) {
+        sensor_wl = c(412, 440, 488, 510, 532, 595, 650, 676, 715)
+        x = 555/sensor_wl
+        print("BB-9 VSF is used")
+      }
+      
+      #nz=length(IOP.fitted.down$Depth)
+      nz=1 #As we only are interested for surface bb
+      bbP555.down =rep(0,nz)
+      nuP.down    =rep(0,nz)
+      
+      for (i in 1:nz) {
+        #y = IOP.fitted.down$HS6$bbP[i,]
+        y = as.numeric(as.matrix(bbdata$bbp)[,i])
+        y[y < 0] = NA
+        y[y > 0.1] = NA
+        if (any(is.na(y))) {
+          bbP555.down[i]=NA
+          nuP.down[i]=NA
+        } else {
+          model = nls(y~b*x^z, start = list(b = y[3], z = 1),data=data.frame(x,y), 
+                      control=list(maxiter=100, warnOnly=T))
+          bbP555.down[i]=coef(model)[1]
+          nuP.down[i]=coef(model)[2]
+          
+          return(list("abs_invivo"= invivo_abs, "chl_invivo" = invivo_chl, "bbp555"=bbP555.down,
+                      "slope" = nuP.down))
+        }
+      }
+    } else {
+      print("WARNING!!! ONLY USE WHEN QC CHECKED DEPTH PROFILE IS AVAILABLE")
+      
+      bbpath = list.files(path = "./data/Rb_spectral/backscatter/", 
+                          pattern = "2019*", full.names = T, )
+      idx = grep(statname, bbpath)
+      if (is.na(idx)) {
+        print("The backscatter csv file is not available on disc, use generate.IOP.DB.funcmode.R function to generate compatiable bb file-structure")
+      }
+      bbdata = read.csv(bbpath[idx], header = T)
+      depth_bbdata = as.numeric(substr(colnames(bbdata)[-1],start = 2, stop = 20))
+      bbdata_trim = bbdata[,-1]
+      
+      if (nrow(bbdata) == 6) {
+        bbdata$wl = c(394, 420, 470, 532, 620, 700)
+      }
+      if (nrow(bbdata) == 9) {
+        bbdata$wl = c(412, 440, 488, 510, 532, 595, 650, 676, 715)
+      }
+      #extrapolate bb for z=0 depth and desired waves
+      bb = matrix(nrow=length(depth_bbdata), ncol=length(wavelength))
+      
+      for (i in 1:length(depth_bbdata)) {
+        s     <- smooth.spline(bbdata$wl, bbdata_trim[,i])
+        bb[i,] <- predict(s,wavelength)$y
+      }
+      
+      bb = as.data.frame(t(bb))  
+      colnames(bb) = depth_bbdata
+      bb$wavelength = wavelength
+      
+      bb <- bb %>% dplyr::select(wavelength, everything())
+      optimal_depth = which.min(abs(0 - depth_bbdata))
+      optimal_wave = which.min(abs(550 - bb$wavelength))
+      bbP555.down = bb[optimal_wave,optimal_depth+1]
+      
+      return(list("abs_invivo"= invivo_abs, "chl_invivo" = invivo_chl, "bbp555"=bbP555.down))
     }
-    bbdata = read.csv(bbpath[idx], header = T)
-    depth_bbdata = as.numeric(substr(colnames(bbdata)[-1],start = 2, stop = 20))
-    bbdata_trim = bbdata[,-1]
     
-    if (nrow(bbdata) == 6) {
-      bbdata$wl = c(394, 420, 470, 532, 620, 700)
-    }
-    if (nrow(bbdata) == 9) {
-      bbdata$wl = c(412, 440, 488, 510, 532, 595, 650, 676, 715)
-    }
-    #extrapolate bb for z=0 depth and desired waves
-    bb = matrix(nrow=length(depth_bbdata), ncol=length(wavelength))
-    
-    for (i in 1:length(depth_bbdata)) {
-      s     <- smooth.spline(bbdata$wl, bbdata_trim[,i])
-      bb[i,] <- predict(s,wavelength)$y
-    }
-    
-    bb = as.data.frame(t(bb))  
-    colnames(bb) = depth_bbdata
-    bb$wavelength = wavelength
-    
-    bb <- bb %>% dplyr::select(wavelength, everything())
-    optimal_depth = which.min(abs(0 - depth_bbdata))
-    optimal_wave = which.min(abs(550 - bb$wavelength))
-    bbP555.down = bb[optimal_wave,optimal_depth+1]
   }
   
-  return(list("abs_invivo"= invivo_abs, "chl_invivo" = invivo_chl, "bbp555"=bbP555.down))
+  #return(list("abs_invivo"= invivo_abs, "chl_invivo" = invivo_chl, "bbp555"=bbP555.down))
   
 }

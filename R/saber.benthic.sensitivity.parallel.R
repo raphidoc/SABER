@@ -37,17 +37,17 @@ decompose_data <- function(data, num_groups) {
   split(data, rep(1:num_groups, length.out = nrow(data)))
 }
 
-decomposed_data <- decompose_data(obsdata, 11)
+decomposed_data <- decompose_data(obsdata, 5)
 
-
-set.seed(345)
-slope_idx = sample(size = 5, x = seq(1,length(spectral_slope_vec$ad_ag),1))
-
-spectral_slope_vec = spectral_slope_vec[slope_idx,]
-
-rb_idx = sample(size = 2, x = seq(1,length(combinations$V1),1))
-
-combinations = combinations[rb_idx,]
+# 
+# set.seed(345)
+# slope_idx = sample(size = 5, x = seq(1,length(spectral_slope_vec$ad_ag),1))
+# 
+# spectral_slope_vec = spectral_slope_vec[slope_idx,]
+# 
+# rb_idx = sample(size = 2, x = seq(1,length(combinations$V1),1))
+# 
+# combinations = combinations[rb_idx,]
 
 
 

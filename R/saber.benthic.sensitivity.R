@@ -44,6 +44,7 @@ interp_rb <- function(wavelength_input, bottom_type = c("Mud_2019", "Sand_2019",
 
 site_input = "MP"
 year = 2022
+inel_cor = "OFF"
 
 if (year == 2022) {
   
@@ -408,10 +409,10 @@ inv_bound = create_init_bound(rrs_inv_type = type_Rrs_below, manual_par0 = manua
                               constrain.shallow.iop = constrain.shallow.iop, 
                               pop.sd =  pop.sd, 
                               init_par = c(#mean(seadoo_chl$seadoo_chl[BG_idx], na.rm = T),
-                                          mean(seadoo_chl$V1[BG_idx], na.rm = T), 
+                                          median(seadoo_chl$V1[BG_idx], na.rm = T), 
                                            0.25, 
                                            0.003,
-                                           mean(seadoo_depth$V1[BG_idx], na.rm = T), 
+                                           median(seadoo_depth$V1[BG_idx], na.rm = T), 
                                            #mean(seadoo_depth$seadoo_depth, na.rm = T),
                                            
                                            0.5,0.5,0.5,0.05),
@@ -449,7 +450,7 @@ na_idx = is.na(seadoo_chl$V1)
 
 # TEST the Shallow Water unconstrained inversion
 set.seed(345)
-test_idx = sample(size = 50, x = seq(1,length(BG_idx),1))
+test_idx = sample(size = 20, x = seq(1,length(BG_idx),1))
 
 if(inel_cor == "OFF") {
   #obsdata = as.numeric(seaDoo_rrs_interp[BG_idx,][test_idx,])
@@ -469,6 +470,7 @@ benthic_classes_2019 <- colnames(Rb_set)[grep("2019", colnames(Rb_set))]
 benthic_classes_2022 <- colnames(Rb_set)[grep("2022", colnames(Rb_set))]
 benthic_classes_2023 <- colnames(Rb_set)[grep("2023", colnames(Rb_set))]
 
+benthic_classes_2019 <- c("Mud", "Sand", "Rock", "Eelgrass", "Macroalgae", "Spartina")
 combinations <- combn(benthic_classes_2023, 3, simplify = FALSE)
 
 combinations <- lapply(combinations, function(x) sort(x))
