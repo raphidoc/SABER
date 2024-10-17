@@ -70,6 +70,10 @@ bathy_data = bathy_data[!is.na(bathy_data$Site),]
 bathy_data = bathy_data[!is.na(bathy_data$OptShallow),]
 bathy_data$BottomElevation_m = abs(bathy_data$BottomElevation_m)
 
+bathy_data_wide = bathy_data_wide[!is.na(bathy_data_wide$Site),]
+#bathy_data_wide = bathy_data_wide[!is.na(bathy_data_wide$op),]
+
+
 bathy_data <- bathy_data %>%
   mutate(DateOnly = format(ymd_hms(DateTime), "%d_%m_%y"))
 
@@ -89,9 +93,11 @@ asp_rat <-  (xmax-xmin)/(ymax-ymin)
 legend_title <- element_blank()
 legend_position <- c(0.70, 0.98)
 
-g <- ggplot(data = bathy_data) +
+g <- ggplot(data = bathy_data#[MP_HS_idx$x,]
+            ) +
   geom_line(aes(x = as.numeric(as.character(Wavelength)), y = Rrs, colour = Hwc,
-                linetype = DateOnly,group = Hwc
+                #linetype = DateOnly,
+                group = Hwc
   ), size = 1.0, alpha = 0.6, show.legend = T)+
   scale_colour_viridis(discrete = F, name = "Depth (m)") +
   coord_fixed(ratio = asp_rat, xlim = c(xmin, xmax),
@@ -106,32 +112,35 @@ g <- ggplot(data = bathy_data) +
   #scale_y_log10()+
   scale_y_continuous(name = ylbl, limits = c(ymin, ymax),
                      breaks = seq(ymin, ymax, ystp))  +
-  theme_bw()+
-  theme(plot.title = element_text(size = 25, face = "bold", hjust = 0.5),
-        axis.text.x = element_text(size = 25, color = 'black', angle = 0),
-        axis.text.y = element_text(size = 25, color = 'black', angle = 0),
+  theme_bw() +
+  theme(plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+        axis.text.x = element_text(size = 20, color = 'black', angle = 0), 
+        axis.text.y = element_text(size = 20, color = 'black', angle = 0), 
         axis.title.x = element_text(size = 25),
         axis.title.y = element_text(size = 25),
         axis.ticks.length = unit(.25, "cm"),
         legend.box.just = "right",
         legend.spacing = unit(-0.5, "cm"),
-        legend.position = legend_position,
-        legend.direction = "vertical",
-        legend.title = element_text(colour = "black", size = 15, face = "plain"),
+        legend.position = c(0.01, 0.99),
+        #legend.direction = "vertical",
+        legend.title = element_blank(),
         legend.text = element_text(colour = "black", size = 15, face = "plain"),
-        legend.background = element_rect(fill = NA, size = 0.5,
+        legend.background = element_rect(fill = NA, size = 0.5, 
                                          linetype = "solid", colour = 0),
         legend.key = element_blank(),
         legend.justification = c("left", "top"),
         panel.background = element_blank(),
-        panel.grid.major = element_line(colour = "grey",
-                                        size = 0.5, linetype = "dotted"),
-        panel.grid.minor = element_blank(),
-        plot.margin = unit(c(0.0,0.9,0.0,0.0), "cm"),
+        panel.grid.major = element_line(colour = "black", 
+                                        size = 0.5, linetype = "dotted"), 
+        panel.grid.minor = element_line(colour = "grey80", 
+                                        linewidth =  0.2, linetype = "solid"),
+        plot.margin = unit(c(0.5,1.0,0.5,0.5), "cm"),
+        legend.direction = "vertical", legend.box = "vertical",
+        legend.text.align = 0,
         panel.border = element_rect(colour = "black", fill = NA, size = 1.5))
 
 g
-ggsave(paste0("./outputs/shallow_rrs_", year,".png"), plot = g, scale = 1.7, 
+ggsave(paste0("./outputs/shallow_rrs_",site_input,"_", year,".png"), plot = g, scale = 1.25, 
        width = 4.5, height = 4.5,
        units = "in",dpi = 300)
 
@@ -141,7 +150,7 @@ xlbl <- "AVW"
 ymin <- -1; ymax <- 1 ; ystp <- 0.5
 ylbl <- "NDI(490,665)"
 
-g1 <- ggplot(data = bathy_data[bathy_data$Site == "BG",])  +
+g1 <- ggplot(data = bathy_data[bathy_data$Site == "MP",])  +
   geom_line(aes(x =AVW, y= QWIP),color = "navyblue", size=1.3,show.legend = F)+
   geom_ribbon(aes(x =AVW, ymax = QWIP + 0.2, ymin = QWIP - 0.2),
               alpha = 0.0,
@@ -155,7 +164,7 @@ g1 <- ggplot(data = bathy_data[bathy_data$Site == "BG",])  +
               colour="purple",
               show.legend = F, linetype="dotted", size=1
   )+
-  geom_point(aes(x = AVW, y=NDI491665, color= as.numeric(Hwc), shape=as.character(DateOnly)
+  geom_point(aes(x = AVW, y= NDI491665  , color= as.numeric(Hwc)#, shape=as.character(DateOnly)
   ),
   size=1.8, alpha = 0.60, show.legend = T)+
   
@@ -177,29 +186,35 @@ g1 <- ggplot(data = bathy_data[bathy_data$Site == "BG",])  +
                      breaks = seq(xmin, xmax, xstp)) +
   scale_y_continuous(name = ylbl, limits = c(ymin, ymax),
                      breaks = seq(ymin, ymax, ystp)) +
+  theme_bw() +
   theme(plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
-        plot.caption = element_text(face="bold",size=15, hjust = 0, color = 'black'),
-        axis.text.x = element_text(size = 25, color = 'black', angle = 0),
-        axis.text.y = element_text(size = 25, color = 'black', angle = 0),
-        axis.title.x = element_text(size = 20),
-        axis.title.y = element_text(size = 20),
+        axis.text.x = element_text(size = 20, color = 'black', angle = 0), 
+        axis.text.y = element_text(size = 20, color = 'black', angle = 0), 
+        axis.title.x = element_text(size = 25),
+        axis.title.y = element_text(size = 25),
         axis.ticks.length = unit(.25, "cm"),
-        legend.position=c(0.6, 0.95),
-        legend.direction = "vertical",
+        legend.box.just = "right",
+        legend.spacing = unit(-0.5, "cm"),
+        legend.position = c(0.01, 0.99),
+        #legend.direction = "vertical",
         legend.title = element_blank(),
         legend.text = element_text(colour = "black", size = 15, face = "plain"),
-        legend.background = element_rect(fill = NA, size = 0.5,
+        legend.background = element_rect(fill = NA, size = 0.5, 
                                          linetype = "solid", colour = 0),
         legend.key = element_blank(),
         legend.justification = c("left", "top"),
         panel.background = element_blank(),
-        panel.grid.major = element_line(colour = "grey",
-                                        size = 0.5, linetype = "dotted"),
-        panel.grid.minor = element_blank(),
+        panel.grid.major = element_line(colour = "black", 
+                                        size = 0.5, linetype = "dotted"), 
+        panel.grid.minor = element_line(colour = "grey80", 
+                                        linewidth =  0.2, linetype = "solid"),
+        plot.margin = unit(c(0.5,1.0,0.5,0.5), "cm"),
+        legend.direction = "vertical", legend.box = "vertical",
+        legend.text.align = 0,
         panel.border = element_rect(colour = "black", fill = NA, size = 1.5))
 g1
 
-ggsave(paste0("./outputs/shallow_qwip_", year,".png"), 
+ggsave(paste0("./outputs/shallow_qwip_", site_input,"_",year,".png"), 
        plot = g1,scale = 1.7, width = 4.5, height = 4.5,
        units = "in",dpi = 300)
 

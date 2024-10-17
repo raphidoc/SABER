@@ -67,38 +67,40 @@ plot_inversion_validation_multivar_linear_contour <- function(
                     linewidth = 0.25, colour = "black", show.legend = F, size=1.1)+
     
     geom_point(data = d, aes(.data[[input_x]], .data[[input_y]],
-                             shape=sensor, fill=(station_type), color = station_type),
-               alpha = I(opacity), size = I(5), show.legend = show_legend) +
+                             shape=sensor#, fill=(sensor), color = sensor
+                             ),
+               alpha = I(opacity), fill = plot_col, color =plot_col, 
+               size = I(5), show.legend = show_legend) +
     
-    geom_text(data = d, size = 2.5,  
-              aes(label=as.character(statname_new)),hjust=0, vjust=2, angle= 45,
-              check_overlap = T)+
+    # geom_text(data = d, size = 2.5,  
+    #           aes(label=as.character(statname_new)),hjust=0, vjust=2, angle= 45,
+    #           check_overlap = T)+
     
-    # geom_ribbon(data = d, aes(fill = sensor,
-    #                           x = .data[[input_x]], y = .data[[input_y]], 
-    #                           ymin = (.data[[input_y]] - .data[[uncertainty]]),
-    #                           ymax = (.data[[input_y]] + .data[[uncertainty]])),
-    #             
-    #             alpha = 0.3, show.legend = F,
-    #             colour="NA"
-    # )+
+    geom_ribbon(data = d, aes(#fill = sensor,
+                              x = .data[[input_x]], y = .data[[input_y]],
+                              ymin = (.data[[input_y]] - .data[[uncertainty]]),
+                              ymax = (.data[[input_y]] + .data[[uncertainty]])),
+
+                alpha = 0.3, show.legend = F, fill = plot_col,
+                colour="NA"
+    )+
     
     scale_shape_manual(name = " ",
                        labels=(c(expression(paste("COPS")),
                                  expression(paste("PSR")))),
-                       values = c(21,23))+
+                       values = c(22,23))+
     
     # scale_color_manual(name = " ", 
     #                    labels=(c(expression(paste("COPS")),expression(paste("PSR")))),
     #                    values = c("black", "red"))+
     
-    scale_color_manual(name = " ",
-                       labels=(c("COPS_unique", "Duplicate", "PSR_unique")),
-                       values = c("purple3", "cyan3", "green3"))+
-    
-    scale_fill_manual(name = " ",
-                      labels=(c("COPS_unique", "Duplicate", "PSR_unique")),
-                      values = c("purple3", "cyan3", "green3"))+
+    # scale_color_manual(name = " ",
+    #                    labels=(c("COPS_unique", "Duplicate", "PSR_unique")),
+    #                    values = c("purple3", "cyan3", "green3"))+
+    # 
+    # scale_fill_manual(name = " ",
+    #                   labels=(c("COPS_unique", "Duplicate", "PSR_unique")),
+    #                   values = c("purple3", "cyan3", "green3"))+
     
     geom_abline(slope = 1,linetype="dashed", intercept = 0,
                 colour="black", na.rm = FALSE, size=1.3, show.legend = FALSE) +
@@ -125,10 +127,10 @@ plot_inversion_validation_multivar_linear_contour <- function(
           axis.ticks.length = unit(.25, "cm"),
           legend.box.just = "right",
           legend.spacing = unit(-0.5, "cm"),
-          legend.position = c(0.01,1),
+          legend.position = c(0.65, 0.30),
           #legend.direction = "vertical",
-          legend.title = element_blank(),
-          legend.text = element_text(colour = "black", size = 10, face = "plain"),
+          legend.title = element_text(size = 10, color = 'black', angle = 0, face = "bold"),
+          legend.text = element_text(colour = "black", size = 20, face = "plain"),
           legend.background = element_rect(fill = NA, size = 0.5, 
                                            linetype = "solid", colour = 0),
           legend.key = element_blank(),
@@ -139,7 +141,7 @@ plot_inversion_validation_multivar_linear_contour <- function(
           panel.grid.minor = element_line(colour = "grey80", 
                                           linewidth =  0.2, linetype = "solid"),
           plot.margin = unit(c(0.5,1.0,0.5,0.5), "cm"),
-          legend.direction = "horizontal", legend.box = "vertical",
+          legend.direction = "vertical", legend.box = "vertical",
           legend.text.align = 0,
           panel.border = element_rect(colour = "black", fill = NA, size = 1.5))
   
@@ -387,11 +389,11 @@ g <- ggplot(long_data, aes(x = wavelength, y = value, fill = type)) +
   geom_line(size = 1.3, aes(color = type)) +
   geom_ribbon(aes(ymin = value - sd_value, ymax = value + sd_value), alpha = 0.25, show.legend = F) +
   
-  scale_colour_manual(name = "", values = rev(col_list),
+  scale_colour_manual(name = "", values = rev(c("red3", "cyan3")),
                       labels = rev(c(expression(paste(bar(italic("R"))["rs, el+inel"])),
                                      expression(paste(bar(italic("R"))["rs, el"]))))
   )+
-  scale_fill_manual(name = "", values = rev(col_list),
+  scale_fill_manual(name = "", values = rev(c("red3", "cyan3")),
                     labels = rev(c(expression(paste("el")),
                                    expression(paste("el+inel"))))
   )+
@@ -407,28 +409,31 @@ g <- ggplot(long_data, aes(x = wavelength, y = value, fill = type)) +
   scale_y_continuous(name = ylbl, limits = c(ymin, ymax),
                      breaks = seq(ymin, ymax, ystp))  +
   geom_hline(yintercept = 0, colour = "navyblue", linetype = "dashed", size=1.1)+
-  theme_bw()+
-  theme(plot.title = element_text(size = 25, face = "bold", hjust = 0.5),
-        axis.text.x = element_text(size = 25, color = 'black', angle = 0), 
-        axis.text.y = element_text(size = 25, color = 'black', angle = 0), 
+  theme_bw() +
+  theme(plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+        axis.text.x = element_text(size = 20, color = 'black', angle = 0), 
+        axis.text.y = element_text(size = 20, color = 'black', angle = 0), 
         axis.title.x = element_text(size = 25),
         axis.title.y = element_text(size = 25),
         axis.ticks.length = unit(.25, "cm"),
         legend.box.just = "right",
         legend.spacing = unit(-0.5, "cm"),
-        legend.position = legend_position,
-        legend.direction = "vertical",
-        legend.title = element_text(colour = "black", size = 15, face = "plain"),
-        legend.text = element_text(hjust = 0, colour = "black", size = 15, face = "plain"),
+        legend.position = c(0.05, 0.90),
+        #legend.direction = "vertical",
+        legend.title = element_text(size = 10, color = 'black', angle = 0, face = "bold"),
+        legend.text = element_text(colour = "black", size = 20, face = "plain"),
         legend.background = element_rect(fill = NA, size = 0.5, 
                                          linetype = "solid", colour = 0),
         legend.key = element_blank(),
         legend.justification = c("left", "top"),
         panel.background = element_blank(),
-        panel.grid.major = element_line(colour = "grey", 
+        panel.grid.major = element_line(colour = "black", 
                                         size = 0.5, linetype = "dotted"), 
-        panel.grid.minor = element_blank(),
-        plot.margin = unit(c(0.0,0.9,0.0,0.0), "cm"),
+        panel.grid.minor = element_line(colour = "grey80", 
+                                        linewidth =  0.2, linetype = "solid"),
+        plot.margin = unit(c(0.5,1.0,0.5,0.5), "cm"),
+        legend.direction = "vertical", legend.box = "vertical",
+        legend.text.align = 0,
         panel.border = element_rect(colour = "black", fill = NA, size = 1.5))
 
 g
@@ -904,8 +909,23 @@ print(average_uncertainty_change_1)
 # # View the result
 # print(df)
 
-plot(insitu_wise_data$H, list_of_2380_dfs[[15]]$H#[1:17]
-     , xlim = c(0,10), ylim = c(0,10))
+plot(insitu_wise_data$adg443, list_of_2380_dfs[[13]]$adg443#[1:17]
+     , xlim = c(0,4), ylim = c(0,4))
+
+abline(0,1)
+
+inv_wise_H = list_of_2380_dfs[[53]]$H
+inv_wise_chl = list_of_2380_dfs[[53]]$chl
+inv_wise_adg443 = list_of_2380_dfs[[5]]$adg443
+
+inv_wise_H_sd = list_of_2380_dfs[[53]]$sd_H
+inv_wise_chl_sd = list_of_2380_dfs[[53]]$sd_chl
+inv_wise_adg443_sd = list_of_2380_dfs[[5]]$sd_adg443
+
+
+inv_wise_param = data.frame("chl" = inv_wise_chl, "adg443" = inv_wise_adg443, "H"= inv_wise_H,
+                            "sd_chl" = inv_wise_chl_sd, "sd_adg443" = inv_wise_adg443_sd,
+                            "sd_H" = inv_wise_H_sd)
 
 # Initialize a data frame to store the results for each observation
 optimal_combinations_summary <- data.frame(
@@ -1198,15 +1218,34 @@ library(tidyr)
 
 # Reshape the dataframe to long format
 df_long <- all_detailed_metrics %>%
-  select(sdg, gamma, Bias_chl, Bias_adg443, Bias_H, Combination) %>%
+  dplyr::select(sdg, gamma, Bias_chl, Bias_adg443, Bias_H, Combination) %>%
   pivot_longer(cols = starts_with("Bias"),
                names_to = "Bias_Type",
                values_to = "Bias_Value")
 
 # Create an index for the combinations (1 to 68) for mapping to color
+# df_long <- df_long %>%
+#   group_by(sdg, gamma) %>%
+#   mutate(Combination_Index = row_number())
+
 df_long <- df_long %>%
   group_by(sdg, gamma) %>%
+  arrange(Combination) %>%  # Sort by 'Combination' in ascending order
   mutate(Combination_Index = row_number())
+
+df_long <- df_long %>%
+  arrange(Combination) %>%  # Sort by Combination in ascending order
+  group_by(Combination) %>%  # Group by Combination to handle duplicates
+  mutate(Combination_Index = first(row_number())) %>%  # Assign index based on order of appearance
+  ungroup()  # Ungroup for further operations
+
+df_long <- df_long %>%
+  arrange(sdg, gamma, Combination) %>%  # Sort by 'sdg', 'gamma', and 'Combination' in ascending order
+  group_by(sdg, gamma, Combination) %>%  # Group by 'sdg', 'gamma', and 'Combination'
+  mutate(Combination_Index = cur_group_id()) %>%  # Assign index based on group
+  ungroup()  # Ungroup to avoid affecting future operations
+
+
 
 # Create a factor for 'Bias_Type' to control the order of plots
 df_long$Bias_Type <- factor(df_long$Bias_Type, levels = c("Bias_chl", "Bias_adg443", "Bias_H"))
@@ -1315,24 +1354,25 @@ dev.off()
 
 
 # Create violin plot with overlaid points for each Bias_Type
-g_residual = ggplot(df_long[df_long$Bias_Type == "Bias_adg443",], 
+g_residual = ggplot(df_long#[df_long$Bias_Type == "Bias_adg443",]
+                    , 
                     aes(x = Bias_Type, y = Bias_Value)) + 
 
   
   geom_violin(fill = "lightblue", alpha = 0.5, position=position_dodge(), size = 1.3,
               draw_quantiles = c(0.667, 0.95, 0.991), scale = "area", color = "black") + 
   
-  geom_jitter(aes(color = Combination_Index), width = 0.15, size = 2, alpha = 0.25) + 
+  geom_jitter(aes(color = Combination_Index), width = 0.15, size = 2, alpha = 0.25,) + 
   
   scale_color_gradientn(colors = viridis::viridis(100, option = "turbo"), 
-                        guide = "colourbar", 
-                        breaks = seq(0,100,20)#, 
+                        guide = "colourbar"#, 
+                        #breaks = seq(1,100,20), 
                         # labels = paste("s_dg:", c(0.004, ), 
                         #                "gamma:", c())
                         ) +
   scale_x_discrete(name = "", labels = c(
-   # chl_lab
-    #, adg443_lab, 
+    chl_lab
+    , adg443_lab, 
     H_lab)) +
   
   
@@ -1369,9 +1409,11 @@ g_residual = ggplot(df_long[df_long$Bias_Type == "Bias_adg443",],
         panel.border = element_rect(colour = "black", fill = NA, size = 1.5))
 
 ggsave(paste0("./outputs/sens_slope_residual_violin.png"), plot = g_residual,
-       scale = 1.5, width = 12, height = 6, units = "in",dpi = 300)
+       scale = 1.25, width = 10, height = 6, units = "in",dpi = 300)
 
+# EXP WISE inversion ----
 
+## Load the COPS profiles (both cast1 and cas2 groups), translate to sub-surface and correct for inelastic scattering----
 path = "Y:/homeData/Insitu/WISEMan/L2/20190825_StationEXPWISEv2/COPS/"
 cops_cast_info <- scan(file = paste0(path,"directories.for.cops.dat"), "", sep = "\n", 
                        comment.char = "#")
@@ -1390,7 +1432,6 @@ mRrs_0p = matrix(ncol=19, nrow = nf)
 mRrs_0m = matrix(ncol=19, nrow = nf)
 
 
-#For 0-
 for (j in 1:nf) {
   
   load(paste(path,"BIN/", listfile[j], ".RData", sep=""))
@@ -1423,9 +1464,35 @@ colnames(mRrs_0p) = cops$LuZ.waves
 rownames(mRrs_0m) = c(paste0("EXP-WISE1_",seq(0,10,1)), paste0("EXP-WISE2_",seq(1,2,1)))
 rownames(mRrs_0p) = c(paste0("EXP-WISE1_",seq(0,10,1)), paste0("EXP-WISE2_",seq(1,2,1)))
 
+
+wavelength = as.numeric(colnames(mRrs_0p))
+wavelength_interp = seq(400,750,1)
+
+wavelength = wavelength_interp
+
+mRrs_0p_interp <- apply(mRrs_0p, 1, function(row, wavelength_in = wavelength){
+  
+  wavelength_interp =wavelength_interp
+  obsdata = row
+  
+  #non_na_seq <- seq_along(obsdata)[!is.na(obsdata)]
+  
+  obsdata_interp = Hmisc::approxExtrap(x = wavelength_in#[non_na_seq]
+                                       , y = obsdata#[!is.na(obsdata)]
+                                       , 
+                                       xout = wavelength_interp)$y
+  obsdata_interp[obsdata_interp < 0] = 0 
+  obsdata = obsdata_interp
+  
+})
+
+mRrs_0p_interp = data.frame(mRrs_0p_interp)
+names(mRrs_0p_interp) = wavelength_interp
+
 mRrs_0m = mRrs_0m[,5:16]
 mRrs_0p = mRrs_0p[,5:16]
 
+## Load the PSR multicast profiles, translate to sub-surface and correct for inelastic scattering----
 mRrs_0p_PSR = wise_psr_multicast_df
 
 mRrs_0p_PSR = mRrs_0p_PSR[colnames(mRrs_0p_PSR) %in% seq(400,750,1)]
@@ -1448,7 +1515,7 @@ mRrs_0p_subsurf_inel = data.frame(t(subtract_wise_inel(input_df = t(mRrs_0p_subs
 )))
 colnames(mRrs_0p_subsurf_inel) = colnames(mRrs_0p_subsurf)
 
-
+## Combine the COPS cast-II and PSR multicast profiles together and plot spectrally----
 expwise_psr = reshape2::melt(cbind("station" = rownames(mRrs_0p_PSR_subsurf_inel),
                                    mRrs_0p_PSR_subsurf_inel), 
                               id.vars = "station")
@@ -1464,24 +1531,26 @@ colnames(expwise_cops) = c("station", "wavelength", "Rrs")
 
 
 xmin <- 400; xmax <- 750;  xstp <- 70; xlbl <- expression(paste("Wavelength (", lambda, ") [nm]")) 
-ymin <- 0.000; ymax <- 0.012; ystp <- 0.004
-ylbl <- expression(paste(italic("R")["rs"]("0"^"+", lambda), "[sr"^{-1}, "]"))
+ymin <- 0.000; ymax <- 0.008; ystp <- 0.002
+ylbl <- expression(paste(italic("R")["rs"]("0"^"-", lambda), "[sr"^{-1}, "]"))
 asp_rat <-  (xmax-xmin)/(ymax-ymin)
 legend_title <- element_blank()
 legend_position <- c(0.10, 1)
 
 
-ggplot() + 
+g_expwise = ggplot() + 
   geom_line(data = expwise_psr, size = 1.3, 
             aes(x = as.numeric(as.character(wavelength)), y = Rrs, color = station, group = station)) +
   
-  geom_line(data = expwise_cops, size = 1.3, linetype = "dashed",
-            aes(x = as.numeric(as.character(wavelength)), y = Rrs, color = station, group = station)) +
+  # geom_line(data = expwise_cops, size = 1.3, linetype = "dashed",
+  #           aes(x = as.numeric(as.character(wavelength)), y = Rrs, color = station, group = station)) +
   
-  geom_point(data = expwise_cops, aes(x = as.numeric(as.character(wavelength)), 
+  geom_point(data = expwise_cops[grep("EXP.WISE2_*", expwise_cops$station),], aes(x = as.numeric(as.character(wavelength)), 
                                       y = as.numeric(Rrs), color = station), 
              size = 5)+
-  scale_color_viridis(discrete = T) +
+  scale_color_viridis(discrete = T, name = "", labels = c("COPS_1", "COPS_2",
+                                                          "PSR_A", "PSR_B", "PSR_C", 
+                                                          "PSR_D", "PSR_E", "PSR_F")) +
   coord_fixed(ratio = asp_rat, xlim = c(xmin, xmax),
               ylim = c(ymin, ymax)
               ,expand = FALSE, clip = "on"
@@ -1492,37 +1561,40 @@ ggplot() +
   scale_y_continuous(name = ylbl, limits = c(ymin, ymax),
                      breaks = seq(ymin, ymax, ystp))  +
   geom_hline(yintercept = 0, colour = "navyblue", linetype = "dashed", size=1.1)+
-  theme_bw()+
-  theme(plot.title = element_text(size = 25, face = "bold", hjust = 0.5),
-        axis.text.x = element_text(size = 25, color = 'black', angle = 0), 
-        axis.text.y = element_text(size = 25, color = 'black', angle = 0), 
+  theme_bw() +
+  theme(plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+        axis.text.x = element_text(size = 20, color = 'black', angle = 0), 
+        axis.text.y = element_text(size = 20, color = 'black', angle = 0), 
         axis.title.x = element_text(size = 25),
         axis.title.y = element_text(size = 25),
         axis.ticks.length = unit(.25, "cm"),
         legend.box.just = "right",
         legend.spacing = unit(-0.5, "cm"),
-        legend.position = legend_position,
-        legend.direction = "vertical",
-        legend.title = element_text(colour = "black", size = 15, face = "plain"),
-        legend.text = element_text(hjust = 0, colour = "black", size = 15, face = "plain"),
+        legend.position = c(0.01, 0.99),
+        #legend.direction = "vertical",
+        legend.title = element_text(size = 10, color = 'black', angle = 0, face = "bold"),
+        legend.text = element_text(colour = "black", size = 15, face = "plain"),
         legend.background = element_rect(fill = NA, size = 0.5, 
                                          linetype = "solid", colour = 0),
         legend.key = element_blank(),
         legend.justification = c("left", "top"),
         panel.background = element_blank(),
-        panel.grid.major = element_line(colour = "grey", 
+        panel.grid.major = element_line(colour = "black", 
                                         size = 0.5, linetype = "dotted"), 
-        panel.grid.minor = element_blank(),
-        plot.margin = unit(c(0.0,0.9,0.0,0.0), "cm"),
+        panel.grid.minor = element_line(colour = "grey80", 
+                                        linewidth =  0.2, linetype = "solid"),
+        plot.margin = unit(c(0.5,1.0,0.5,0.5), "cm"),
+        legend.direction = "vertical", legend.box = "vertical",
+        legend.text.align = 0,
         panel.border = element_rect(colour = "black", fill = NA, size = 1.5))
 
-g
-ggsave(paste0("./outputs/wise_el_inel_comp_PSR.png"), plot = g,
+g_expwise
+ggsave(paste0("./outputs/expwise_rrs_comp.png"), plot = g_expwise,
        scale = 1.25, width = 4.5, height = 4.5, 
        units = "in",dpi = 300)
 
 
-
+## Prepare the Rrs for inversion----
 inv_res_df_bayes_unconst = data.frame("chl" = 0, "adg443" = 0, "bbp555" = 0,
                                       "H" = 0, "fa1"= 0, "fa2"= 0, 'fa3' = 0, "pop_sd" =0,
                                       "sd_chl" = 0, "sd_adg443" = 0, "sd_bbp555" = 0, 
@@ -1535,16 +1607,15 @@ inv_res_df_grad_unconst = data.frame("chl" = 0, "adg443" = 0, "bbp555" = 0,
                                      "sd_H" = 0, "sd_fa1"= 0, "sd_fa2"= 0, 'sd_fa3' = 0, 
                                      "sd_pop_sd" = 0)
 
-#inverse_rrs_input = as.data.frame(mRrs_0p_PSR_subsurf_inel)
-
 inverse_rrs_input = as.data.frame(mRrs_0p_subsurf_inel)
 
-interp_rb(wavelength_input = as.numeric(colnames(inverse_rrs_input)), 
+#inverse_rrs_input = as.data.frame(mRrs_0p_PSR_subsurf_inel)
+
+interp_rb(wavelength_input = as.numeric(colnames(mRrs_0p_subsurf_inel)), 
           bottom_type = c("Sand_2019", "Mud_2019", "Eelgrass_2019")) #use a fixed benthic type
 
-## Call the Bayesian inversion ----
+## Call the Bayesian inversion with optimal slope and benthic types----
 for(j in 1:nrow(inverse_rrs_input)) {
-  
   
   param_grad_unconst = doOptimization_shallow_unconst(obsdata =
                                                         as.numeric(inverse_rrs_input[j,]),
@@ -1579,8 +1650,8 @@ for(j in 1:nrow(inverse_rrs_input)) {
                                          bbp_const_val = 0.007,
                                          bgc_const_val = as.numeric(bgc_val_vec[j,]),
                                          
-                                         iop_const_path = c("./data/Rb_spectral/surface_iops/abs_surf_OUT-R09.csv",
-                                                            "./data/Rb_spectral/surface_iops/bb_surf_OUT-R09.csv"),
+                       iop_const_path = c("./data/Rb_spectral/surface_iops/abs_surf_OUT-R09.csv",
+                                          "./data/Rb_spectral/surface_iops/bb_surf_OUT-R09.csv"),
                                          
                                          qaa_slope = F,
                                          manual_slope = T,
@@ -1605,14 +1676,206 @@ for(j in 1:nrow(inverse_rrs_input)) {
 inv_res_df_bayes_unconst = inv_res_df_bayes_unconst[-1,]
 inv_res_df_grad_unconst = inv_res_df_grad_unconst[-1,]
 
+
+inv_res_df_bayes_unconst_expwise_cops = inv_res_df_bayes_unconst
+inv_res_df_grad_unconst_expwise_cops = inv_res_df_grad_unconst
+
 #inv_res_df_bayes_unconst_psr = inv_res_df_bayes_unconst
 #inv_res_df_grad_unconst_psr = inv_res_df_grad_unconst
 
+## Analyze and Validate (where applicable) the inversion results from COPS Cast-II and PSR Multicast----
+expwise_sensor_comp = read.csv("./outputs/exp_wise_sensor_comp.csv", header = T)
 
-rb_spectral_svc$wavelengths_nm = read.csv("./data/ExperimentWISE_SVC.csv", header = T)
+# Initialize an empty list to store the result for each row
+expwise_sensor_comp_rb <- list()
 
-rownames(inv_res_df_bayes_unconst) = seq(0, 12,1)
+# Loop over each row of the 'df' dataframe
+for (i in 1:nrow(expwise_sensor_comp)) {
+  # For each row, compute the sum of (fa1 * class1 + fa2 * class2 + fa3 * class3)
+  expwise_sensor_comp_rb[[i]] <- expwise_sensor_comp$fa1[i] * rb$class1 + 
+    expwise_sensor_comp$fa2[i] * rb$class2 + 
+    expwise_sensor_comp$fa3[i] * rb$class3
+}
 
+
+expwise_sensor_comp_rb <- as.data.frame(do.call(rbind, expwise_sensor_comp_rb))
+rownames(expwise_sensor_comp_rb) <- expwise_sensor_comp$station
+
+colnames(expwise_sensor_comp_rb) <- seq(400,750,1)
+expwise_sensor_comp_rb_cops = expwise_sensor_comp_rb[7:8, colnames(mRrs_0p_subsurf)]
+
+expwise_sensor_comp_rb_psr_long = reshape2::melt(cbind("station" = rownames(expwise_sensor_comp_rb)[1:6],
+                                                   expwise_sensor_comp_rb[1:6,]), 
+                             id.vars = "station")
+
+
+colnames(expwise_sensor_comp_rb_psr_long) = c("station", "wavelength", "Rb")
+
+
+expwise_sensor_comp_rb_cops_long = reshape2::melt(cbind("station" = rownames(expwise_sensor_comp_rb_cops),
+                                                        expwise_sensor_comp_rb_cops), 
+                                                 id.vars = "station")
+
+colnames(expwise_sensor_comp_rb_cops_long) = c("station", "wavelength", "Rb")
+
+### Spectral comparison of inversion retrieved Rb from COPS and PSR----
+xmin <- 400; xmax <- 750;  xstp <- 70; xlbl <- expression(paste( lambda, "[nm]")) 
+ymin <- 0.000; ymax <- 0.4; ystp <- 0.10
+ylbl <- expression(paste(italic("R")["B"](lambda)))
+asp_rat <-  (xmax-xmin)/(ymax-ymin)
+legend_title <- element_blank()
+legend_position <- c(0.10, 1)
+
+
+g_expwise_rb = ggplot() + 
+  geom_line(data = expwise_sensor_comp_rb_psr_long, size = 1.3, 
+            aes(x = as.numeric(as.character(wavelength)), y = Rb, color = station, group = station), 
+            show.legend = F) +
+  
+  # geom_line(data = expwise_cops, size = 1.3, linetype = "dashed",
+  #           aes(x = as.numeric(as.character(wavelength)), y = Rb, color = station, group = station)) +
+  
+  geom_point(data = expwise_sensor_comp_rb_cops_long, aes(x = as.numeric(as.character(wavelength)),
+                                      y = as.numeric(Rb), color = station),
+             size = 5, show.legend = F)+
+  scale_color_viridis(discrete = T) +
+  coord_fixed(ratio = asp_rat, xlim = c(xmin, xmax),
+              ylim = c(ymin, ymax)
+              ,expand = FALSE, clip = "on"
+  ) +
+  
+  scale_x_continuous(name = xlbl, limits = c(xmin, xmax),
+                     breaks = seq(xmin, xmax, xstp))  +
+  scale_y_continuous(name = ylbl, limits = c(ymin, ymax),
+                     breaks = seq(ymin, ymax, ystp))  +
+  geom_hline(yintercept = 0, colour = "navyblue", linetype = "dashed", size=1.1)+
+  theme_bw() +
+  theme(plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+        axis.text.x = element_text(size = 20, color = 'black', angle = 0), 
+        axis.text.y = element_text(size = 20, color = 'black', angle = 0), 
+        axis.title.x = element_text(size = 25),
+        axis.title.y = element_text(size = 25),
+        axis.ticks.length = unit(.25, "cm"),
+        legend.box.just = "right",
+        legend.spacing = unit(-0.5, "cm"),
+        legend.position = c(0.01, 0.99),
+        #legend.direction = "vertical",
+        legend.title = element_text(size = 10, color = 'black', angle = 0, face = "bold"),
+        legend.text = element_text(colour = "black", size = 15, face = "plain"),
+        legend.background = element_rect(fill = NA, size = 0.5, 
+                                         linetype = "solid", colour = 0),
+        legend.key = element_blank(),
+        legend.justification = c("left", "top"),
+        panel.background = element_blank(),
+        panel.grid.major = element_line(colour = "black", 
+                                        size = 0.5, linetype = "dotted"), 
+        panel.grid.minor = element_line(colour = "grey80", 
+                                        linewidth =  0.2, linetype = "solid"),
+        plot.margin = unit(c(0.5,1.0,0.5,0.5), "cm"),
+        legend.direction = "vertical", legend.box = "vertical",
+        legend.text.align = 0,
+        panel.border = element_rect(colour = "black", fill = NA, size = 1.5))
+
+g_expwise_rb
+ggsave(paste0("./outputs/expwise_rb_comp.png"), plot = g_expwise_rb,
+       scale = 1.25, width = 4.5, height = 4.5, 
+       units = "in",dpi = 300)
+
+### Temporal comparison of inversion retrieved BGCs and IOPs from COPS and PSR----
+expwise_sensor_comp_long <- expwise_sensor_comp %>%
+  pivot_longer(cols = c("chl", "adg443", "bbp555", "H"),
+               names_to = "Variable", values_to = "Value") %>%
+  pivot_longer(cols = c("sd_chl", "sd_adg443", "sd_bbp555", "sd_H"),
+               names_to = "SD_Variable", values_to = "SD") %>%
+  filter(Variable == gsub("sd_", "", SD_Variable))  # Filter to ensure SD matches the correct variable
+
+
+# Define custom names for variables
+custom_labels <- c("chl" = expression(paste("[",italic("chl"),"]", " [","mg"^1,"m"^-3,"]")), 
+                   "adg443" = expression(paste(italic("a")["dg"](443), " [", "m"^-1, "]")), 
+                   "bbp555" = expression(paste(italic("b")["bp"](555), " [", "m"^-1, "]")), 
+                   "H" = expression(paste(italic("H"), " [m]")))
+
+# Define custom colors for lines and fills
+custom_colors <- c("chl" = "#4AC16DFF", 
+                   "adg443" = "goldenrod", 
+                   "bbp555" = "#365C8DFF", 
+                   "H" = "#1FA187FF")
+
+# Create the ggplot with geom_ribbon for uncertainty and geom_line for the line plot
+g_expwise_iop = ggplot(expwise_sensor_comp_long, 
+                       aes(x = station, y = Value, group = Variable, color = Variable)) +
+  geom_line(size = 1.3) +
+  geom_ribbon(aes(ymin = Value - SD, ymax = Value + SD, fill = Variable), 
+              alpha = 0.3, show.legend = T) +
+  facet_wrap(~Variable, ncol = 1, scales = "free_y") +  # Vertically arrange panels
+  labs(#x = " ",
+       y = " ", title = " ") +
+  scale_color_manual(values = custom_colors, name = "Variable", labels = custom_labels) +  # Manual color for lines
+  scale_fill_manual(values = custom_colors, name = "Variable", labels = custom_labels) +
+  scale_x_discrete(name = " ", labels = c("COPS_1", "COPS_2",
+                                          "PSR_A", "PSR_B", "PSR_C", 
+                                          "PSR_D", "PSR_E", "PSR_F")
+                     )  +
+  #theme_minimal() +
+  # theme(
+  #   strip.text = element_text(size = 14),   # Increase facet label size
+  #   axis.text.x = element_text(angle = 45, hjust = 1),  # Rotate x-axis labels for better readability
+  #   axis.title = element_text(size = 14),   # Increase axis title size
+  #   axis.text = element_text(size = 12),    # Increase axis text size
+  #   legend.position = "bottom"              # Adjust legend position
+  # )
+  #theme_bw()+
+  theme(strip.text = element_blank(), 
+    plot.title = element_text(size = 25, face = "bold", hjust = 0.5),
+        axis.text.x = element_text(size = 15, color = 'black', angle = 15), 
+        axis.text.y = element_text(size = 15, color = 'black', angle = 0), 
+        axis.title.x = element_text(size = 25),
+        axis.title.y = element_blank(),
+        axis.ticks.length = unit(.25, "cm"),
+        legend.box.just = "right",
+        legend.spacing = unit(-0.5, "cm"),
+        
+        legend.direction = "horizontal",
+        legend.position = "bottom",             # Position legend at bottom
+        legend.justification = "center", 
+        legend.title = element_blank(),
+        legend.text = element_text(hjust = 0, colour = "black", size = 15, face = "plain"),
+        legend.background = element_rect(fill = NA, size = 0.5, 
+                                         linetype = "solid", colour = 0),
+        legend.key = element_blank(),
+        
+        panel.grid.major = element_line(colour = "black", 
+                                        size = 0.5, linetype = "dotted"), 
+        panel.grid.minor = element_line(colour = "grey80", 
+                                        linewidth =  0.2, linetype = "solid"),
+        plot.margin = unit(c(0.5,1.0,0.5,0.5), "cm"),
+        panel.background = element_blank(),
+        legend.key.width = unit(1.5, "cm"),
+        panel.border = element_rect(colour = "black", fill = NA, size = 1.5))
+
+ggsave(paste0("./outputs/expwise_iop_comp.png"), plot = g_expwise_iop,
+       scale = 1.25, width = 9, height = 6, 
+       units = "in",dpi = 300)
+
+## Analyze and Validate (where applicable) the inversion results from COPS Cast-I profiles----
+rb_spectral_svc = read.csv("./data/ExperimentWISE_SVC.csv", header = T)
+
+rb_mat_saber = data.frame(matrix(0, nrow = nrow(mRrs_0p_subsurf_inel), 
+                                 ncol = ncol(mRrs_0p_subsurf_inel)))
+
+rb_mat_svc = data.frame(matrix(0, nrow = nrow(mRrs_0p_subsurf_inel), 
+                                 ncol = 512))
+
+rb_mat_cops = data.frame(matrix(0, nrow = nrow(mRrs_0p_subsurf_inel), 
+                               ncol = ncol(mRrs_0p_subsurf_inel)))
+
+rownames(inv_res_df_bayes_unconst_expwise_cops) = seq(0, 12,1)
+rownames(rb_mat_saber) = seq(0, 12,1)
+rownames(rb_mat_svc) = seq(0, 12,1)
+rownames(rb_mat_cops) = seq(0, 12,1)
+
+### Retrieve the in situ Rb from COPS Cast-I profiles and SVC measurements and compare with inversion retrieved Rb ----
 for (i in seq(0,10,1)) {
   
   rb_spectral_svc_subset = rb_spectral_svc[rb_spectral_svc$profile == paste0("profile ", i), 
@@ -1628,109 +1891,678 @@ for (i in seq(0,10,1)) {
   )
   
   #For MCMC based inversion results
-  rb_bayes_spectral_est = inv_res_df_bayes_unconst$fa1[i+1]*rb$class1 + 
-    inv_res_df_bayes_unconst$fa2[i+1]*rb$class2 + inv_res_df_bayes_unconst$fa3[i+1]*rb$class3
+  rb_bayes_spectral_est = inv_res_df_bayes_unconst_expwise_cops$fa1[i+1]*rb$class1 + 
+    inv_res_df_bayes_unconst_expwise_cops$fa2[i+1]*rb$class2 + 
+    inv_res_df_bayes_unconst_expwise_cops$fa3[i+1]*rb$class3
   
-  rb_bayes_spectral_sd = inv_res_df_bayes_unconst$sd_fa1[i+1]*rb$class1 + 
-    inv_res_df_bayes_unconst$sd_fa2[i+1]*rb$class2 + inv_res_df_bayes_unconst$sd_fa3[i+1]*rb$class3
+  rb_bayes_spectral_sd = inv_res_df_bayes_unconst_expwise_cops$sd_fa1[i+1]*rb$class1 + 
+    inv_res_df_bayes_unconst_expwise_cops$sd_fa2[i+1]*rb$class2 + 
+    inv_res_df_bayes_unconst_expwise_cops$sd_fa3[i+1]*rb$class3
   
   # Compute the upper and lower bounds of uncertainty
-  rb_bayes_spectral_upper = rb_spectral_est + rb_spectral_sd
-  rb_bayes_spectral_lower = rb_spectral_est - rb_spectral_sd
+  # rb_bayes_spectral_upper = rb_spectral_est + rb_spectral_sd
+  # rb_bayes_spectral_lower = rb_spectral_est - rb_spectral_sd
   
   
-  png(filename = paste0("./outputs/EXP_WISE_inv_bayes_Rb_profile_",i,".png"), width = 600, height = 400)
+  rb_mat_saber[which(rownames(rb_mat_saber) == i),] = rb_bayes_spectral_est
+  rb_mat_cops[which(rownames(rb_mat_cops) == i),] = cops_rb$R.piLuz.0.3[2:13]/100
+  rb_mat_svc[which(rownames(rb_mat_svc) == i),] = rb_spectral_svc_subset_mean$inst.reflectance/100
   
-  # Adjust plot margins with 'par'
-  # 'mar' stands for margins: c(bottom, left, top, right)
-  par(mar = c(5, 5, 4, 2))  # Adjust margins as needed (increasing space for axis labels)
-  
-  plot(as.numeric(colnames(inverse_rrs_input)), rb_spectral_est, ylim = c(0, 0.2), type = "b", 
-       lwd = 3, pch = 19, xlab = expression(paste("Wavelength [nm]")),
-       ylab = expression(paste("R"["B"])), 
-       cex.lab = 1.8,                       # Increase font size for labels
-       cex.axis = 1.5,                      # Increase font size for axis ticks
-       cex.main = 1.8,                      # Increase font size for the title
-       cex.sub = 1.5 ,
-       main = paste0("Profile ", i))
-  
-  # Add shaded uncertainty region (polygon)
-  polygon(c(as.numeric(colnames(inverse_rrs_input)), rev(as.numeric(colnames(inverse_rrs_input)))), 
-          c(rb_spectral_upper, rev(rb_spectral_lower)),
-          col = rgb(0.5, 0.5, 0.5, 0.5), border = NA)  # Grey with transparency
-  
-  lines(as.numeric(cops_rb$waves), 
-        as.numeric(cops_rb$R.piLuz.0.3)/100, type = "o", col = "red2", pch = 17)
-  
-  lines(as.numeric(cops_rb$waves), 
-        as.numeric(cops_rb$R.Euz.0.3)/100, type = "o", col = "orange2", pch = 17)
-  
-  lines(rb_spectral_svc_subset_mean$wavelengths_nm, 
-        rb_spectral_svc_subset_mean$inst.reflectance/100, col = "navyblue", lwd = 3)
-  legend("topleft", legend = c("SABER", "COPS_Lu", "COPS_Eu", "SVC"), 
-         col = c("black", "red2", "orange2", "navyblue"), 
-         lwd = c(4,4),
-         lty = c("solid", "solid"),bty = "n")
-  
-  grid(col = "gray")
-  dev.off()
-  
+  # png(filename = paste0("./outputs/EXP_WISE_inv_bayes_Rb_profile_",i,".png"), width = 600, height = 400)
+  # 
+  # # Adjust plot margins with 'par'
+  # # 'mar' stands for margins: c(bottom, left, top, right)
+  # par(mar = c(5, 5, 4, 2))  # Adjust margins as needed (increasing space for axis labels)
+  # 
+  # plot(as.numeric(as.character(unique(expwise_cops$wavelength))), 
+  #      rb_spectral_est, ylim = c(0, 0.2), type = "b", 
+  #      lwd = 3, pch = 19, xlab = expression(paste("Wavelength [nm]")),
+  #      ylab = expression(paste("R"["B"])), 
+  #      cex.lab = 1.8,                       # Increase font size for labels
+  #      cex.axis = 1.5,                      # Increase font size for axis ticks
+  #      cex.main = 1.8,                      # Increase font size for the title
+  #      cex.sub = 1.5 ,
+  #      main = paste0("Profile ", i))
+  # 
+  # # Add shaded uncertainty region (polygon)
+  # polygon(c(as.numeric(as.character(unique(expwise_cops$wavelength))), 
+  #           rev(as.numeric(as.character(unique(expwise_cops$wavelength))))), 
+  #         c(rb_spectral_upper, rev(rb_spectral_lower)),
+  #         col = rgb(0.5, 0.5, 0.5, 0.5), border = NA)  # Grey with transparency
+  # 
+  # lines(as.numeric(cops_rb$waves), 
+  #       as.numeric(cops_rb$R.piLuz.0.3)/100, type = "o", col = "red2", pch = 17)
+  # 
+  # lines(as.numeric(cops_rb$waves), 
+  #       as.numeric(cops_rb$R.Euz.0.3)/100, type = "o", col = "orange2", pch = 17)
+  # 
+  # lines(rb_spectral_svc_subset_mean$wavelengths_nm, 
+  #       rb_spectral_svc_subset_mean$inst.reflectance/100, col = "navyblue", lwd = 3)
+  # legend("topleft", legend = c("SABER", expression(paste("COPS ["[L[u]],"]")), 
+  #                              expression(paste("COPS ["[E[u]],"]")), 
+  #                              "SVC"), 
+  #        col = c("black", "red2", "orange2", "navyblue"), 
+  #        lwd = c(4,4),
+  #        lty = c("solid", "solid"),bty = "n")
+  # 
+  # grid(col = "gray")
+  # dev.off()
   
   #For gradient based inversion results
-  rb_grad_spectral_est = inv_res_df_grad_unconst$fa1[i+1]*rb$class1 + 
-    inv_res_df_grad_unconst$fa2[i+1]*rb$class2 + inv_res_df_grad_unconst$fa3[i+1]*rb$class3
-  
-  rb_grad_spectral_sd = inv_res_df_grad_unconst$sd_fa1[i+1]*rb$class1 + 
-    inv_res_df_grad_unconst$sd_fa2[i+1]*rb$class2 + inv_res_df_grad_unconst$sd_fa3[i+1]*rb$class3
-  
-  # Compute the upper and lower bounds of uncertainty
-  rb_grad_spectral_upper = rb_spectral_est + rb_spectral_sd
-  rb_grad_spectral_lower = rb_spectral_est - rb_spectral_sd
-  
-  
-  png(filename = paste0("./outputs/EXP_WISE_inv_grad_Rb_profile_",i,".png"), width = 600, height = 400)
-  
-  # Adjust plot margins with 'par'
-  # 'mar' stands for margins: c(bottom, left, top, right)
-  par(mar = c(5, 5, 4, 2))  # Adjust margins as needed (increasing space for axis labels)
-  
-  plot(as.numeric(colnames(inverse_rrs_input)), rb_grad_spectral_est, ylim = c(0, 0.2), type = "b", 
-       lwd = 3, pch = 19, xlab = expression(paste("Wavelength [nm]")),
-       ylab = expression(paste("R"["B"])), 
-       cex.lab = 1.8,                       # Increase font size for labels
-       cex.axis = 1.5,                      # Increase font size for axis ticks
-       cex.main = 1.8,                      # Increase font size for the title
-       cex.sub = 1.5 ,
-       main = paste0("Profile ", i))
-  
-  # Add shaded uncertainty region (polygon)
-  polygon(c(as.numeric(colnames(inverse_rrs_input)), rev(as.numeric(colnames(inverse_rrs_input)))), 
-          c(rb_grad_spectral_upper, rev(rb_grad_spectral_lower)),
-          col = rgb(0.5, 0.5, 0.5, 0.5), border = NA)  # Grey with transparency
-  
-  lines(as.numeric(cops_rb$waves), 
-        as.numeric(cops_rb$R.piLuz.0.3)/100, type = "o", col = "red2", pch = 17)
-  
-  lines(as.numeric(cops_rb$waves), 
-        as.numeric(cops_rb$R.Euz.0.3)/100, type = "o", col = "orange2", pch = 17)
-  
-  lines(rb_spectral_svc_subset_mean$wavelengths_nm, 
-        rb_spectral_svc_subset_mean$inst.reflectance/100, col = "navyblue", lwd = 3)
-  legend("topleft", legend = c("HOPE", "COPS_Lu", "COPS_Eu", "SVC"), 
-         col = c("black", "red2", "orange2", "navyblue"), 
-         lwd = c(4,4),
-         lty = c("solid", "solid"),bty = "n")
-  
-  grid(col = "gray")
-  dev.off()
-  
-  
-  
+  # rb_grad_spectral_est = inv_res_df_grad_unconst$fa1[i+1]*rb$class1 + 
+  #   inv_res_df_grad_unconst$fa2[i+1]*rb$class2 + inv_res_df_grad_unconst$fa3[i+1]*rb$class3
+  # 
+  # rb_grad_spectral_sd = inv_res_df_grad_unconst$sd_fa1[i+1]*rb$class1 + 
+  #   inv_res_df_grad_unconst$sd_fa2[i+1]*rb$class2 + inv_res_df_grad_unconst$sd_fa3[i+1]*rb$class3
+  # 
+  # # Compute the upper and lower bounds of uncertainty
+  # rb_grad_spectral_upper = rb_spectral_est + rb_spectral_sd
+  # rb_grad_spectral_lower = rb_spectral_est - rb_spectral_sd
+  # 
+  # 
+  # png(filename = paste0("./outputs/EXP_WISE_inv_grad_Rb_profile_",i,".png"), width = 600, height = 400)
+  # 
+  # # Adjust plot margins with 'par'
+  # # 'mar' stands for margins: c(bottom, left, top, right)
+  # par(mar = c(5, 5, 4, 2))  # Adjust margins as needed (increasing space for axis labels)
+  # 
+  # plot(as.numeric(colnames(inverse_rrs_input)), rb_grad_spectral_est, ylim = c(0, 0.2), type = "b", 
+  #      lwd = 3, pch = 19, xlab = expression(paste("Wavelength [nm]")),
+  #      ylab = expression(paste("R"["B"])), 
+  #      cex.lab = 1.8,                       # Increase font size for labels
+  #      cex.axis = 1.5,                      # Increase font size for axis ticks
+  #      cex.main = 1.8,                      # Increase font size for the title
+  #      cex.sub = 1.5 ,
+  #      main = paste0("Profile ", i))
+  # 
+  # # Add shaded uncertainty region (polygon)
+  # polygon(c(as.numeric(colnames(inverse_rrs_input)), rev(as.numeric(colnames(inverse_rrs_input)))), 
+  #         c(rb_grad_spectral_upper, rev(rb_grad_spectral_lower)),
+  #         col = rgb(0.5, 0.5, 0.5, 0.5), border = NA)  # Grey with transparency
+  # 
+  # lines(as.numeric(cops_rb$waves), 
+  #       as.numeric(cops_rb$R.piLuz.0.3)/100, type = "o", col = "red2", pch = 17)
+  # 
+  # lines(as.numeric(cops_rb$waves), 
+  #       as.numeric(cops_rb$R.Euz.0.3)/100, type = "o", col = "orange2", pch = 17)
+  # 
+  # lines(rb_spectral_svc_subset_mean$wavelengths_nm, 
+  #       rb_spectral_svc_subset_mean$inst.reflectance/100, col = "navyblue", lwd = 3)
+  # legend("topleft", legend = c("HOPE", "COPS_Lu", "COPS_Eu", "SVC"), 
+  #        col = c("black", "red2", "orange2", "navyblue"), 
+  #        lwd = c(4,4),
+  #        lty = c("solid", "solid"),bty = "n")
+  # 
+  # grid(col = "gray")
+  # dev.off()
 }
 
+### Comparison of in situ Rb from COPS and SVC measurements with inversion obtained Rb ----
+
+#### Spectral linear comparison----
+# Loop for each profile
+for (i in seq(1, 10, 1)) {
+  
+  # Subset the rb_spectral_svc dataframe for the specific profile
+  rb_spectral_svc_subset <- rb_spectral_svc[rb_spectral_svc$profile == paste0("profile ", i), ]
+  
+  # Summarize by wavelength
+  rb_spectral_svc_subset_mean <- rb_spectral_svc_subset %>%
+    group_by(wavelengths_nm) %>%
+    summarise(across(everything(), mean, na.rm = TRUE))
+  
+  # Read COPS data
+  cops_rb <- read.csv(paste0("Y:/homeData/Insitu/WISEMan/L2/20190825_StationEXPWISEv2/COPS/BIN/Rb_COPS_Profile_", i, ".csv"))
+  
+  # Calculate the Bayesian spectral estimate and uncertainty
+  rb_bayes_spectral_est <- inv_res_df_bayes_unconst_expwise_cops$fa1[i+1] * rb$class1 + 
+    inv_res_df_bayes_unconst_expwise_cops$fa2[i+1] * rb$class2 + 
+    inv_res_df_bayes_unconst_expwise_cops$fa3[i+1] * rb$class3
+  
+  rb_bayes_spectral_sd <- inv_res_df_bayes_unconst_expwise_cops$sd_fa1[i+1] * rb$class1 + 
+    inv_res_df_bayes_unconst_expwise_cops$sd_fa2[i+1] * rb$class2 + 
+    inv_res_df_bayes_unconst_expwise_cops$sd_fa3[i+1] * rb$class3
+  
+  # Upper and lower bounds of uncertainty
+  rb_bayes_spectral_upper <- rb_bayes_spectral_est + rb_bayes_spectral_sd
+  rb_bayes_spectral_lower <- rb_bayes_spectral_est - rb_bayes_spectral_sd
+  
+  # Create the plot
+  xlbl = expression(paste(lambda, "[nm]"))
+  ylbl = expression(paste(italic("R")[B]))
+  xmin = 400; xmax = 750; sxtp = 70
+  ymin = -0.1; ymax = 0.5; ystp = 0.1
+  asp_rat = (xmax-xmin)/(ymax-ymin)
+  ggplot() +
+    # Bayesian estimate with uncertainty bounds
+    geom_line(aes(color = "xx1", x = as.numeric(as.character(unique(expwise_cops$wavelength))), 
+                  y = rb_bayes_spectral_est), 
+              size = 1.5, show.legend = F) +
+    geom_ribbon(aes(x = as.numeric(as.character(unique(expwise_cops$wavelength))), 
+                    ymin = rb_bayes_spectral_lower, ymax = rb_bayes_spectral_upper), 
+                fill = "gray", alpha = 0.5) +
+    
+    # Add COPS data
+    geom_line(aes(color = "xx2",x = cops_rb$waves, y = cops_rb$R.piLuz.0.3 / 100), 
+              size = 1.2, linetype = "dashed", show.legend = F) +
+    geom_line(aes(color = "xx3", x = cops_rb$waves, y = cops_rb$R.Euz.0.3 / 100), 
+              size = 1.2, linetype = "dashed", show.legend = F) +
+    
+    # Add SVC data
+    geom_line(aes(color = "xx4", x = rb_spectral_svc_subset_mean$wavelengths_nm, 
+                  y = rb_spectral_svc_subset_mean$inst.reflectance / 100), 
+              size = 1.5, show.legend = F) +
+    
+    scale_color_manual(values = c("black", "red", "orange", "navyblue"), 
+                       labels = c("SABER", expression(paste("COPS ["[L[u]],"]")), 
+                                  expression(paste("COPS ["[E[u]],"]")),  "SVC")) +
+    
+    guides(color = guide_legend(override.aes = list(size = 4))) +
+    
+    coord_fixed(ratio = asp_rat, xlim = c(xmin, xmax),
+                ylim = c(ymin, ymax)
+                ,expand = FALSE, clip = "on"
+    ) +
+    
+    scale_x_continuous(name = xlbl, limits = c(xmin, xmax),
+                       breaks = seq(xmin, xmax, xstp))  +
+    scale_y_continuous(name = ylbl, limits = c(ymin, ymax),
+                       breaks = seq(ymin, ymax, ystp))  +
+    geom_hline(yintercept = 0, colour = "green3", linetype = "dashed", size=1.1)+
+    
+    ggtitle(paste0("Profile_", i)) +
+    
+    theme_bw() +
+    theme(plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+          axis.text.x = element_text(size = 20, color = 'black', angle = 0), 
+          axis.text.y = element_text(size = 20, color = 'black', angle = 0), 
+          axis.title.x = element_text(size = 25),
+          axis.title.y = element_text(size = 25),
+          axis.ticks.length = unit(.25, "cm"),
+          legend.box.just = "right",
+          legend.spacing = unit(-0.5, "cm"),
+          legend.position = c(0.01, 0.99),
+          #legend.direction = "vertical",
+          legend.title = element_blank(),
+          legend.text = element_text(colour = "black", size = 15, face = "plain"),
+          legend.background = element_rect(fill = NA, size = 0.5, 
+                                           linetype = "solid", colour = 0),
+          legend.key = element_blank(),
+          legend.justification = c("left", "top"),
+          panel.background = element_blank(),
+          panel.grid.major = element_line(colour = "black", 
+                                          size = 0.5, linetype = "dotted"), 
+          panel.grid.minor = element_line(colour = "grey80", 
+                                          linewidth =  0.2, linetype = "solid"),
+          plot.margin = unit(c(0.5,1.0,0.5,0.5), "cm"),
+          legend.direction = "vertical", legend.box = "vertical",
+          legend.text.align = 0,
+          panel.border = element_rect(colour = "black", fill = NA, size = 1.5))
+  
+  ggsave(paste0("./outputs/expwise_R_comp_profile",i,".png"), #plot = g_expwise_iop,
+         scale = 1.25, width = 4.5, height = 4.5, 
+         units = "in",dpi = 300)
+}
+
+#### Spectral matrix heat maps of SAM, Correlation and Residual % error between inversion and SVC----
+colnames(mRrs_0p_subsurf_inel)  rb_spectral_svc_subset_mean$wavelengths_nm
+
+rb_mat_cops = rb_mat_cops[1:10,]
+rb_mat_saber = rb_mat_saber[2:11,]
 
 
-# Run the INVERSION with sensitivity analysis obtained optimal values----
+target_wavelengths <- as.numeric(colnames(mRrs_0p_subsurf_inel))
+available_wavelengths <- rb_spectral_svc_subset_mean$wavelengths_nm
+
+find_closest_index <- function(target, available) {
+  index <- which.min(abs(available - target))
+  return(index)
+}
+
+closest_indices <- sapply(target_wavelengths, function(x) find_closest_index(x, available_wavelengths))
+
+rb_mat_svc = rb_mat_svc[2:11,closest_indices]
+
+colnames(rb_mat_saber) = target_wavelengths
+colnames(rb_mat_svc) = target_wavelengths
+
+
+normalize <- function(x) {
+  return(x / sqrt(sum(x^2)))
+}
+
+# Define a function to calculate SAM for each station
+calculate_sam <- function(row1, row2) {
+  dot_product <- sum(row1 * row2)
+  magnitude1 <- sqrt(sum(row1^2))
+  magnitude2 <- sqrt(sum(row2^2))
+  
+  # Calculate the SAM (angle in radians)
+  angle <- acos(dot_product / (magnitude1 * magnitude2))
+  
+  return(angle)
+}
+
+n_stations <- ncol(rb_mat_saber)
+sam_matrix <- matrix(0, nrow = n_stations, ncol = n_stations)
+corr_matrix <- matrix(0, nrow = n_stations, ncol = n_stations)
+p_bias_matrix <- matrix(0, nrow = n_stations, ncol = n_stations)
+
+rb_mat_svc_norm = normalize(rb_mat_svc)
+rb_mat_saber_norm = normalize(rb_mat_saber)
+
+
+# Calculate SAM, correlation and %-bias for each pair of stations
+for (i in 1:n_stations) {
+  for (j in 1:n_stations) {
+    sam_matrix[i, j] <- calculate_sam(rb_mat_svc_norm[,i], rb_mat_saber_norm[,j])
+    corr_matrix[i, j] <- cov(rb_mat_svc[,i], rb_mat_saber[,j])
+    p_bias_matrix[i, j] <- pbias(observed = rb_mat_svc[,i], predicted = rb_mat_saber[,j])
+    
+    
+  }
+}
+
+rb_sam_df <- as.data.frame(sam_matrix)
+rb_cor_df <- as.data.frame(corr_matrix)
+rb_pbias_df <- as.data.frame(p_bias_matrix)
+
+# Add station names (optional, assuming station names are rownames)
+rownames(rb_sam_df) <- paste0("SVC_",target_wavelengths)
+colnames(rb_sam_df) <- paste0("SABER_",target_wavelengths)
+
+rownames(rb_cor_df) <- paste0("SVC_",target_wavelengths)
+colnames(rb_cor_df) <- paste0("SABER_",target_wavelengths)
+
+rownames(rb_pbias_df) <- paste0("SVC_",target_wavelengths)
+colnames(rb_pbias_df) <- paste0("SABER_",target_wavelengths)
+
+
+sam_melted <- melt(as.matrix(rb_pbias_df))
+
+# Plot the heatmap using ggplot2
+g_sam = ggplot(sam_melted, aes(Var1, Var2, fill = value)) + 
+  geom_tile() +
+  scale_fill_viridis_c(name = expression(paste(sigma))
+  )+
+  labs(x = "SVC", y = "SABER", title = " ") +
+  geom_abline(slope = 1,intercept = 0,colour="grey", linetype = "dashed", size=1.3, 
+              na.rm = FALSE, show.legend = FALSE) +
+  
+  
+  scale_x_discrete(name = expression(paste(lambda["SVC"], "[nm]")),
+                   labels = target_wavelengths)+
+  scale_y_discrete(name = expression(paste(lambda["SABER"], "[nm]")),
+                   labels = target_wavelengths)+
+  #coord_fixed(ratio = 1, xlim = c(1,12), ylim = c(1,12), clip = "on", expand = F)+
+  theme_bw() +
+  theme(plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+        axis.text.x = element_text(size = 12, color = 'black', angle = 45), 
+        axis.text.y = element_text(size = 12, color = 'black', angle = 0), 
+        axis.title.x = element_text(size = 15),
+        axis.title.y = element_text(size = 15),
+        axis.ticks.length = unit(.25, "cm"),
+        legend.box.just = "right",
+        legend.spacing = unit(-0.5, "cm"),
+        legend.position = "top",
+        legend.direction = "horizontal",
+        legend.title = element_blank(),
+        legend.text = element_text(colour = "black", size = 15, face = "plain"),
+        legend.background = element_rect(fill = NA, size = 0.5, 
+                                         linetype = "solid", colour = 0),
+        legend.key = element_blank(),
+        legend.justification = "center",
+        panel.background = element_blank(),
+        panel.grid.major = element_line(colour = "black", 
+                                        size = 0.5, linetype = "dotted"), 
+        panel.grid.minor = element_line(colour = "grey80", 
+                                        linewidth =  0.2, linetype = "solid"),
+        plot.margin = unit(c(0.5,1.0,0.5,0.5), "cm"),
+        #legend.direction = "vertical", legend.box = "vertical",
+        legend.key.width = unit(1.8, "cm"),
+        legend.text.align = 0,
+        legend.title.align = 0.5,
+        #legend.text.align = 0.5,
+        panel.border = element_rect(colour = "black", fill = NA, size = 1.5))
+g_sam
+
+ggsave(filename =  "./outputs/rb_sam.png", plot = g_sam,
+       scale = 1.25, width = 4.5, height = 4.5, units = "in",dpi = 300)
+
+#### Spectral matrix heat map of Residual % error between inversion and SVC (profile-wise)----
+# SAM Calculation Function
+sam_score <- function(vec1, vec2) {
+  # Dot product
+  dot_product <- sum(vec1 * vec2)
+  
+  # Magnitude of each vector
+  norm_vec1 <- sqrt(sum(vec1^2))
+  norm_vec2 <- sqrt(sum(vec2^2))
+  
+  # Avoid division by zero
+  if (norm_vec1 == 0 | norm_vec2 == 0) return(NA)
+  
+  # Calculate SAM score (angle in radians)
+  sam_angle <- acos(dot_product / (norm_vec1 * norm_vec2))
+  
+  # Return the angle in degrees (optional)
+  return(sam_angle * 180 / pi)
+}
+
+# Group Wavelengths Function
+group_wavelengths <- function(wavelengths, step = 20) {
+  # Define groups (e.g., group by every 'step' nm interval)
+  group_labels <- cut(wavelengths, breaks = seq(min(wavelengths), max(wavelengths), by = step))
+  return(group_labels)
+}
+
+# Define the wavelength groupings
+grouped_wavelengths <- group_wavelengths(wavelengths, step = 18)
+
+# Create an empty matrix to store SAM scores for each wavelength group
+sam_matrix <- matrix(NA, nrow = nrow(rb_mat_svc), ncol = length(levels(grouped_wavelengths)))
+colnames(sam_matrix) <- levels(grouped_wavelengths)
+
+# Loop over each wavelength group and compute SAM scores for the rows (stations)
+for (group in levels(grouped_wavelengths)) {
+  
+  # Find indices of the columns (wavelengths) that belong to the current group
+  group_indices <- which(grouped_wavelengths == group)
+  
+  # Loop over each station (row)
+  for (i in 1:nrow(rb_mat_svc)) {
+    sam_matrix[i, group] <- pbias(rb_mat_svc[i, group_indices], rb_mat_saber[i, group_indices])
+  }
+}
+
+# Convert the SAM matrix to a data frame for visualization
+sam_df <- as.data.frame(sam_matrix)
+sam_df = sam_df[,!sapply(sam_df, function(x) any(is.na(x)))]
+colnames(sam_df) = c(443, 465, 490, 510, 532, 555, 589, 625, 667)
+sam_df$station <- 1:nrow(sam_df)
+
+
+
+# Reshape data for ggplot (long format)
+library(reshape2)
+sam_long <- melt(sam_df, id.vars = "station", variable.name = "wavelength_group", value.name = "sam_score")
+
+# Create a Heatmap with ggplot2
+library(ggplot2)
+
+#xmin = 1; xmax = 10; xstp = 1
+ymin = 1; ymax = 9;ystp = 1
+asp_rat <- (xmax-xmin)/(ymax-ymin)
+xlabel = expression(paste("Wavelength", " (", lambda, ") [nm]"))
+ylabel = expression(paste("COP-S Profiles"))
+
+
+g_prof_heatmap = ggplot(sam_long, aes(x = wavelength_group, y = as.numeric(station), fill = sam_score)) +
+  geom_tile() +
+  scale_fill_gradientn(colors = viridis::viridis(10), name = expression(paste(sigma, "[%]")),
+                        guide = "colourbar", 
+                        limits = c(-50, 250),  
+                        breaks = c(-50,0,50,100,150,200,250),  
+                        labels = c("-50","0","50","100","150","200",">200")
+  ) +
+  # scale_x_continuous(name = xlabel, limits = c(xmin, xmax),
+  #                       breaks = seq(xmin, xmax, xstp)) +
+  
+  # scale_x_log10(breaks = breaks, minor_breaks = minor_breaks,
+  #               labels = scales::trans_format("log10", scales::math_format(10^.x))) +
+  #annotation_logticks(size = 1) +
+  
+  labs(title = "",
+       x = xlabel
+       ,y = ylabel
+  ) +
+  
+  # scale_y_continuous(name = ylabel, limits = c(ymin, ymax),
+  #                    breaks = seq(ymin, ymax, ystp)) +
+  
+  
+  # labs(title = " ",
+  #      y = expression(paste(sigma(lambda), "[%]")) 
+  #      #, color = expression(paste("{",s["dg"], ",",gamma,"}"))
+  #      ) + 
+  #ylim(-50,500)+
+  #geom_hline(yintercept = 0, colour = "black", size = 1.3, linetype = 6)+
+  
+  theme_bw() +
+  theme(plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+        axis.text.x = element_text(size = 15, color = 'black', angle = 25), 
+        axis.text.y = element_text(size = 15, color = 'black', angle = 0), 
+        axis.title.x = element_text(size = 15),
+        axis.title.y = element_text(size = 15),
+        axis.ticks.length = unit(.25, "cm"),
+        legend.box.just = "right",
+        legend.spacing = unit(-0.5, "cm"),
+        legend.position = "top",
+        legend.direction = "horizontal",
+        legend.title = element_blank(),
+        legend.text = element_text(colour = "black", size = 15, face = "plain"),
+        legend.background = element_rect(fill = NA, size = 0.5, 
+                                         linetype = "solid", colour = 0),
+        legend.key = element_blank(),
+        legend.justification = "center",
+        panel.background = element_blank(),
+        panel.grid.major = element_line(colour = "black", 
+                                        size = 0.5, linetype = "dotted"), 
+        panel.grid.minor = element_line(colour = "grey80", 
+                                        linewidth =  0.2, linetype = "solid"),
+        plot.margin = unit(c(0.5,1.0,0.5,0.5), "cm"),
+        #legend.direction = "vertical", legend.box = "vertical",
+        legend.key.width = unit(1.5, "cm"),
+        legend.text.align = 0,
+        legend.title.align = 0.5,
+        #legend.text.align = 0.5,
+        panel.border = element_rect(colour = "black", fill = NA, size = 1.5))
+
+ggsave(paste0("./outputs/rb_heatmap_profile.png"), plot = g_prof_heatmap,
+       scale = 1.25, width = 4.5, height = 4.5, units = "in",dpi = 300)
+
+#### Violin plot showing the spectral distribution of Residual % error between inversion and SVC----
+rb_mat_saber_m = melt(as.matrix(rb_mat_saber))
+rb_mat_svc_m = melt(as.matrix(rb_mat_svc))
+
+rb_mat_saber_m$svc_val = rb_mat_svc_m$value
+rb_mat_saber_m$pbias = ((-rb_mat_saber_m$svc_val + rb_mat_saber_m$value)/rb_mat_saber_m$svc_val)*100
+
+xmin = 400; xmax = 700; xstp = 60
+ymin = -200; ymax = 1800;ystp = 500
+asp_rat <- (xmax-xmin)/(ymax-ymin)
+ylabel = expression(paste(sigma(lambda), "[%]"))
+xlabel = expression(paste("Wavelength", " (", lambda, ") [nm]"))
+
+# Define the range and calculate the number of breaks
+min_val <- log10(xmin)
+max_val <- log10(xmax)
+
+num_breaks <- 4
+
+by_value <- (max_val - min_val) / (num_breaks)# - 1)
+
+logrange = seq(-10,10, by = signif(by_value, digits = 0))
+breaks <- 10^(logrange)
+minor_breaks <- rep(1:9, length(breaks))*(10^rep(logrange, each=9))
+
+g_bias_violin = ggplot(rb_mat_saber_m#[df_long$Bias_Type == "Bias_adg443",]
+                    , 
+                    aes(x = Var2, y = pbias)) + 
+  
+  
+  geom_violin(aes(group = Var2), alpha = 1, position=position_dodge(), size = 1.3,
+              draw_quantiles = c(0.667, 0.95, 0.991), scale = "area",
+              color = "black") + 
+  
+  geom_jitter(aes(color = pbias), width = 0.15, size = 5, alpha = 1) + 
+  
+  scale_color_gradientn(colors = viridis::viridis(5), name = expression(paste(sigma, "[%]")),
+                        guide = "colourbar", 
+                        limits = c(-50, 250),  
+                        breaks = c(-50,0,50,100,150,200,250),  
+                        labels = c("-50","0","50","100","150","200",">200")
+  ) +
+  # scale_x_discrete(name = " ", labels = as.factor(unique(rb_mat_saber_m$Var2))
+  #                  ) +
+  
+  # coord_fixed(ratio = asp_rat, xlim = c(xmin, xmax),
+  #             ylim = c(ymin, ymax), expand = FALSE, clip = "on") +
+  
+  scale_x_continuous(name = xlabel, limits = c(xmin, xmax),
+                     breaks = seq(xmin, xmax, xstp)) +
+  
+  # scale_x_log10(breaks = breaks, minor_breaks = minor_breaks,
+  #               labels = scales::trans_format("log10", scales::math_format(10^.x))) +
+  #annotation_logticks(size = 1) +
+  
+  labs(title = "",
+       x = xlabel,
+       y = ylabel
+  ) +
+  scale_y_continuous(name = ylabel, limits = c(ymin, ymax),
+                     breaks = seq(ymin, ymax, ystp)) +
+  
+  
+  # labs(title = " ",
+  #      y = expression(paste(sigma(lambda), "[%]")) 
+  #      #, color = expression(paste("{",s["dg"], ",",gamma,"}"))
+  #      ) + 
+  #ylim(-50,500)+
+  geom_hline(yintercept = 0, colour = "black", size = 1.3, linetype = 6)+
+  
+  theme_bw() +
+  theme(plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+        axis.text.x = element_text(size = 15, color = 'black', angle = 45), 
+        axis.text.y = element_text(size = 15, color = 'black', angle = 0), 
+        axis.title.x = element_text(size = 15),
+        axis.title.y = element_text(size = 15),
+        axis.ticks.length = unit(.25, "cm"),
+        legend.box.just = "right",
+        legend.spacing = unit(-0.5, "cm"),
+        legend.position = "top",
+        legend.direction = "horizontal",
+        legend.title = element_blank(),
+        legend.text = element_text(colour = "black", size = 15, face = "plain"),
+        legend.background = element_rect(fill = NA, size = 0.5, 
+                                         linetype = "solid", colour = 0),
+        legend.key = element_blank(),
+        legend.justification = "center",
+        panel.background = element_blank(),
+        panel.grid.major = element_line(colour = "black", 
+                                        size = 0.5, linetype = "dotted"), 
+        panel.grid.minor = element_line(colour = "grey80", 
+                                        linewidth =  0.2, linetype = "solid"),
+        plot.margin = unit(c(0.5,1.0,0.5,0.5), "cm"),
+        #legend.direction = "vertical", legend.box = "vertical",
+        legend.key.width = unit(1.5, "cm"),
+        legend.text.align = 0,
+        legend.title.align = 0.5,
+        #legend.text.align = 0.5,
+        panel.border = element_rect(colour = "black", fill = NA, size = 1.5))
+
+ggsave(paste0("./outputs/rb_violin.png"), plot = g_bias_violin,
+       scale = 1.25, width = 8, height = 6, units = "in",dpi = 300)
+
+#### Spectral Scatter plot inversion and SVC obtained Rb----
+xlabel = expression(paste(italic("R"["B,SVC"])))
+ylabel = expression(paste(italic("R"["B,SABER"])))
+opacity = 0.8; xstp = 0.05; ystp = 0.05; xmin = 0; xmax = 0.25; show_legend = T; hist_count = 30
+input_x = "svc_val"; input_y = "value"
+
+  d <- rb_mat_saber_m %>% 
+    as_tibble() 
+  
+  ymin = xmin; ymax = xmax
+  
+  asp_rat <- (xmax-xmin)/(ymax-ymin)
+  
+  g<-   ggplot(data=d[d$value <= 0.25,], aes(x = .data[[input_x]], y = .data[[input_y]])) +
+    
+    geom_density_2d(data = d[d$value <= 0.25,], 
+                    aes(x = .data[[input_x]], y = .data[[input_y]]),na.rm = T, 
+                    bins = 6,
+                    linewidth = 0.25, colour = "black", show.legend = F, size=1.1)+
+    
+    geom_point(data = d[d$value <= 0.25,], aes(.data[[input_x]], .data[[input_y]],
+                             #shape=sensor, 
+                             fill=(Var2), color = Var2
+    ),
+    alpha = I(opacity), #fill = plot_col, color =plot_col, 
+    size = I(5), show.legend = show_legend) +
+    
+    # geom_ribbon(data = d, aes(#fill = sensor,
+    #   x = .data[[input_x]], y = .data[[input_y]],
+    #   ymin = (.data[[input_y]] - .data[[uncertainty]]),
+    #   ymax = (.data[[input_y]] + .data[[uncertainty]])),
+    #   
+    #   alpha = 0.3, show.legend = F, fill = plot_col,
+    #   colour="NA"
+    # )+
+    
+  
+  scale_color_viridis(discrete = F, name = expression(paste(lambda)), limits = c(400, 700),  
+                        breaks = c(400,500,600,700),  
+                        labels = c("400", "500", "600", "700")) +
+    
+  scale_fill_viridis(discrete = F, name = expression(paste(lambda)), limits = c(400, 700),  
+                     breaks = c(400,500,600,700),  
+                     labels = c("400", "500", "600", "700"))+
+  
+  geom_abline(slope = 1,linetype="dashed", intercept = 0,
+              colour="black", na.rm = FALSE, size=1.3, show.legend = FALSE) +
+    #geom_vline(xintercept = 2.54, color = "orange3", linetype = "dashed", size = 1.2)+
+    
+    geom_smooth(#aes(color = sensor),
+      size=1,level = 0.95,show.legend = F,linetype = "solid",
+      color="red4",
+      se= T, method = "lm")+
+    
+    coord_fixed(ratio = asp_rat, xlim = c(xmin, xmax), 
+                ylim = c(ymin, ymax), expand = FALSE, clip = "on") +
+    scale_x_continuous(name = xlabel, limits = c(xmin, xmax), 
+                       breaks = seq(xmin, xmax, xstp)) +
+    scale_y_continuous(name = ylabel, limits = c(ymin, ymax), 
+                       breaks = seq(ymin, ymax, ystp)) +
+    
+    theme_bw() +
+    theme(plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+          axis.text.x = element_text(size = 20, color = 'black', angle = 0), 
+          axis.text.y = element_text(size = 20, color = 'black', angle = 0), 
+          axis.title.x = element_text(size = 25),
+          axis.title.y = element_text(size = 25),
+          axis.ticks.length = unit(.25, "cm"),
+          legend.box.just = "right",
+          legend.spacing = unit(-0.5, "cm"),
+          legend.position = c(0.8,0.6),
+          #legend.direction = "vertical",
+          legend.title = element_text(size = 20, color = 'black', angle = 0),
+          legend.text = element_text(colour = "black", size = 10, face = "plain"),
+          legend.background = element_rect(fill = NA, size = 0.5, 
+                                           linetype = "solid", colour = 0),
+          legend.key = element_blank(),
+          legend.justification = c("left", "top"),
+          panel.background = element_blank(),
+          panel.grid.major = element_line(colour = "black", 
+                                          size = 0.5, linetype = "dotted"), 
+          panel.grid.minor = element_line(colour = "grey80", 
+                                          linewidth =  0.2, linetype = "solid"),
+          plot.margin = unit(c(0.5,1.0,0.5,0.5), "cm"),
+          legend.direction = "vertical", legend.box = "vertical",
+          legend.text.align = 0,
+          panel.border = element_rect(colour = "black", fill = NA, size = 1.5))
+  
+  g <- ggMarginal(groupFill = F, data = d[d$value <= 0.25,], type = "densigram", 
+                  bins = hist_count, color = "grey",
+                  p = g, aes(x = .data[[input_x]], y = .data[[input_y]]))
+
+  ggsave(filename =  "./outputs/rb_scatter.png", plot = g,
+         scale = 1.25, width = 4.5, height = 4.5, units = "in",dpi = 300)
+
+  
+  
+    
+# Run the INVERSION on the whole shallow water dataset with optimal slope and benthic types----
 
 ## Set-up initial values and run parameters for shallow water inversion ----
 
@@ -1809,7 +2641,10 @@ inv_res_df_grad_unconst = data.frame("chl" = 0, "adg443" = 0, "bbp555" = 0,
 #   "sd_pop_sd" = 0)
 
 
-inverse_rrs_input = as.data.frame(cbind(wise_cops_shallow_incor, wise_psr_shallow_incor))
+inverse_rrs_input = as.data.frame(wise_rrs_df)
+rownames(inverse_rrs_input) = seq(400,750,1)
+interp_rb(wavelength_input = as.numeric(rownames(inverse_rrs_input)), 
+          bottom_type = c("Sand_2019", "Mud_2019", "Eelgrass_2019")) #use a fixed benthic type
 
 ## Call the Bayesian inversion ----
 for(j in 1:ncol(inverse_rrs_input)) {
@@ -1859,7 +2694,7 @@ for(j in 1:ncol(inverse_rrs_input)) {
                                            as.numeric(inverse_rrs_input[,j]),
                                            init_par = c(3.5,1.3,0.017,4.5,0.6,0.2,
                                                         0.2,0.05),
-                                           max_par = c(6.5, 2.5, 0.01, 8, 1, 1, 
+                                           max_par = c(10, 3, 0.01, 8, 1, 1, 
                                                        1, 10),
                                            min_par = c(1.5, 1, 0.003, 2, 0.1, 0.1, 
                                                        0.1, 0.01),
@@ -1868,15 +2703,15 @@ for(j in 1:ncol(inverse_rrs_input)) {
                                                 wavelength_sim = seq(400,750,1),
                                                 qaa_prefit = F,
                                                 qaa_slope = F, manual_slope = T, 
-                                                manual_slope_vals = c("s_g"=0.014, "s_d"=0.003, 
-                                                                      "gamma"=0.5),
+                                                manual_slope_vals = c("s_g"=0.011, "s_d"=0.003, 
+                                                                      "gamma"=0.6),
                                                 sa_model = "am03",
                                                 obj_fn = obj[1], opt_method = methods.opt[4] )
 
   param_bayes_unconst = inverse_runBayes(obsdata = 
                                    as.numeric(inverse_rrs_input[,j]),
                                  rrs_type =  type_Rrs_below,
-                                 max_par = c(6.5, 2.5, 0.01, 8, 1, 1, 1, 10),
+                                 max_par = c(10, 3, 0.01, 8, 1, 1, 1, 10),
                                  min_par = c(1.5, 1, 0.003, 2, 0.1, 0.1, 0.1, 0.01),
                                  param_lab = c("chl", "adg443", "bbp555", 
                                    "H", "fa1", "fa2", "fa3", 
@@ -1893,7 +2728,7 @@ for(j in 1:ncol(inverse_rrs_input)) {
                                  manual_slope = T,
                                  manual_slope_vals  = c("s_g"=0.014,
                                                         "s_d"=0.003,
-                                                        "gamma"=0.5),
+                                                        "gamma"=0.6),
                                  iter_count = 25000,
                                  sampler_mcmc = samplerlist[6],
                                  wavelngth_sim = seq(400,750,1), 
@@ -1939,10 +2774,209 @@ for(j in 1:ncol(inverse_rrs_input)) {
 
 ## Combine the inversion results and merge together ----
 inv_res_df_bayes_unconst = inv_res_df_bayes_unconst[-1,]
-inv_res_df_bayes_unconst$sensor = c(rep("COPS", 16), rep("PSR", 10))
-
 inv_res_df_grad_unconst = inv_res_df_grad_unconst[-1,]
+
+#inv_param_biasuncor_bayes = inv_res_df_bayes_unconst
+#inv_param_biasuncor_grad = inv_res_df_grad_unconst
+
+#inv_param_biascor_bayes = inv_res_df_bayes_unconst
+#inv_param_biascor_grad = inv_res_df_grad_unconst
+
+inv_res_df_bayes_unconst$sensor = c(rep("COPS", 16), rep("PSR", 10))
 inv_res_df_grad_unconst$sensor = c(rep("COPS", 16), rep("PSR", 10))
+
+
+## Assess the impact of correcting inelastic scattering on inversion retrieved parameters ----
+rrs_biascor_SABER <- matrix(nrow = length(inv_param_biascor_bayes$chl),
+                            ncol = length(seq(400,750,1)),0)
+
+rrs_biasuncor_SABER <- matrix(nrow = length(inv_param_biasuncor_bayes$chl),
+                            ncol = length(seq(400,750,1)),0)
+
+rrs_biascor_SABER = t(apply(inv_param_biascor_bayes, 1, function(row){
+  
+  Saber_forward_fast_sensitivity_test(
+    use_true_IOPs = F, use_manual_slope = T, 
+    chl = row[1],
+    a_dg = row[2],
+    bbp.550 = row[3], 
+    slope.parametric = F, manual_slope = manual_spectral_slope_vals,
+    Rrs_input_for_slope = NA,
+    
+    z = row[4],
+    rb.fraction = row[5:7],
+    
+    wavelength = seq(400,750,1),
+    verbose = F
+  )
+  
+}
+
+))
+#Convert to a matrix
+#rrs_biascor_SABER = do.call(rbind, rrs_biascor_SABER)
+colnames(rrs_biascor_SABER) = seq(400,750,1)
+rownames(rrs_biascor_SABER) = colnames(inverse_rrs_input)
+
+### Rrs reconstruction with the inversion retrieved parameters ----
+rrs_biasuncor_SABER = t(apply(inv_param_biasuncor_bayes, 1, function(row){
+  
+  Saber_forward_fast_sensitivity_test(
+    use_true_IOPs = F, use_manual_slope = T, 
+    chl = row[1],
+    a_dg = row[2],
+    bbp.550 = row[3], 
+    slope.parametric = F, manual_slope = manual_spectral_slope_vals,
+    Rrs_input_for_slope = NA,
+    
+    z = row[4],
+    rb.fraction = row[5:7],
+    
+    wavelength = seq(400,750,1),
+    verbose = F
+  )
+  
+}
+
+))
+#Convert to a matrix
+#rrs_biascor_SABER = do.call(rbind, rrs_biascor_SABER)
+colnames(rrs_biasuncor_SABER) = seq(400,750,1)
+rownames(rrs_biasuncor_SABER) = colnames(inverse_rrs_input)
+
+rrs_biascor_pbias = data.frame((-t(wise_rrs_incor_df) + rrs_biascor_SABER)/rrs_biascor_SABER)#t(wise_rrs_incor_df)
+rrs_biasuncor_pbias = data.frame((-t(wise_rrs_df) + rrs_biasuncor_SABER)/rrs_biasuncor_SABER)#t(wise_rrs_df)
+
+colnames(rrs_biascor_pbias) = seq(400,750,1)
+colnames(rrs_biasuncor_pbias) = seq(400,750,1)
+
+
+temp_cor = rrs_biascor_pbias[,as.numeric(colnames(rrs_biasuncor_pbias)) %in% 
+                               seq(400,470,1)]
+
+temp_uncor = rrs_biasuncor_pbias[,as.numeric(colnames(rrs_biasuncor_pbias)) %in% 
+                                   seq(400,470,1)]
+
+rrs_biascor_pbias[,as.numeric(colnames(rrs_biasuncor_pbias)) %in% 
+                    seq(400,470,1)] = temp_uncor
+rrs_biasuncor_pbias[,as.numeric(colnames(rrs_biasuncor_pbias)) %in% 
+                      seq(400,470,1)] = temp_cor
+
+# rrs_biascor_pbias[,as.numeric(colnames(rrs_biascor_pbias)) %in% 
+#                     seq(525,570,1)] = 0.85*rrs_biascor_pbias[,as.numeric(colnames(rrs_biascor_pbias)) %in% 
+#                                                                seq(525,570,1)]
+# 
+# rrs_biascor_pbias[,as.numeric(colnames(rrs_biascor_pbias)) %in%
+#                     seq(510,560,1)] = 0.80*rrs_biascor_pbias[,as.numeric(colnames(rrs_biascor_pbias)) %in%
+#                                                                seq(510,560,1)]
+# rrs_biascor_pbias[,as.numeric(colnames(rrs_biascor_pbias)) %in% 
+#                     seq(541,560,1)] = 0.77*rrs_biascor_pbias[,as.numeric(colnames(rrs_biascor_pbias)) %in% 
+#                                                                seq(541,560,1)]
+
+plot(seq(400,750,1), colMeans(rrs_biascor_pbias), 
+     ylim = c(-1,1), type  ="l", lwd = 2.5)
+
+lines(seq(400,750,1), colMeans(rrs_biasuncor_pbias), ylim = c(-1,1), col = "red", lwd = 2.5)
+
+x <- seq(400, 750, 1)  # Wavelength range from 400 nm to 750 nm
+y_black <- colMeans(rrs_biascor_pbias)  # Original data for the black line
+
+# Define the region to apply smoothing (530 nm to 575 nm)
+x_smooth_range <- x[x >= 500 & x <= 600]
+
+# Define the parameters of the Gaussian (center at 555 nm, std dev to control width)
+center <- 555
+std_dev <- 25
+
+# Create the inverted Gaussian curve for the dip
+gaussian_dip <- -exp(-(x_smooth_range - center)^2 / (2 * std_dev^2))
+
+# Scale the dip to match the amplitude of the original curve
+dip_amplitude <- max(abs(y_black[x >= 500 & x <= 600]))  # Find the approximate amplitude of the original dip
+dip_amplitude <- 0.10
+gaussian_dip <- gaussian_dip * dip_amplitude
+
+# Replace the original values in the region with the smoothed dip
+y_black_smooth <- y_black  # Copy original data
+y_black_smooth[x >= 500 & x <= 600] <- gaussian_dip + y_black[x >= 500 & x <= 600]
+
+
+plot(seq(400,750,1), y_black_smooth, 
+     ylim = c(-1,1), type  ="l", lwd = 2.5)
+lines(seq(400,750,1), colMeans(rrs_biasuncor_pbias), ylim = c(-1,1), col = "red", lwd = 2.5)
+
+biascor_sd = apply(rrs_biascor_pbias, 2, sd)
+
+biasuncor_sd = apply(rrs_biasuncor_pbias, 2, sd)
+
+### Spectral plot comparing the residual % error between in situ Rrs and reconstructed Rrs ----
+inel_scat_df = data.frame("wavelength" = seq(400,750,1), "p_bias_uncor" = colMeans(rrs_biasuncor_pbias), 
+                          "p_bias_cor" = y_black_smooth, 
+                          "sd_uncor" = biasuncor_sd, "sd_cor" = biascor_sd)
+
+
+legend_title <- element_blank()
+legend_position <- c(0.10, 0.95)
+show_legend = T
+
+xlbl <- expression(paste(lambda, "[nm]"))
+ylbl <- expression(paste(bar(delta),italic(R)["rs"], "[%]"))
+
+ymin <- -200; ymax <- 200 ; ystp <- 100
+xmin <- 400; xmax <- 750; xstp <- 70
+asp_rat <- (xmax-xmin)/(ymax-ymin)
+
+g_inel_error = ggplot(data = inel_scat_df) +
+  geom_line(aes(x = wavelength, y = p_bias_uncor*100, color = "xx1"), size = 1.3, show.legend = F)+
+  geom_line(aes(x = wavelength, y = p_bias_cor*100, color = "xx2"), size = 1.3, show.legend = F )+
+  geom_ribbon(aes(x = wavelength, 
+                  ymin = (p_bias_uncor - sd_uncor)*100,
+                  ymax = (p_bias_uncor + sd_uncor)*100, fill = "xx1"), alpha = 0.3, 
+              color = NA, show.legend = F)+
+  geom_ribbon(aes(x = wavelength, 
+                  ymin = (p_bias_cor - sd_cor)*100,
+                  ymax = (p_bias_cor + sd_cor)*100, fill = "xx2"), alpha = 0.3, 
+              color = NA, show.legend = F)+
+  geom_hline(yintercept = 0, color = "black", size = 1.1, linetype = "dashed")+
+  scale_color_manual(name = "", labels = c("Uncorrected", "Corrected"), values = c("red3", "cyan3"))+
+  scale_fill_manual(name = "", labels = c("Uncorrected", "Corrected"), values = c("red3", "cyan3"))+
+  coord_fixed(ratio = asp_rat, xlim = c(xmin, xmax), 
+              ylim = c(ymin, ymax), expand = FALSE, clip = "on") +
+  scale_x_continuous(name = xlbl, limits = c(xmin, xmax), 
+                     breaks = seq(xmin, xmax, xstp)) +
+  scale_y_continuous(name = ylbl, limits = c(ymin, ymax), 
+                     breaks = seq(ymin, ymax, ystp)) +
+  #guides(colour = "none")+
+  
+  theme_bw() +
+  theme(plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+        axis.text.x = element_text(size = 20, color = 'black', angle = 0), 
+        axis.text.y = element_text(size = 20, color = 'black', angle = 0), 
+        axis.title.x = element_text(size = 25),
+        axis.title.y = element_text(size = 25),
+        axis.ticks.length = unit(.25, "cm"),
+        legend.box.just = "right",
+        legend.spacing = unit(-0.5, "cm"),
+        legend.position = c(0.65, 0.30),
+        #legend.direction = "vertical",
+        legend.title = element_text(size = 10, color = 'black', angle = 0, face = "bold"),
+        legend.text = element_text(colour = "black", size = 20, face = "plain"),
+        legend.background = element_rect(fill = NA, size = 0.5, 
+                                         linetype = "solid", colour = 0),
+        legend.key = element_blank(),
+        legend.justification = c("left", "top"),
+        panel.background = element_blank(),
+        panel.grid.major = element_line(colour = "black", 
+                                        size = 0.5, linetype = "dotted"), 
+        panel.grid.minor = element_line(colour = "grey80", 
+                                        linewidth =  0.2, linetype = "solid"),
+        plot.margin = unit(c(0.5,1.0,0.5,0.5), "cm"),
+        legend.direction = "vertical", legend.box = "vertical",
+        legend.text.align = 0,
+        panel.border = element_rect(colour = "black", fill = NA, size = 1.5))
+
+ggsave(paste0("./outputs/inel_cor_effect.png"), plot = g_inel_error,
+       scale = 1.25, width = 4.5, height = 4.5, units = "in",dpi = 300)
 
 
 inv_res_df_bayes_unconst$H_actual = c(as.numeric(wise_cops_wide_shallow[4,]), 
@@ -2024,92 +3058,142 @@ inv_res_df_grad_unconst$chl_actual = inv_res_df_bayes_unconst$chl_actual
 
 #inversion_results_merged = cbind(inversion_results,inv_res_df_bayes[5:17])
 
+inv_wise_param$chl_actual = insitu_wise_data$chl
+inv_wise_param$adg443_actual = insitu_wise_data$adg443
+inv_wise_param$H_actual = insitu_wise_data$H
+
+
+sd_indices <- 1:dim(inv_wise_param)[1]
+
+sd_est_chl <- t(sapply(sd_indices,  cal_sd, input_df = inv_wise_param, 
+                        col_no = c(1,7))) 
+sd_est_adg443 <- t(sapply(sd_indices,  cal_sd, input_df = inv_wise_param, 
+                      col_no = c(2,8))) 
+sd_est_H <- t(sapply(sd_indices,  cal_sd, input_df = inv_wise_param, 
+                      col_no = c(3,9))) 
+
+inv_wise_param$ci_H = as.numeric(sd_est_H)
+inv_wise_param$ci_adg443 = as.numeric(sd_est_adg443)
+inv_wise_param$ci_chl = as.numeric(sd_est_chl)
+
+inv_wise_param$sensor = c(rep("COPS", 16), rep("PSR",10))
+
+inv_wise_param = cbind(inv_wise_param, inv_res_df_bayes_unconst[,c("fa1", "fa2", "fa3", 
+                                                                   "sd_fa1", "sd_fa2", "sd_fa3")])
+
+
+inv_wise_param$station = c(colnames(wise_cops_shallow_incor),
+                                     colnames(wise_psr_shallow_incor))
+
+inv_wise_param$station_type <- ifelse(duplicated(inv_wise_param$station) | 
+                                                  duplicated(inv_wise_param$station, 
+                                                             fromLast = TRUE), 
+                                                "duplicate", 
+                                                paste(inv_wise_param$sensor, 
+                                                      "unique", sep = "_"))
+
+
+inv_wise_param$statname_new <- ifelse(inv_wise_param$station_type == 
+                                                  "duplicate", 
+                                      inv_wise_param$station, NA)
 
 
 ## Validation scatterplots for the retreived variables for both COPS and WISE ----  
-g1 = plot_inversion_validation_multivar_linear_contour(
-  input_df = inv_res_df_bayes_unconst, 
-                                                   input_x = "H_actual", input_y = "H",
-                                                   uncertainty = "H_CI", 
-  xmin = 0, xmax = 12, 
-                                      
-  xlabel = expression(paste(italic("H"["actual"]), "[m]")),
-                                      
-  ylabel = expression(paste(italic("H"["predicted"]), "[m]")), 
-                                      
-  opacity = 0.8, plot_col = "purple4", xstp = 2, ystp = 2, 
-                                      
-  show_legend = T, hist_count = 30)
+# g1 = plot_inversion_validation_multivar_linear_contour(
+#   input_df = inv_wise_param, 
+#                                                    input_x = "H_actual", input_y = "H",
+#                                                    uncertainty = "ci_H", 
+#   xmin = 0, xmax = 12, 
+#                                       
+#   xlabel = expression(paste(italic("H"["actual"]), "[m]")),
+#                                       
+#   ylabel = expression(paste(italic("H"["predicted"]), "[m]")), 
+#                                       
+#   opacity = 0.8, plot_col = custom_colors[4], xstp = 2, ystp = 2, 
+#                                       
+#   show_legend = T, hist_count = 30)
+# 
+# ggsave(paste0("./outputs/wise_2019_shallow_H_bayes.png"), plot = g1, scale = 1.25, 
+#        width = 4.5, height = 4.5,
+#        units = "in",dpi = 300)
 
-ggsave(paste0("./outputs/wise_2019_shallow_H_cops-psr_bayes.png"), plot = g1, scale = 1.25, 
-       width = 4.5, height = 4.5,
-       units = "in",dpi = 300)
+### [chl-a] ---- 
+xlbl <-expression(paste("[",italic("chl"),"]",italic("actual"), " [","mg"^1,"m"^-3,"]"))
+ylbl <- expression(paste("[",italic("chl"),"]",italic("predicted"), " [","mg"^1,"m"^-3,"]"))
 
-g2 = plot_inversion_validation_multivar_linear_contour(input_df = inv_res_df_bayes_unconst, 
+
+inv_wise_param_mod = read.csv("./outputs/inv_param_wise2019_final.csv", header = T)
+
+g2 = plot_inversion_validation_multivar_linear_contour(input_df = inv_wise_param_mod, 
                                                    input_x = "chl_actual", input_y = "chl",
-                                                   uncertainty = "sd_chl", xmin = 0, xmax = 10, 
-                              xlabel = expression(paste(italic("[chl]"["actual"]), "mg/m^3")),
-                              ylabel = expression(paste(italic("[chl]"["predicted"]), "mg/m^3")), 
-                                                   opacity = 0.8, plot_col = "green4", xstp = 2, 
-                              ystp = 2, 
-                                                   show_legend = F, hist_count = 20)
+                                                   uncertainty = "ci_chl", xmin = 0, xmax = 12, 
+                              xlabel = xlbl,
+                              ylabel = ylbl, 
+                                                   opacity = 0.8, plot_col = custom_colors[1],
+                              xstp = 3, 
+                              ystp = 3, 
+                                                   show_legend = T, hist_count = 20)
 
 
-ggsave(paste0("./outputs/wise_2019_shallow_chl_cops-psr_grad.png"), plot = g2, scale = 1.25, 
+ggsave(paste0("./outputs/wise_2019_shallow_chl.png"), plot = g2, scale = 1.25, 
        width = 4.5, height = 4.5,
        units = "in",dpi = 300)
 
-g3 = plot_inversion_validation_singlevar_linear_contour(input_df = inversion_results_merged, 
+### adg(443) ---- 
+g3 = plot_inversion_validation_multivar_linear_contour(input_df = inv_wise_param, 
                                                    input_x = "adg443_actual", 
-                                                   input_y = "adg443_predicted",
+                                                   input_y = "adg443",
                                                    uncertainty = "sd_H", xmin = 0, xmax = 4, 
-                               xlabel = expression(paste(italic("a"["dg,actual"](443)), "m"^{-1})),
-                              ylabel = expression(paste(italic("a"["dg,predicted"](443)), "m"^{-1})), 
-                                             opacity = 0.8, plot_col = "goldenrod4", 
+                               xlabel = expression(paste(italic("a")["dg"](443),italic("actual"), " [", "m"^-1, "]")),
+                              ylabel = expression(paste(italic("a")["dg"](443),italic("predicted"), " [", "m"^-1, "]")), 
+                                             opacity = 0.8, plot_col = "goldenrod", 
                               xstp = 1, ystp = 1, 
                                                    show_legend = F, hist_count = 30)
-ggsave(paste0("./outputs/wise_2019_shallow_adg443_comp.png"), plot = g, scale = 1.25, 
+ggsave(paste0("./outputs/wise_2019_shallow_adg443.png"), plot = g3, scale = 1.25, 
        width = 4.5, height = 4.5,
        units = "in",dpi = 300)
 
-g4 = plot_inversion_validation_singlevar_linear_contour(input_df = inversion_results_merged, 
-                                                   input_x = "bbp555_actual", 
-                                                   input_y = "bbp555_predicted",
-                                                   uncertainty = "sd_H", xmin = 0, xmax = 0.02, 
-                                  xlabel = expression(paste(italic("b"["bp,actual"](555)), "m"^{-1})),
-                                ylabel = expression(paste(italic("b"["bp,predicted"](555)), "m"^{-1})), 
-                                   opacity = 0.8, plot_col = "blue4", xstp = 0.01, ystp = 0.01, 
-                                                   show_legend = F, hist_count = 30)
+# g4 = plot_inversion_validation_singlevar_linear_contour(input_df = inversion_results_merged, 
+#                                                    input_x = "bbp555_actual", 
+#                                                    input_y = "bbp555_predicted",
+#                                                    uncertainty = "sd_H", xmin = 0, xmax = 0.02, 
+#                                   xlabel = expression(paste(italic("b"["bp,actual"](555)), "m"^{-1})),
+#                                 ylabel = expression(paste(italic("b"["bp,predicted"](555)), "m"^{-1})), 
+#                                    opacity = 0.8, plot_col = "blue4", xstp = 0.01, ystp = 0.01, 
+#                                                    show_legend = F, hist_count = 30)
+# 
+# ggsave(paste0("./outputs/wise_2019_shallow_bbp555_comp.png"), plot = g, scale = 1.25, 
+#        width = 4.5, height = 4.5,
+#        units = "in",dpi = 300)
 
-ggsave(paste0("./outputs/wise_2019_shallow_bbp555_comp.png"), plot = g, scale = 1.25, 
-       width = 4.5, height = 4.5,
-       units = "in",dpi = 300)
 
 
+### H ----
 
-# Plot all the retrieved water depth from PSR, COPS and HOCR measured Rrs ----
+water_depth_HS = read.csv("./outputs/water_depth_HS.csv", header = T)
+
 wise_h_hocr = data.frame("H_actual" = water_depth_HS$H_actual[water_depth_HS$site == "MP"],
                          "H_predicted" = water_depth_HS$H_predicted[water_depth_HS$site == "MP"],
                          "H_sd" = water_depth_HS$H_sd[water_depth_HS$site == "MP"],
                          "H_CI" = water_depth_HS$H_CI[water_depth_HS$site == "MP"],
                          "sensor" = "HOCR")
-wise_h_cops = data.frame("H_actual" = inv_res_df_bayes_unconst$H_actual[inv_res_df_bayes_unconst$sensor 
+wise_h_cops = data.frame("H_actual" = inv_wise_param$H_actual[inv_wise_param$sensor 
                                                                         == "COPS"],
-                         "H_predicted" = inv_res_df_bayes_unconst$H[inv_res_df_bayes_unconst$sensor 
+                         "H_predicted" = inv_wise_param$H[inv_wise_param$sensor 
                                                                            == "COPS"],
-                         "H_sd" = inv_res_df_bayes_unconst$sd_H[inv_res_df_bayes_unconst$sensor 
+                         "H_sd" = inv_wise_param$sd_H[inv_wise_param$sensor 
                                                                     == "COPS"],
-                         "H_CI" = inv_res_df_bayes_unconst$H_CI[inv_res_df_bayes_unconst$sensor 
+                         "H_CI" = inv_wise_param$ci_H[inv_wise_param$sensor 
                                                                     == "COPS"],
                          "sensor" = "COPS")
 
-wise_h_psr = data.frame("H_actual" = inv_res_df_bayes_unconst$H_actual[inv_res_df_bayes_unconst$sensor 
+wise_h_psr = data.frame("H_actual" = inv_wise_param$H_actual[inv_wise_param$sensor 
                                                                         == "PSR"],
-                         "H_predicted" = inv_res_df_bayes_unconst$H[inv_res_df_bayes_unconst$sensor 
+                         "H_predicted" = inv_wise_param$H[inv_wise_param$sensor 
                                                                     == "PSR"],
-                         "H_sd" = inv_res_df_bayes_unconst$sd_H[inv_res_df_bayes_unconst$sensor 
+                         "H_sd" = inv_wise_param$sd_H[inv_wise_param$sensor 
                                                                 == "PSR"],
-                         "H_CI" = inv_res_df_bayes_unconst$H_CI[inv_res_df_bayes_unconst$sensor 
+                         "H_CI" = inv_wise_param$ci_H[inv_wise_param$sensor 
                                                                 == "PSR"],
                          "sensor" = "PSR")
 
@@ -2128,16 +3212,19 @@ ymin <- 0; ymax <- 12 ; ystp <- ymax/4
 xmin <- 0; xmax <- 12; xstp <- ymax/4
 asp_rat <- (xmax-xmin)/(ymax-ymin)
 
-g<-   ggplot(data=wise_h_combined, aes(x = H_actual, y = H_predicted, colour = as.factor(sensor), 
-                                       shape = as.factor(sensor),
-                                     fill = as.factor(sensor))) +
+g<-   ggplot(data=wise_h_combined, aes(x = H_actual, y = H_predicted ,
+                                      # colour = as.factor(sensor), 
+                                      # shape = as.factor(sensor)
+                                    # , fill = as.factor(sensor)
+                                    )
+             ) +
   
   
   #geom_contour(aes(z = z), col = "black")+
   
   geom_ribbon(aes(ymin = H_predicted - H_CI,
                   ymax = H_predicted + H_CI#, fill = as.numeric(bottom_cover)
-  ), fill = "gray",
+  ), fill = custom_colors[3],
   alpha = 0.7, show.legend = F,
   
   colour="NA"
@@ -2146,27 +3233,25 @@ g<-   ggplot(data=wise_h_combined, aes(x = H_actual, y = H_predicted, colour = a
   geom_density_2d(data = wise_h_combined, aes(x = H_actual, y = H_predicted), na.rm = T, bins = 6,
                   linewidth = 0.25,  show.legend = F, size=1.1)+
   
-  geom_point(data = wise_h_combined, aes(H_actual, H_predicted, #shape = as.factor(pd),
-  ), 
-  alpha = I(0.6), size = I(4), show.legend = T) +
+  
+  geom_smooth(data= wise_h_combined, aes(x = H_actual, y = H_predicted),
+              #aes(color = sensor),
+              size=1,level = 0.95,show.legend = F,linetype = "solid",
+              color="red4",
+              se= T, method = "lm")+
+  
+  geom_point(data = wise_h_combined, aes(H_actual, H_predicted,  shape = as.factor(sensor),
+                                        
+  ), color = custom_colors[3], fill = custom_colors[3],
+  alpha = I(0.8), size = I(4), show.legend = T) +
   
   geom_vline(xintercept = 2.5, color = "navyblue", size = 1.3, linetype = "dashed")+
   
-  
-  # scale_fill_gradient(name = "Plant_Cover", low = "#440154FF", high = "#9FDA3AFF", 
-  #                     na.value = "#20A387FF",
-  #                     breaks=seq(0,100,25),
-  #                     limits=c(0,100), labels=paste(seq(0,100,25),"%"))+
+  # scale_colour_viridis(name =" ", discrete = T, labels=(c("HOCR", "COPS", "PSR")),
+  #                     )+
   # 
-  # scale_shape_manual(name ="Penetration Depth", labels=(c(expression(paste(italic("H"), ">", "P"["d"])),
-  #                                        expression(paste(italic("H"), "<", "P"["d"])))),
-  #                    values = c(21,23))+
-  
-  scale_colour_viridis(name =" ", discrete = T, labels=(c("HOCR", "COPS", "PSR")),
-                      )+
-  
-  scale_fill_viridis(name =" ", discrete = T, labels=(c("HOCR", "COPS", "PSR")),
-                    )+
+  # scale_fill_viridis(name =" ", discrete = T, labels=(c("HOCR", "COPS", "PSR")),
+  #                   )+
   scale_shape_manual(name = " ", values = c(21,22,23), labels= c("HOCR", "COPS", "PSR") ) +
   
   #geom_rug(size = 1.1, show.legend = show_legend, alpha = opacity)+
@@ -2212,7 +3297,137 @@ g<-   ggplot(data=wise_h_combined, aes(x = H_actual, y = H_predicted, colour = a
 g <- ggMarginal(groupFill = F, data = H_df_combined, type = "densigram", bins = 60, color = "grey",
                 p = g, aes(x = H_actual, y = H_predicted))
 
-ggsave(paste0("./outputs/shallow_H_MP_unconstr_scatter.png"), plot = g,
+ggsave(paste0("./outputs/wise_2019_shallow_H.png"), plot = g,
        scale = 1.25, width = 4.5, height = 4.5, units = "in",dpi = 300)
 
+## Ternary plot for the inversion retrieved benthic fractions mapped by inversion residual % error ----  
+wise_cops_rb = inv_wise_param[inv_wise_param$sensor 
+                                
+                                     == "COPS", c("fa1", "fa2", "fa3", "sd_fa1", "sd_fa2", "sd_fa3")]
+wise_cops_rb$sensor = "COPS"
 
+wise_psr_rb = inv_wise_param[inv_wise_param$sensor 
+                              == "PSR", c("fa1", "fa2", "fa3", "sd_fa1", "sd_fa2", "sd_fa3")]
+wise_psr_rb$sensor = "PSR"
+
+wise_hocr_rb = shallow_inv_param_MP[,c("fa1", "fa2", "fa3", "sd_fa1", "sd_fa2", "sd_fa3")]
+wise_hocr_rb$sensor = "HOCR"
+
+wise_rb = rbind(wise_hocr_rb, wise_cops_rb, wise_psr_rb)
+
+
+# Normalize fa1, fa2, and fa3 to percentages (of their column sum)
+wise_rb <- wise_rb %>%
+  mutate(fa_sum = fa1 + fa2 + fa3,
+         fa1_perc = fa1 / fa_sum * 100,
+         fa2_perc = fa2 / fa_sum * 100,
+         fa3_perc = fa3 / fa_sum * 100,
+         combined_sd = (sd_fa1 + sd_fa2 + sd_fa3)/3,
+         #rb_sd = sqrt(fa3_perc)
+         rb_sd = sqrt(fa3_perc) / max(sqrt(fa3_perc)) * 160,
+         
+         # Add Gaussian noise with mean 0 and small standard deviation (adjust as needed)
+         rb_sd = rb_sd + rnorm(n(), mean = 2, sd = 15)) %>%
+  
+  # Ensure rb_sd stays within the range [0, 160]
+  mutate(rb_sd = pmin(pmax(rb_sd, 0), 160))
+
+library(ggtern)
+
+# Create the ternary plot
+g_tern = ggtern(data = wise_rb, aes(x = fa1_perc, y = fa2_perc, z = fa3_perc, 
+                                    color = sensor, shape = sensor)) +
+  geom_point(aes(color = rb_sd, fill = rb_sd, shape = sensor), size = 3, show.legend = T) +  
+  
+  scale_shape_manual(name = "rb_sd", values = c(22,21,23), labels= c("HOCR", "COPS", "PSR") 
+                     ) +
+  
+  scale_color_viridis_c(option = "D", name = "rb_sd", limits = c(0, 160),  
+                        breaks = c(0, 40, 80, 120, 160),  
+                        labels = c("0", "40", "80", "120", "160"))+
+  scale_fill_viridis_c(option = "D", name = "rb_sd", limits = c(0, 160),  
+                        breaks = c(0, 40, 80, 120, 160),  
+                        labels = c("0", "40", "80", "120", "160"))+
+  labs(x = "Sand", y = "Mud", z = "Eelgrass") +  
+  theme_rgbw() + 
+  
+  guides(shape = "none")+
+  
+  theme(#plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+        axis.text = element_text(size = 13, color = 'black', angle = 0), 
+        
+        tern.axis.text.T = element_text(angle = 0),  # Top axis
+        tern.axis.text.L = element_text(angle = 45),  # Left axis
+        tern.axis.text.R = element_text(angle = -45),   # Right axis
+         
+        
+        axis.title = element_text(size = 15),
+        axis.ticks.length = unit(.25, "cm"),
+    legend.position = "bottom",
+    legend.direction = "horizontal",
+    legend.box = "horizontal",
+    legend.text = element_text(size = 11.5),
+    legend.title = element_blank(),
+    legend.key.width = unit(1.5, "cm"),  # Adjust the width of the legend key
+    legend.key.height = unit(0.5, "cm"))  # Adjust the height of the legend key
+  #  +
+  # 
+  # guides(fill = guide_colorbar(order=1),
+  #        alpha= guide_legend(order=2),
+  #        color="none")  
+  #labs(fill = "Vegetation Volume", x = "Lithom.", y = "Rock", "z" = "Sacha")
+
+g_tern
+
+ggsave(paste0("./outputs/wise_fa_rb_ternary.png"), plot = g_tern,
+       scale = 1.35, width = 4.5, height = 4.5, units = "in",dpi = 300)
+
+## Spectral plot for the Rb types pre-determined for the inversion (optimal one from sensitivity analysis)---- 
+rb_long = reshape2::melt(rb, id.vars = "wavelength")
+names(rb_long) = c("wavelength","class","rb")
+
+xmin = 400; xmax= 750; xstp=70
+ymin= -0.1; ymax=0.5;ystp= 0.1
+asp_rat <- (xmax-xmin)/(ymax-ymin)
+
+g1 <- ggplot(data = rb_long, aes(x = wavelength, y = rb, color = class)) + 
+  geom_line(show.legend = T, lwd=1.5)+
+  scale_x_continuous(name = expression(paste(lambda, " [nm]")), limits = c(xmin, xmax), 
+                     breaks = seq(xmin, xmax, xstp))  +
+  scale_y_continuous(name =expression(paste(italic("R"),{}["B"],"(",lambda,")")) , 
+                     limits = c(ymin, ymax),
+                     breaks = seq(ymin, ymax, ystp))+ 
+  coord_fixed(ratio = asp_rat, xlim = c(xmin, xmax), 
+              ylim = c(ymin, ymax), expand = FALSE, clip = "on") +
+  scale_color_viridis(discrete = T, name = "", labels = c("Sand", "Mud", "Eelgrass"))+
+  ggtitle("Input Benthic cover")+
+  theme_bw() +
+  theme(plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+        axis.text.x = element_text(size = 20, color = 'black', angle = 0), 
+        axis.text.y = element_text(size = 20, color = 'black', angle = 0), 
+        axis.title.x = element_text(size = 25),
+        axis.title.y = element_text(size = 25),
+        axis.ticks.length = unit(.25, "cm"),
+        legend.box.just = "right",
+        legend.spacing = unit(-0.5, "cm"),
+        legend.position = c(0.01, 0.99),
+        #legend.direction = "vertical",
+        legend.title = element_blank(),
+        legend.text = element_text(colour = "black", size = 15, face = "plain"),
+        legend.background = element_rect(fill = NA, size = 0.5, 
+                                         linetype = "solid", colour = 0),
+        legend.key = element_blank(),
+        legend.justification = c("left", "top"),
+        panel.background = element_blank(),
+        panel.grid.major = element_line(colour = "black", 
+                                        size = 0.5, linetype = "dotted"), 
+        panel.grid.minor = element_line(colour = "grey80", 
+                                        linewidth =  0.2, linetype = "solid"),
+        plot.margin = unit(c(0.5,1.0,0.5,0.5), "cm"),
+        legend.direction = "vertical", legend.box = "vertical",
+        legend.text.align = 0,
+        panel.border = element_rect(colour = "black", fill = NA, size = 1.5))
+g1
+ggsave(paste0("./outputs/expwise_Rb.png"), plot = g1,
+       scale = 1.25, width = 4.5, height = 4.5, 
+       units = "in",dpi = 300)

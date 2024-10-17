@@ -157,8 +157,8 @@ rownames(sobol_df) = seq(1, nrow(sobol_df),1)
 sobol_df[3,-1] = c(5.57751, 63.7859, 6.40912, 4.20, 19.70) #for fa1
 
 # Prepare color
-colors_border=colormap(colormap=colormaps$viridis, nshades=6, alpha=1)
-colors_in=colormap(colormap=colormaps$viridis, nshades=6, alpha=0.3)
+colors_border = colormap(colormap=colormaps$viridis, nshades=6, alpha=1)
+colors_in = colormap(colormap=colormaps$viridis, nshades=6, alpha=0.3)
 
 par(mar = c(1, 2, 2, 2))
 # Create radar chart
