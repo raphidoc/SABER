@@ -1,0 +1,265 @@
+---
+title: "water_surface_reflectance"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{water_surface_reflectance}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(SABER)
+library(ggplot2)
+```
+
+# Gege (2012)
+
+We can test the Gege (2012) model with data shipped with SABER.
+
+```{r}
+rrs_subsurface <- test_input_rrs$Rrs
+wavelength <- test_input_rrs$Wavelength
+```
+
+We define the model input parameter
+
+```{r}
+theta_s = 30 #sun angle of sensor above water surfac
+theta_v = 15 #viewing angle of sensor above water surface
+# Water surface roughness [sr]
+q_surf = pi 
+# Atmospheric conditions
+# Irradiance intensities [1/sr]
+g_dd=0.02
+g_dsr=1/pi
+g_dsa=1/pi
+# Intensities of light sources
+f_dd= 1
+f_ds= 1
+# Angstrom exponent
+alpha = 1.317
+# Atmospheric pressure [mbar]
+P = 1013.25 
+# Relative Humidity
+RH = 0.60
+# Scale height for ozone [cm]
+Hoz = 0.300 
+# Scale height of the precipitate water in the atmosphere [cm]
+WV= 2.500
+```
+
+We resample the input extraterrestrial irradiance and atmospheric absorption spectrum of WASI.
+
+```{r}
+# Extraterrestrial solar irradiance [mW/m^2 nm]
+F0_res <- Hmisc::approxExtrap(
+  x =F0$wavelength,
+  y =F0$F0,
+  xout = wavelength,
+  method = "linear")$y
+
+# Oxygen absorption [1/cm]
+a_O2_res <- Hmisc::approxExtrap(
+  x =a_O2$wavelength,
+  y =a_O2$a_O2,
+  xout = wavelength,
+  method = "linear")$y
+
+# Ozone absorption [1/cm]
+a_O3_res <- Hmisc::approxExtrap(
+  x = a_O3$wavelength,
+  y = a_O3$a_O3,
+  xout = wavelength,
+  method = "linear")$y
+
+# Water vapour absorption [1/cm]
+a_WV_res <- Hmisc::approxExtrap(
+  x =a_WV$wavelength,
+  y =a_WV$a_WV,
+  xout = wavelength,
+  method = "linear")$y
+```
+
+We compute the angle of refraction and Fresnel reflectance
+
+```{r}
+
+theta_s <- theta_s*(pi/180)
+theta_v <- theta_v*(pi/180)
+
+theta_v_t <- refraction_law(theta_v, n1 = 1, n2 = 1.34) 
+theta_s_t <- refraction_law(theta_s, n1 = 1, n2 = 1.34) 
+fresnel_rho_sun = fresnel_reflectance(theta_s, theta_s_t)
+```
+
+We use the semi-analytically model to transmit $F0$ to direct $E_\text{dd}(0^{+})$ and diffuse$E_\text{ds}(0^{+})$ downwelling irradiance just above the surface.
+
+```{r}
+# Atmospheric path length -------------------------------------------------
+M <- 1/(cos(theta_s)+(0.50572*((90 + 6.079975-theta_s)^(-1.253))))
+# M corrected for non standard atmopsheric pressure
+M1 <-  (M*P)/1013.25
+# path length for ozone
+Moz <-  1.0035/ (((cos(theta_s)^2)+0.007)^0.5)
+
+# Air mass type
+# TODO: type_case_water is defined in main.R as an integer outside the
+#   function. How was this working with this scope ?
+type_case_water <- 1
+if (type_case_water == "1") { 
+  AM <- 1
+} else{
+  AM <- 1
+}
+
+# single scattering albedo
+omega_a <- ((-0.0032*AM) + 0.972)*exp(RH*3.06*(10^-4))
+
+# aerosol scale height [km]
+Ha <- 1 
+# horizontal visibility [km]
+V <- 15
+# 
+beta <- 3.91*(Ha/V)
+tau_a <-  beta*((wavelength/550)^(-alpha))
+
+# Atmospheric transmittance spectra ---------------------------------------
+# Rayleigh scattering
+Tr <-   exp(-M1/((115.6406*(wavelength^(4)))-(1.335*(wavelength^(2)))))
+# Aerosol absorption
+Taa <-  exp(-(1-omega_a)*tau_a*M)
+# Aerosol scattering
+Tas <-  exp(-omega_a*tau_a*M)
+# Ozone absorption
+Toz <-  exp(-a_O3_res*Hoz*Moz)
+# Oxygen absorption
+To <-   exp((-1.41*a_O2_res*M1)/((1+(118.3*a_O2_res*M1))^0.45))
+# Water vapor absorption
+Twv <-  exp((-0.2385*a_WV_res*WV*M)/((1+(20.07*a_WV_res*WV*M))^0.45))
+
+# Aerosol forward scattering probability ----------------------------------
+# asymmetry factor of the aerosol scattering phase function
+if (alpha < 0) {
+  assymetry_factor <- 0.82
+} else if (alpha > 1.2) {
+  assymetry_factor <- 0.65
+} else {
+  assymetry_factor <- -0.1417*alpha+0.82
+}
+# Empirical coefficient for the Aerosol forward scattering probability
+B3 <- log(1 - assymetry_factor)
+B2 <-  B3*(0.0783 +(B3*(-0.3824-0.5874*B3)))
+B1 <-  B3*(1.459 +(B3*(0.1595+0.4129*B3)))
+# Aerosol forward scattering probability
+Fa <-  1-(0.5*exp((B1+(B2*cos(theta_s)))*cos(theta_s)))
+
+# Downwelling irradiances -------------------------------------------------
+# Direct 
+Edd <-  F0_res*Tr*Taa*Tas*Toz*To*Twv*cos(theta_s)
+# Diffuse Rayleigh
+Edsr <- (1/2)*F0_res*(1-(Tr^(0.95)))*Taa*Tas*Toz*To*Twv*cos(theta_s)
+# Diffuse aerosol
+Edsa <-  F0_res*(Tr^(1/2))*Taa*(1-Tas)*Toz*To*Twv*cos(theta_s)*Fa
+# Diffuse downwelling irradiance above the surface
+Eds <-  Edsr+Edsa
+
+# Downwelling irradiance just above the water surface
+Ed_surface <-  (f_dd*Edd) + (f_ds*Eds)
+```
+
+We compute the WASI4 equivalent "sky radiance", direct and diffuse component, $L_\text{skyd}$ and $L_\text{skys}$.
+*Note that those radiance are not parametrized in term of viewing angles and therefore cannot be used to simulate a sensor observation, see: Gege, P. (2015) ‘The Water Colour Simulator WASI’.*
+
+```{r}
+# WASI sky radiances ------------------------------------------------------
+# Sky Radiance [mW/sr m^2 nm]
+Ls_direct <-  (g_dd*Edd)
+
+Ls_diff <- (g_dsr*Edsr) + (g_dsa*Edsa)
+
+# Sun glint radiance
+L_sun_glint <- fresnel_rho_sun*Ls_direct
+
+# Sky glint radiance
+L_sky_glint <- fresnel_rho_sun*Ls_diff
+```
+
+Plot the result.
+
+```{r}
+ggplot() +
+  geom_line(aes(x = wavelength, y = L_sun_glint/Ed_surface, colour = "sun glint")) +
+  geom_line(aes(x = wavelength, y = L_sky_glint/Ed_surface, colour = "sky glint")) +
+  geom_line(aes(x = wavelength, y = rrs_subsurface, colour = "Rrs")) + 
+  geom_line(aes(x = wavelength, y = rrs_subsurface+(L_sun_glint/Ed_surface)+(L_sky_glint/Ed_surface), colour = "Rrs total"))
+
+```
+
+```{r}
+result <- SABER::gege_2012(
+  wavelength <- test_input_rrs$Wavelength,
+  theta_s = 30,
+  g_dd=0.01,
+  g_dsr=0,
+  g_dsa=0,
+  f_dd= 1,
+  f_ds= 1,
+  alpha = 1.317,
+  P = 1013.25,
+  RH = 0.60,
+  Hoz = 0.300, 
+  WV= 2.500
+)
+
+ggplot(result) +
+  #geom_line(aes(x = wavelength, y = Ed_surface, colour = "Es")) +
+  geom_line(aes(x = wavelength, y = L_sun_glint, colour = "Ls"))
+```
+
+
+
+# Vanhellemeont 2018
+
+input parameters 
+
+```{r}
+wavelength <- test_input_rrs$Wavelength
+tau_r <- 0.2
+theta_s <-30
+theta_v <- 15
+delta_phi <- 0
+```
+
+computation
+
+```{r}
+theta_s <- theta_s*(pi/180)
+theta_v <- theta_v*(pi/180)
+
+theta_s_t <- refraction_law(theta_s, n1 = 1, n2 = 1.34)
+theta_v_t <- refraction_law(theta_v, n1 = 1, n2 = 1.34)
+
+fresnel_s <- fresnel_reflectance(theta_s, theta_s_t)
+fresnel_v <- fresnel_reflectance(theta_v, theta_v_t)
+
+cos_theta_plus <- cos(theta_s) * cos(theta_v) - sin(theta_s) * sin(theta_v) * cos(delta_phi)
+
+# omega <- acos(sqrt(cos_2_omega))
+# omega <- acos(cos_2_omega)/2
+
+rayleigh_phase_omega <- 0.75*(1+cos_theta_plus^2)
+
+rayleigh_phase = (fresnel_s + fresnel_v) * rayleigh_phase_omega
+
+rho_sky <- tau_r*rayleigh_phase*(4*cos(theta_s)*cos(theta_v))^-1
+```
+
+
+# 
