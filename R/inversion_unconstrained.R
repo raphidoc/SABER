@@ -1,12 +1,46 @@
-# Unconstrained full inversion --------------------------------------------
+#' inversion_unconstrained
+#' Unconstrained full inversion. Two options for forward semi analytical model
+#'  and two option for the objective function.
+#'
+#' @author Soham Mukherjee
+#'
+#' @param sa_model c("am03", "lee98")
+#' @param objective_fct c("log-LL", "SSR", "lee99") SSR is not implemented in the code
+#' @param method_opt c("Nelder-Mead", "BFGS", "CG", "L-BFGS-B", "SANN", "Brent","levenberg-marqardt", "auglag")
+#'
+#' @export
 
-if (unconstrained == TRUE) {
 
-  cat(paste0("\033[0;33m","###################################################################","\033[0m","\n"))
-  cat(paste0("\033[0;39m","########### ALL GOOD THINGS ARE WILD & FREE, LET'S RUN FREE #######","\033[0m","\n"))
-  cat(paste0("\033[0;32m","###################################################################","\033[0m","\n"))
+inversion_unconstrained <- function(
+    wavelength,
+    sa_model,
+    objective_fct
+    ) {
+  rlang::inform(paste0("\033[0;33m","###################################################################","\033[0m","\n"))
+  rlang::inform(paste0("\033[0;39m","########### ALL GOOD THINGS ARE WILD & FREE, LET'S RUN FREE #######","\033[0m","\n"))
+  rlang::inform(paste0("\033[0;32m","###################################################################","\033[0m","\n"))
 
-  if (obj_fn == "log-LL") {
+# Estimate Rrs from a set of starting parameter ---------------------------
+
+  if (sa_model == "am03") {
+    init_rrs <- saber_forward_fast(
+      use_true_IOPs = F,
+      chl = pars[1],
+      a_dg = pars[2],
+      bbp.550 = pars[3],
+      z = pars[4],
+      rb.fraction = as.numeric(pars[5:(4+initial_rb_length)]),
+      Rrs_input_for_slope = data,
+      slope.parametric = auto_spectral_slope,
+      use_manual_slope =manual_spectral_slope,
+      manual_slope =  manual_spectral_slope_vals,
+      verbose = F, wavelength = wavelength
+    )
+  }
+
+
+
+  if (objective_fct == "log-LL") {
     print("Log-Likelihood will be used to construct objective function")
     ##Create log-likelihood function
 
@@ -14,52 +48,20 @@ if (unconstrained == TRUE) {
 
       # Values predicted by the forward model for single RUN
       if (sa_model == "am03") {
-        Gpred = Saber_forward_fast(
-          use_true_IOPs = F,
-          #a_non_water_path = IOP_files[idx_a],
-          #bb_non_water_path = IOP_files[idx_bb],
+        Gpred =
 
-          chl = pars[1],
-          a_dg = pars[2],
-          bbp.550 = pars[3],
-
-          z = pars[4],
-          rb.fraction = as.numeric(pars[5:(4+initial_rb_length)]),
-
-
-          Rrs_input_for_slope = data,
-
-          slope.parametric = auto_spectral_slope,
-
-
-          use_manual_slope =manual_spectral_slope,
-          manual_slope =  manual_spectral_slope_vals,
-
-          verbose = F, wavelength = wavelength
-        )
-
-      } else {
+      } else if (sa_model == "lee98") {
         Gpred = lee_forward_fast(
           use_true_IOPs = F,
-          #a_non_water_path = IOP_files[idx_a],
-          #bb_non_water_path = IOP_files[idx_bb],
-
           chl = pars[1],
           a_dg = pars[2],
           bbp.550 = pars[3],
-
           z = pars[4],
           rb.fraction = as.numeric(pars[5:(4+initial_rb_length)]),
-
-
           Rrs_input_for_slope = data,
-
           slope.parametric = auto_spectral_slope,
-
-
           use_manual_slope =manual_spectral_slope,
           manual_slope =  manual_spectral_slope_vals,
-
           verbose = F, wavelength = wavelength
         )
       }
@@ -69,7 +71,8 @@ if (unconstrained == TRUE) {
                          log = TRUE))
       return(smull)
     }
-  } else {
+
+  } else if (objective_fct == "lee99") {
 
     print("Spectral Error index from Lee et al. 1999 will be used to construct objective function")
 
@@ -80,60 +83,34 @@ if (unconstrained == TRUE) {
       if (sa_model == "am03") {
         Gpred = Saber_forward_fast(
           use_true_IOPs = F,
-          #a_non_water_path = IOP_files[idx_a],
-          #bb_non_water_path = IOP_files[idx_bb],
-
           chl = pars[1],
           a_dg = pars[2],
           bbp.550 = pars[3],
-
           z = pars[4],
           rb.fraction = as.numeric(pars[5:(4+initial_rb_length)]),
-
-
           Rrs_input_for_slope = data,
-
           slope.parametric = auto_spectral_slope,
-
-
           use_manual_slope =manual_spectral_slope,
           manual_slope =  manual_spectral_slope_vals,
-
           verbose = F, wavelength = wavelength
         )
-
-
       } else {
         Gpred = lee_forward_fast(
           use_true_IOPs = F,
-          #a_non_water_path = IOP_files[idx_a],
-          #bb_non_water_path = IOP_files[idx_bb],
-
           chl = pars[1],
           a_dg = pars[2],
           bbp.550 = pars[3],
-
           z = pars[4],
           rb.fraction = as.numeric(pars[5:(4+initial_rb_length)]),
-
-
           Rrs_input_for_slope = data,
-
           slope.parametric = auto_spectral_slope,
-
-
           use_manual_slope =manual_spectral_slope,
           manual_slope =  manual_spectral_slope_vals,
-
           verbose = F, wavelength = wavelength
         )
       }
 
       rrs_est = Gpred[[1]]$Rrs
-
-      # Sum-squared residual of error (SSE)
-      #sse= sum((data - rrs_est)^2)
-      #return(sse)
 
       #The Spectral error index from Lee 1999
       # Define the spectral regions
