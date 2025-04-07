@@ -3,47 +3,33 @@
 \name{lee98_forward}
 \alias{lee98_forward}
 \title{Lee 1998 forward model
-Compute Rrs given initial parameters
-Question For Soham:
-Where does the parametric formula to retrieve spectral slope of CDOM + NAP comes from, QAA ?
-Where does the a_w values comes from ?
-Why is pure water backscattering dependent on water type ?}
+Compute Rrs given initial parameters}
 \usage{
 lee98_forward(
-  iop = NULL,
-  oac = NULL,
-  water_type = 2,
-  optically_shallow = T,
-  h_w = 2,
-  rb_fraction,
-  rb = read_csv(fs::path_package("SABER", "extdata", "rb_endmembers_algae-wise.csv")),
-  view = 40,
-  sun = 20,
-  wavelength = seq(400, 800, 10),
-  rrs = NULL,
-  verbose = T,
-  plot = T
+  wavelength,
+  iop,
+  view,
+  sun,
+  optically_shallow,
+  h_w = NULL,
+  rrs_bottom = NULL,
+  verbose = F
 )
 }
 \arguments{
-\item{iop}{a tibble with column {wavelength, a, bb}}
+\item{wavelength}{Requested wavelength for the simulation}
 
-\item{oac}{a tibble with column {chl \link{mg/m^-3}, ag_440, bb_550}, optionally,
-to provide manual ag and bb slope columns {ag_s_g, ag_s_d, bb_gamma}}
+\item{iop}{a tibble with column {wavelength, a, bb}, non-water component of absorption and backscattering.}
 
-\item{rb}{optional, a tibble with columns {wavelength, class\code{X}} end member
-reflectance spectra.}
+\item{optically_shallow}{bolean, is the water optically shallow ? If TRUE, provide \code{h_w}, \code{rb_fraction}, \code{rb}.}
 
-\item{rrs}{optionnal, a tibble with columns {wavelength, rrs} used for
-parametric retrieval of a_g and bb slope}
+\item{h_w}{water column height \link{m}.}
+
+\item{rrs_botom}{remote sensing bottom reflectance. see function \code{rrs_bottom_lmm}}
 }
 \description{
 Lee 1998 forward model
 Compute Rrs given initial parameters
-Question For Soham:
-Where does the parametric formula to retrieve spectral slope of CDOM + NAP comes from, QAA ?
-Where does the a_w values comes from ?
-Why is pure water backscattering dependent on water type ?
 }
 \references{
 Lee, z. et al. (1998) ‘Hyperspectral remote sensing for shallow waters. I. A semianalytical model’, Applied Optics, 37(27), pp. 6329–6338. Available at: https://doi.org/10.1364/AO.37.006329.

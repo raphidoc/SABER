@@ -13,4 +13,6 @@ Packaging: Raphael Mabit
 * Why different pure water bb values for case one or two waters ? pure water IOP does not depends on water type.
 * SSR objective function is define in the parameter of inversion but not implemented in the code ?
 * Does the function `Saber_forward_fast` actually implement the am03 SA model ?
-
+* Where does the parametric formula to retrieve spectral slope of CDOM + NAP comes from, QAA ?
+* What's the difference between `SABER_forward_fast.R` and `saber_forward_parametric_conc_wise.R` ?
+* Is Saber_forward the am03 model ?

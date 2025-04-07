@@ -4,16 +4,16 @@
 \alias{parse_iop}
 \title{parse_iop}
 \usage{
-parse_iop(a, bb, wavelength, plot = F)
+parse_iop(a, bb, wavelength, verbose = F)
 }
 \arguments{
 \item{a}{tibble with columns {a, wavelength}}
 
 \item{bb}{tibble with columns {bb, wavelength}}
 
-\item{plot}{bollean, produce input and interpolated IOPs plot}
-
 \item{wavelength_out}{a vector with the requested interpolation wavelength}
+
+\item{plot}{bollean, produce input and interpolated IOPs plot}
 }
 \value{
 A tibble with columns {wavelength, a, bb}

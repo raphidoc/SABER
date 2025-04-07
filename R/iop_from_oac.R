@@ -10,10 +10,11 @@
 #'
 #' @export
 
-oac_to_iop <- function(
+iop_from_oac <- function(
+    wavelength,
     oac,
-    rrs,
-    wavelength
+    rrs = NULL,
+    verbose = F
     ) {
 
   # Phyto concentration to absorption  --------------------------------------
@@ -79,6 +80,19 @@ oac_to_iop <- function(
   }
 
   bb_p <- sapply(1:length(wavelength), function(i) oac$bbp_550 * ((wavelength[i] / 550) ^ -bb_gamma))
+
+  if (verbose) {
+    if (verbose) {
+      plot(wavelength, a_phy, xlab="wavelength",
+           ylab="a_phy [m^-1]")
+
+      plot(wavelength, a_g, xlab="wavelength",
+           ylab="a_g [m^-1]")
+
+      plot(wavelength, bb_p, xlab="wavelength",
+           ylab="bb_p [m^-1]")
+    }
+  }
 
   return(
     tibble(

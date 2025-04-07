@@ -1,4 +1,5 @@
 #' saber_forward
+#'
 #' Fuction repackaged from `SABER_forward_fast.R` in codebase. What's the
 #'  difference with `saber_forward_parametric_conc_wise.R` ?
 #'
@@ -12,7 +13,7 @@ saber_forward <- function(
     sun,
     optically_shallow,
     h_w = NULL,
-    rrs_botom = NULL,
+    rrs_bottom = NULL,
     verbose = F
   ) {
 
@@ -87,8 +88,8 @@ saber_forward <- function(
     Ars2 <- 1.0389 # Parametric coeffs for shallow water
 
     rrs_0m_shallow <-  rrs_0m_deep *
-      (1 - (Ars1 * exp(-zB * (Kd + kuW)))) + Ars2 *
-      rrs_bottom * exp(-zB * (Kd + kuB))
+      (1 - (Ars1 * exp(-h_w * (Kd + kuW)))) + Ars2 *
+      rrs_bottom$rrs_bottom * exp(-h_w * (Kd + kuB))
 
     rrs_0m <- rrs_0m_shallow
 
@@ -96,6 +97,11 @@ saber_forward <- function(
     # Optically deep water
     rrs_0m <- rrs_0m_deep
 
+  }
+
+  if (verbose) {
+    plot(wavelength, rrs_0m, xlab="wavelength",
+         ylab="Rrs 0m [m^-1]")
   }
 
   return(

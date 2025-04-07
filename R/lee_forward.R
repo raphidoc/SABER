@@ -1,20 +1,5 @@
-# Saber_forward_fast.R simulates the remote sensing reflectance given the wavelengths,
-# the water components along with bathymetry and bottom reflectance (for shallow water).
-# This code has all the fastest modes of bio-optical parametrizations for IOPs. For All B-OPT models,
-# refer to Saber.forward.final().
-# The SA algorithm is excluded for inelastic scattering equivalent Rrs. Refer to Saber.forward.final()
-# for the inelastic scattering support.
-
-#Author: Mr. Soham Mukherjee - PhD Student, Aquatel, UQAR
-#SABER FORWARD Model FAST version
-
-
 #' Lee 1998 forward model
 #' Compute Rrs given initial parameters
-#' Question For Soham:
-#' Where does the parametric formula to retrieve spectral slope of CDOM + NAP comes from, QAA ?
-#' Where does the a_w values comes from ?
-#' Why is pure water backscattering dependent on water type ?
 #'
 #' @author Soham Mukherjee
 #'
@@ -98,7 +83,7 @@ lee98_forward <-  function(
 
     rrs_0m_shallow <- rrs_0m_deep *
       (1 - exp(-(1 / mu_s + du_w / mu_v) * k * h_w)) +
-      rrs_bottom * exp(-(1 / mu_s + du_b / mu_v) * k * h_w)
+      rrs_bottom$rrs_bottom * exp(-(1 / mu_s + du_b / mu_v) * k * h_w)
 
     rrs_0m <- rrs_0m_shallow
 

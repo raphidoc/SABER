@@ -24,6 +24,26 @@ library(dplyr)
 wavelength <- seq(400, 800, 5)
 ```
 
+## Bottom Rrs
+
+```{r}
+rrs_end_member <- read_csv(fs::path_package("SABER", "extdata", "rb_endmembers_algae-wise.csv"))
+end_member_fraction <- tibble(
+  "class" = c("class1", "class2", "class3"),
+  "fraction" = c(0.25, 0.25, 0.5)
+)
+
+rrs_bottom <- rrs_bottom_lmm(
+  rrs_end_member = rrs_end_member,
+  end_member_fraction = end_member_fraction,
+  wavelength = wavelength,
+  verbose = T
+)
+
+# rrs_bottom
+```
+
+
 ## Lee 1999 forward model
 
 Parameter for Lee 1998 forward model with IOPs
@@ -39,30 +59,19 @@ iop <- parse_iop(
   wavelength = wavelength,
   verbose = T
 )
-```
 
-```{r}
-rb <- read_csv(fs::path_package("SABER", "extdata", "rb_endmembers_algae-wise.csv"))
-
-rb <- tibble(
-  wavelength,
-  "class1" = approx(rb$wavelength, rb$class1, wavelength)$y,
-  "class2" = approx(rb$wavelength, rb$class2, wavelength)$y,
-  "class3" = approx(rb$wavelength, rb$class3, wavelength)$y
-)
+# iop
 ```
 
 ```{r}
 test <- lee98_forward(
-    iop = iop,
-    h_w = 2, #bottom depth
-    rb_fraction = baf_set, #areal fraction of bottom types
     wavelength = wavelength,
-    rb = rb,
-    water_type = 2,
+    iop = iop,
     view = 40,
     sun = 20,
     optically_shallow = T,
+    h_w = 2,
+    rrs_bottom = rrs_bottom,
     verbose = T
 )
 ```
@@ -71,27 +80,47 @@ Parameter for Lee 1998 forward model with OACs
 
 ```{r}
 oac <- tibble(
-  "chl" = 4.96,
+  "chl" = 0.1, # [mg/m^3]
   "bbp_550" = 0.00726002,
   "ag_440" = 1,
   "ag_s_g" = 0.015,
   "ag_s_d" = 0.0116,
   "bb_gamma" = 1
 )
+
+iop <- iop_from_oac(
+  wavelength,
+  oac,
+  verbose = T
+)
 ```
 
 ```{r}
 test <- lee98_forward(
-    oac = oac,
-    h_w=2, #bottom depth
-    rb_fraction = baf_set, #areal fraction of bottom types
-    wavelength = wavelength,
-    rb = rb,
-    water_type = 2,
-    view = 40,
-    sun = 20,
-    optically_shallow = T,
-    verbose = T
+  wavelength = wavelength,
+  iop = iop,
+  view = 40,
+  sun = 20,
+  h_w=2, #bottom depth
+  optically_shallow = T,
+  rrs_bottom = rrs_bottom,
+  verbose = T
+)
+```
+
+## saber forward (am03 ?)
+
+```{r}
+test <- saber_forward(
+  wavelength = wavelength,
+  iop = iop,
+  water_type = 2,
+  view = 40,
+  sun = 20,
+  optically_shallow = T,
+  h_w = 2,
+  rrs_bottom = rrs_bottom,
+  verbose = T
 )
 ```
 
