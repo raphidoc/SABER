@@ -29,7 +29,7 @@ rrs_bottom_lmm <- function(
 
   abott <- rbind(abott1, abott2, abott3)
 
-  areal_fraction <- end_member_fraction$fraction
+  areal_fraction <- end_member_fraction
 
   Bottom <-  matrix(nrow = length(areal_fraction), ncol = ncol(abott), 0)
 
@@ -47,7 +47,7 @@ rrs_bottom_lmm <- function(
 
     if (verbose) {
       plot(rrs_end_member$wavelength, rrs_bottom, xlab="wavelength",
-           ylab="non-water absorption [m^-1]")
+           ylab="Bottom remote sensing reflectance [sr^-1]")
       lines(wavelength, rrs_bottom_interpolated, col="red", lwd=3)
     }
 

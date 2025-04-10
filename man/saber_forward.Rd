@@ -2,24 +2,21 @@
 % Please edit documentation in R/saber_forward.R
 \name{saber_forward}
 \alias{saber_forward}
-\title{saber_forward
-Fuction repackaged from \code{SABER_forward_fast.R} in codebase. What's the
-difference with \code{saber_forward_parametric_conc_wise.R} ?}
+\title{saber_forward}
 \usage{
 saber_forward(
   wavelength,
   iop,
-  water_type,
+  water_type = 2,
   view,
   sun,
   optically_shallow,
   h_w = NULL,
-  rrs_botom = NULL,
+  rrs_bottom = NULL,
   verbose = F
 )
 }
 \description{
-saber_forward
 Fuction repackaged from \code{SABER_forward_fast.R} in codebase. What's the
 difference with \code{saber_forward_parametric_conc_wise.R} ?
 }

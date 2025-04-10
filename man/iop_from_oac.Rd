@@ -5,7 +5,13 @@
 \title{iop_from_oac
 compute Inherent Optical Proprieties from Optically Active constituents.}
 \usage{
-iop_from_oac(wavelength, oac, rrs = NULL, verbose = F)
+iop_from_oac(
+  wavelength,
+  oac,
+  rrs = NULL,
+  optically_shallow = NULL,
+  verbose = F
+)
 }
 \arguments{
 \item{oac}{a tibble with column {chl \link{mg/m^-3}, ag_440, bb_550}, optionally,

@@ -1,0 +1,44 @@
+---
+title: "inverse_modeling"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{inverse_modeling}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+# library(SABER)
+library(readr)
+library(dplyr)
+```
+
+```{r}
+load_all()
+
+rrs <- read_csv(fs::path_package("SABER", "data","demo_rrs_Om.csv"))
+
+par <- tibble(
+  parameter = c("chl", "ag_440", "bbp_550", "h_w", "rb_class_1", "rb_class_2", "rb_class_3", "sd"),
+  value = c(2, 0.8, 0.005, 2.5, 0.25, 0.25, 0.5, 0.05),
+)
+
+mle <- inversion_optimization(
+    rrs = rrs,
+    forward_model = "am03",
+    error_fct = "log-ll",
+    optim_mtd = "auglag",
+    init_par = par,
+    fixed_par = NULL,
+    verbose = T
+)
+
+mle
+```

@@ -15,4 +15,6 @@ Packaging: Raphael Mabit
 * Does the function `Saber_forward_fast` actually implement the am03 SA model ?
 * Where does the parametric formula to retrieve spectral slope of CDOM + NAP comes from, QAA ?
 * What's the difference between `SABER_forward_fast.R` and `saber_forward_parametric_conc_wise.R` ?
-* Is Saber_forward the am03 model ?
+* Is Saber_forward the am03 model (is it ok to change the name) ?
+* The inversion of fraction rb_class is not constrained to unity ? Seems like a difficult problem ...
+

@@ -14,6 +14,7 @@ iop_from_oac <- function(
     wavelength,
     oac,
     rrs = NULL,
+    optically_shallow = NULL,
     verbose = F
     ) {
 
@@ -36,7 +37,7 @@ iop_from_oac <- function(
   a_phy <- sapply(1:length(wavelength), function(i) (a0[i] + a1[i] * log(aph_440)) * aph_440)
 
   if (any(a_phy < 0)) {
-    rlang::warn("Some a_phy inferiro to 0")
+    #rlang::warn("Some a_phy inferiro to 0")
     a_phy[a_phy < 0] <- 0
   }
 
@@ -54,8 +55,7 @@ iop_from_oac <- function(
   if (has_name(oac, c("ag_s_g", "ag_s_d"))) {
     cdom_slope = oac$ag_s_g + oac$ag_s_d
 
-  } else if (!optically_shallow && tibble::is_tibble(rrs)) {
-
+  } else if (isTRUE(optically_shallow) && tibble::is_tibble(rrs)) {
     cdom_slope = 0.015 + (
       0.002 / (0.6 + (rrs$rrs[which.min(abs(rrs$wavelength - 443))] /
                         rrs$rrs[which.min(abs(rrs$wavelength - 555))])))
@@ -71,10 +71,12 @@ iop_from_oac <- function(
   # 3 possibilities for bb slope: manual, parametric, default
   if (has_name(oac, "bb_gamma")) {
     bb_gamma <- oac$bb_gamma
-  } else if (!optically_shallow && tibble::is_tibble(rrs)) {
+
+  } else if (isTRUE(optically_shallow) && tibble::is_tibble(rrs)) {
     bb_gamma <- 2 * (1 - (1.2 * exp(
       -0.9 * (rrs$rrs[which.min(abs(rrs$wavelength - 443))] /
                 rrs$rrs[which.min(abs(rrs$wavelength - 555))]))))
+
   } else {
     bb_gamma <- 0.46
   }

@@ -6,14 +6,23 @@
 Unconstrained full inversion. Two options for forward semi analytical model
 and two option for the objective function.}
 \usage{
-inversion_unconstrained(wavelength, sa_model, objective_fct)
+inversion_unconstrained(
+  rrs,
+  init_par,
+  forward_model,
+  error_fct,
+  optim_mtd,
+  lower_b = NULL,
+  upper_b = NULL,
+  verbose = F
+)
 }
 \arguments{
-\item{sa_model}{c("am03", "lee98")}
+\item{forward_model}{c("am03", "lee98")}
 
-\item{objective_fct}{c("log-LL", "SSR", "lee99") SSR is not implemented in the code}
+\item{error_fct}{c("log-ll", "SSR", "lee99") SSR is not implemented in the code}
 
-\item{method_opt}{c("Nelder-Mead", "BFGS", "CG", "L-BFGS-B", "SANN", "Brent","levenberg-marqardt", "auglag")}
+\item{optim_mtd}{c("nelder-mead", "BFGS", "CG", "L-BFGS-B", "sann", "brent","levenberg-marqardt", "auglag")}
 }
 \description{
 inversion_unconstrained

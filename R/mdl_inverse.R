@@ -1,30 +1,38 @@
-#' Inverse subsurface Rrs to IOPs
+#' Markov Chain Monte Carlo radiative transfer inversion
 #'
 #'
+#' @author Soham Mukherjee
 #'
+#' @export
 
-inverse_mcmc <- function() {
+inverse_mcmc <- function(
+  density,
+  sampler,
+  likelihood
+  ) {
 
   # Create prior density and sampling class ---------------------------------
 
   if (pop.sd == "known" & type_Rrs_below == "deep") {
     prior.actual <- BayesianTools::createPrior(
-      density = prior, sampler = sampler,
-      lower = c(0,0,0), upper = c(30,5,0.5),
-      best = as.numeric(Fit.optimized.ssobj))
+      density = prior,
+      sampler = sampler,
+      lower = c(0,0,0),
+      upper = c(30,5,0.5),
+      best = as.numeric(Fit.optimized.ssobj)
+      )
   }
 
   if (pop.sd == "unknown" & type_Rrs_below == "deep") {
 
     prior.actual <- BayesianTools::createPrior(
-      density = prior, sampler = sampler,
+      density = prior,
+      sampler = sampler,
       lower = c(0,0,0,0.0001),   # <<USER DEFINED>>
       upper = c(30,5,0.5, 0.01), # <<USER DEFINED>>
-      #best = NULL)
       best = c(as.numeric(Fit.optimized.ssobj),
                inverse_output[[1]]$estimates[4]))
   }
-
 
   # Create Bayesian setup for MCMC ------------------------------------------
 
@@ -34,16 +42,15 @@ inverse_mcmc <- function() {
       prior = prior.actual,
       likelihood = ll,
       #lower = c(0,0,0), upper = c(30,5,0.5),
-      names = c("chl","acdom440","anap440", "pop.sd"
-                #, "x_not"
-      ),
+      names = c("chl","acdom440","anap440", "pop.sd"),
       parallel = F)
   } else {
     # Only likelihood
     bayessetup <- BayesianTools::createBayesianSetup(
       prior = NULL,
       likelihood = ll,
-      lower = lower.bound, upper = upper.bound,
+      lower = lower.bound,
+      upper = upper.bound,
       names = c("chl","acdom440","anap440", "pop.sd"),
       parallel = F)
   }
@@ -57,8 +64,6 @@ inverse_mcmc <- function() {
 
   out <- runMCMC(bayesianSetup = bayessetup, settings = settings, sampler = samplerlist[6] )
   summary(out)
-
-
 
   return()
 }

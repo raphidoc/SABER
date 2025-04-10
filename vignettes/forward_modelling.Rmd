@@ -28,10 +28,7 @@ wavelength <- seq(400, 800, 5)
 
 ```{r}
 rrs_end_member <- read_csv(fs::path_package("SABER", "extdata", "rb_endmembers_algae-wise.csv"))
-end_member_fraction <- tibble(
-  "class" = c("class1", "class2", "class3"),
-  "fraction" = c(0.25, 0.25, 0.5)
-)
+end_member_fraction <- c(0.25, 0.25, 0.5)
 
 rrs_bottom <- rrs_bottom_lmm(
   rrs_end_member = rrs_end_member,
@@ -111,84 +108,16 @@ test <- lee98_forward(
 ## saber forward (am03 ?)
 
 ```{r}
-test <- saber_forward(
+init_rrs <- saber_forward(
   wavelength = wavelength,
   iop = iop,
   water_type = 2,
-  view = 40,
+  view = 0,
   sun = 20,
   optically_shallow = T,
   h_w = 2,
   rrs_bottom = rrs_bottom,
   verbose = T
 )
-```
-
-## Solve objective inverse shallow
-
-```{r}
-#FOR FREE PARAMTER INVERSION INITIAL VALUE VECTOR
-fa1 = 0.5; # aerial fraction 1
-fa2 = 0.25; # aerial fraction 2
-fa3 = 0.25; # aerial fraction 3, i.e. fa1+fa2+fa3 = 1
-
-baf_set= c(fa1,fa2,fa3)
-rb_count = length(baf_set)
-
-par0 = c(
-  chl = 2,
-  adg440 = 0.8,
-  bbp550 = 0.005,
-  z = 2.5,
-  rb_c = rep(0.5, rb_count),
-  population.sd = 0.05
-  )
-
-#Autoscale Intital values from pre-Ft
-increament.scale <- 1
-
-lower.bound <- c(
-  (par0[1:3] - 0.8*par0[1:3]),z = 1,
-  rep(0, rb_count),
-  population.sd = 1e-05
-)
-
-upper.bound <- c(
-  (par0[1:3] + 5*par0[1:3]),z = 10,
-  rep(1, rb_count),
-  population.sd = 1
-  )
-
-rrs_demo <- read_csv("../data/demo_rrs.csv")
-
-rrs_demo_Om <- as.numeric(rrs_demo[1,-1])
-rrs_demo_wl <- c(320, 330, 340, 380, 412, 443, 465, 490, 510,
-                 532, 555, 589, 625, 665, 683, 694, 710, 780, 875)
-
-rrs_demo_Om_demo = approx(rrs_demo_wl, rrs_demo_Om, xout = wavelength,
-                          method = "linear")$y
-insitu_data = rrs_demo_Om_demo
-
-obsdata <- surface_rrs_translate(insitu_data)
-```
-
-```{r}
-solve_objective_inverse_shallow(
-    constrain_shallow_iop = F, 
-    unconstrained = T,
-    constrained_bgc = F, 
-    constrain_bgc_value = c(fit_input$chl, fit_input$acdom_440 + fit_input$anap_440),
-    initial = as.numeric(par0), 
-    obsdata = obsdata,
-    auto_spectral_slope = F,
-    manual_spectral_slope = F, 
-    manual_spectral_slope_vals = c("s_g" = 0.014, "s_d" = 0.003, "gamma" = 1),
-    sa_model = "lee98",
-    obj_fn = "log-LL",
-    method_opt = "L-BFGS-B",
-    lower_b = lower.bound,
-    upper_b = upper.bound,
-    wavelength = wavelength
-  )
 ```
 
