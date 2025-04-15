@@ -38,7 +38,7 @@ bbp_prior <- make_prior(nomad_sample$bbp555, dist = "weibull", name = "anap440")
 ```{r}
 priors <- list(chl_prior, ag_prior, ad_prior, bbp_prior)
 mock_likelihood <- function(params) {
-  -sum((params - c(1, 0.5, 0.01, 0.005))^2)  # placeholder
+  -sum((params - c(1, 0.5, 0.01, 0.005))^2) # placeholder
 }
 
 prior_bundle <- make_prior_bundle(

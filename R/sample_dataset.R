@@ -23,15 +23,14 @@ sample_nomad <- function(
     truncate_ag = NULL,
     truncate_ad = NULL,
     truncate_bbp = NULL,
-    sample_count = 100
-) {
+    sample_count = 100) {
   # Load NOMAD data
   bgc_data <- readr::read_csv(
     fs::path_package("SABER", "data", "nomad", "dataset_simplified.csv")
   )
 
   bgc_data <- bgc_data %>%
-    mutate(across(where(is.numeric), ~na_if(., -999)))
+    mutate(across(where(is.numeric), ~ na_if(., -999)))
 
   # Prepare samples
   chl_sample <- prepare_samples(bgc_data$chl, truncate_chl, sample_count)

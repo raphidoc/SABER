@@ -10,33 +10,30 @@ fct_compose_minimization <- function(
     forward_model,
     error_fct,
     rrs_observed,
-    par_fixed
-    ) {
-
+    par_fixed) {
   # TODO: should be a packages variable lazy loaded
   forward_models <- c("am03", "lee98")
   error_fcts <- c("log-ll", "lee99")
 
 
-# Select forward model ----------------------------------------------------
-  forward_model <- switch(
-    forward_model,
+  # Select forward model ----------------------------------------------------
+  forward_model <- switch(forward_model,
     "am03" = saber_forward,
     "lee98" = lee98_forward,
     rlang::abort(
       glue::glue("forward_model must be one of:", forward_models)
-      )
+    )
   )
 
 
-# Prepare generic model inputs --------------------------------------------
+  # Prepare generic model inputs --------------------------------------------
   # Internal function to combine dynamic and fixed parameters
   complete_par <- function(par) {
     if (!is.null(par_fixed)) {
-        # Ensure no overlap
-        if (any(par_fixed$parameter %in% names(par))) {
-          stop("Parameters cannot be defined in both `par_init` and `par_fixed`.")
-        }
+      # Ensure no overlap
+      if (any(par_fixed$parameter %in% names(par))) {
+        stop("Parameters cannot be defined in both `par_init` and `par_fixed`.")
+      }
 
       fixed_vals <- stats::setNames(par_fixed$value, par_fixed$parameter)
       par <- c(par, fixed_vals)
@@ -45,7 +42,6 @@ fct_compose_minimization <- function(
   }
 
   prepare_model_inputs <- function(par) {
-
     oac <- tibble(
       chl = par["chl"],
       ag_440 = par["ag_440"],
@@ -71,9 +67,8 @@ fct_compose_minimization <- function(
   }
 
 
-# Construct minimization function -----------------------------------------
-  minimization_fct <- switch (
-    error_fct,
+  # Construct minimization function -----------------------------------------
+  minimization_fct <- switch(error_fct,
     "log-ll" = function(par) {
       par <- complete_par(par)
       inputs <- prepare_model_inputs(par)
@@ -87,7 +82,7 @@ fct_compose_minimization <- function(
         h_w = par["h_w"],
         rrs_bottom = inputs$rrs_bottom,
         verbose = F
-        )
+      )
 
       return(log_ll(
         modelled = rrs_modeled$rrs_0m,
@@ -108,7 +103,7 @@ fct_compose_minimization <- function(
         h_w = par["h_w"],
         rrs_bottom = inputs$rrs_bottom,
         verbose = F
-        )
+      )
 
       return(lee99(
         modelled = rrs_modeled$rrs_0m,
@@ -118,5 +113,5 @@ fct_compose_minimization <- function(
     }
   )
 
-  return (minimization_fct)
+  return(minimization_fct)
 }

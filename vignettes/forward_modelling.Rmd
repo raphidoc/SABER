@@ -46,8 +46,8 @@ Parameter for Lee 1998 forward model with IOPs
 
 ```{r}
 # Create IOP data frame
-a = read_csv(fs::path_package("SABER", "data", "rb_retrieve_demo_a.csv"))
-bb = read_csv(fs::path_package("SABER", "data", "rb_retrieve_demo_bb.csv"))
+a <- read_csv(fs::path_package("SABER", "data", "rb_retrieve_demo_a.csv"))
+bb <- read_csv(fs::path_package("SABER", "data", "rb_retrieve_demo_bb.csv"))
 
 iop <- parse_iop(
   a = a,
@@ -61,14 +61,14 @@ iop <- parse_iop(
 
 ```{r}
 test <- lee98_forward(
-    wavelength = wavelength,
-    iop = iop,
-    view = 40,
-    sun = 20,
-    optically_shallow = T,
-    h_w = 2,
-    rrs_bottom = rrs_bottom,
-    verbose = T
+  wavelength = wavelength,
+  iop = iop,
+  view = 40,
+  sun = 20,
+  optically_shallow = T,
+  h_w = 2,
+  rrs_bottom = rrs_bottom,
+  verbose = T
 )
 ```
 
@@ -97,7 +97,7 @@ test <- lee98_forward(
   iop = iop,
   view = 40,
   sun = 20,
-  h_w=2, #bottom depth
+  h_w = 2, # bottom depth
   optically_shallow = T,
   rrs_bottom = rrs_bottom,
   verbose = T

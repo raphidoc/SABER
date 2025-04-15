@@ -13,29 +13,27 @@ rrs_bottom_lmm <- function(
     rrs_end_member,
     end_member_fraction,
     wavelength,
-    verbose = F
-    ) {
-
+    verbose = F) {
   # Reflection factors of bottom surface [1/sr]
-  B1 <- 1/pi
-  B2 <- 1/pi
-  B3 <- 1/pi
-  BOTTOM <- c(B1,B2,B3)
+  B1 <- 1 / pi
+  B2 <- 1 / pi
+  B3 <- 1 / pi
+  BOTTOM <- c(B1, B2, B3)
 
   # Bottom Albedo Calculation
-  abott1 <-  rrs_end_member$class1
-  abott2 <-  rrs_end_member$class2
-  abott3 <-  rrs_end_member$class3
+  abott1 <- rrs_end_member$class1
+  abott2 <- rrs_end_member$class2
+  abott3 <- rrs_end_member$class3
 
   abott <- rbind(abott1, abott2, abott3)
 
   areal_fraction <- end_member_fraction
 
-  Bottom <-  matrix(nrow = length(areal_fraction), ncol = ncol(abott), 0)
+  Bottom <- matrix(nrow = length(areal_fraction), ncol = ncol(abott), 0)
 
-  Bottom = areal_fraction * abott
+  Bottom <- areal_fraction * abott
 
-  Rrs_Bottom = BOTTOM * Bottom # Bottom Rrs [1/sr]
+  Rrs_Bottom <- BOTTOM * Bottom # Bottom Rrs [1/sr]
 
   Bottom <- colSums(Bottom) # [unitless]
 
@@ -46,9 +44,11 @@ rrs_bottom_lmm <- function(
     rrs_bottom_interpolated <- approx(rrs_end_member$wavelength, rrs_bottom, wavelength)$y
 
     if (verbose) {
-      plot(rrs_end_member$wavelength, rrs_bottom, xlab="wavelength",
-           ylab="Bottom remote sensing reflectance [sr^-1]")
-      lines(wavelength, rrs_bottom_interpolated, col="red", lwd=3)
+      plot(rrs_end_member$wavelength, rrs_bottom,
+        xlab = "wavelength",
+        ylab = "Bottom remote sensing reflectance [sr^-1]"
+      )
+      lines(wavelength, rrs_bottom_interpolated, col = "red", lwd = 3)
     }
 
     rrs_bottom <- rrs_bottom_interpolated
@@ -58,6 +58,6 @@ rrs_bottom_lmm <- function(
     tibble(
       wavelength,
       rrs_bottom
-      )
     )
+  )
 }

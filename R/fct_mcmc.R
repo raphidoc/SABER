@@ -72,40 +72,39 @@ run_inversion <- function(prior_bundle, iterations = 10000, burnin = 2000, sampl
 #' density function input pareter to `BayesianTools::createPrior`
 #'
 
-density <- function(par){
+density <- function(par) {
+  chl <- par[1]
+  acdom.440 <- par[2]
+  anap.440 <- par[3]
+  x.sd <- par[5]
 
-  chl = par[1]
-  acdom.440 = par[2]
-  anap.440 = par[3]
-  x.sd = par[5]
-
-  density_chl = dweibull(
+  density_chl <- dweibull(
     x = chl,
     shape = fit.chl.norm$estimate[1],
     scale = fit.chl.norm$estimate[2],
     log = T
-    )
+  )
 
-  density_ag440 = dweibull(
+  density_ag440 <- dweibull(
     x = acdom.440,
     shape = fit.acdom440.norm$estimate[1],
     scale = fit.acdom440.norm$estimate[2],
     log = T
-    )
+  )
 
-  density_anap440 = dweibull(
-    x=anap.440,
+  density_anap440 <- dweibull(
+    x = anap.440,
     shape = fit.anap440.norm$estimate[1],
     scale = fit.anap440.norm$estimate[2],
     log = T
-    )
+  )
 
-  density_lklhood = dunif(
+  density_lklhood <- dunif(
     x = x.sd,
     min = 0.0001,
     max = 0.01,
     log = T
-    )
+  )
 
   return(density_chl + density_ag440 + density_anap440 + density_lklhood)
 }
@@ -116,31 +115,30 @@ density <- function(par){
 #' sampler function input pareter to `BayesianTools::createPrior`
 #'
 
-sampler_fct = function(n=1){
-
-  density_chl = rweibull(
+sampler_fct <- function(n = 1) {
+  density_chl <- rweibull(
     n,
     shape = fit.chl.norm$estimate[1],
     scale = fit.chl.norm$estimate[2]
-    )
+  )
 
-  density_ag440 = rweibull(
+  density_ag440 <- rweibull(
     n,
     shape = fit.acdom440.norm$estimate[1],
     scale = fit.acdom440.norm$estimate[2]
-    )
+  )
 
-  density_anap440 = rweibull(
+  density_anap440 <- rweibull(
     n,
     shape = fit.anap440.norm$estimate[1],
     scale = fit.anap440.norm$estimate[2]
-    )
+  )
 
-  density_lklhood = runif(
+  density_lklhood <- runif(
     n,
     min = 0.0001,
     max = 0.01
-    )
+  )
 
   return(
     cbind(
@@ -148,6 +146,6 @@ sampler_fct = function(n=1){
       density_ag440,
       density_anap440,
       density_lklhood
-      )
     )
+  )
 }

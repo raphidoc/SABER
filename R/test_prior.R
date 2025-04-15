@@ -1,4 +1,3 @@
-
 # testthat test for priors
 
 # library(testthat)

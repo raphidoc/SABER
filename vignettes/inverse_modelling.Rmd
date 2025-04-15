@@ -26,7 +26,7 @@ Run the `inversion_optimization` function. Retrieve a set of unknown parameter (
 ```{r}
 # load_all()
 
-rrs <- read_csv(fs::path_package("SABER", "data","demo_rrs_Om.csv"))
+rrs <- read_csv(fs::path_package("SABER", "data", "demo_rrs_Om.csv"))
 
 par_init <- tibble(
   parameter = c("chl", "ag_440", "bbp_550", "h_w", "rb_class_1", "rb_class_2", "rb_class_3", "sd"),
@@ -39,13 +39,13 @@ par_init <- tibble(
 # )
 
 mle <- inversion_optimization(
-    rrs = rrs,
-    forward_model = "am03",
-    error_fct = "log-ll",
-    optim_mtd = "auglag",
-    par_init = par_init,
-    par_fixed = NULL,
-    verbose = F
+  rrs = rrs,
+  forward_model = "am03",
+  error_fct = "log-ll",
+  optim_mtd = "auglag",
+  par_init = par_init,
+  par_fixed = NULL,
+  verbose = F
 )
 
 mle
@@ -94,7 +94,7 @@ rrs_retrieved <- saber_forward(
 ply <- plot_ly() %>%
   add_lines(x = rrs$wavelength, y = rrs$rrs_0m) %>%
   add_lines(x = rrs_retrieved$wavelength, y = rrs_retrieved$rrs_0m)
-  
+
 
 ply
 ```
