@@ -40,7 +40,6 @@ rrs_bottom <- rrs_bottom_lmm(
 # rrs_bottom
 ```
 
-
 ## Lee 1999 forward model
 
 Parameter for Lee 1998 forward model with IOPs

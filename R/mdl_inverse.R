@@ -1,6 +1,5 @@
 #' Markov Chain Monte Carlo radiative transfer inversion
 #'
-#'
 #' @author Soham Mukherjee
 #'
 #' @export
@@ -14,8 +13,8 @@ inverse_mcmc <- function(
   # Create prior density and sampling class ---------------------------------
 
   if (pop.sd == "known" & type_Rrs_below == "deep") {
-    prior.actual <- BayesianTools::createPrior(
-      density = prior,
+    prior <- BayesianTools::createPrior(
+      density = density,
       sampler = sampler,
       lower = c(0,0,0),
       upper = c(30,5,0.5),
@@ -25,8 +24,8 @@ inverse_mcmc <- function(
 
   if (pop.sd == "unknown" & type_Rrs_below == "deep") {
 
-    prior.actual <- BayesianTools::createPrior(
-      density = prior,
+    prior <- BayesianTools::createPrior(
+      density = density,
       sampler = sampler,
       lower = c(0,0,0,0.0001),   # <<USER DEFINED>>
       upper = c(30,5,0.5, 0.01), # <<USER DEFINED>>
@@ -36,15 +35,18 @@ inverse_mcmc <- function(
 
   # Create Bayesian setup for MCMC ------------------------------------------
 
-  if (isFALSE(use_likelihood)) {
+  if (use_likelihood) {
+
     # With prior
     bayessetup <- BayesianTools::createBayesianSetup(
-      prior = prior.actual,
+      prior = prior,
       likelihood = ll,
       #lower = c(0,0,0), upper = c(30,5,0.5),
       names = c("chl","acdom440","anap440", "pop.sd"),
       parallel = F)
+
   } else {
+
     # Only likelihood
     bayessetup <- BayesianTools::createBayesianSetup(
       prior = NULL,
@@ -57,8 +59,8 @@ inverse_mcmc <- function(
 
   checkBayesianSetup(bayessetup)
 
-
 # Create settings for MCMC ------------------------------------------------
+
   settings = list(iterations = 10000, message = TRUE, nrChains = 1, burnin=2000)
   samplerlist <-c("Metropolis", "AM", "DR", "DRAM", "DE", "DEzs", "DREAM", "DREAMzs", "SMC")
 

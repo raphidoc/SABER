@@ -18,27 +18,83 @@ knitr::opts_chunk$set(
 # library(SABER)
 library(readr)
 library(dplyr)
+library(plotly)
 ```
 
+Run the `inversion_optimization` function. Retrieve a set of unknown parameter (`par_init`) by minimizing the `error_fct` of a `forward_model` with an `optim_mtd`.
+
 ```{r}
-load_all()
+# load_all()
 
 rrs <- read_csv(fs::path_package("SABER", "data","demo_rrs_Om.csv"))
 
-par <- tibble(
+par_init <- tibble(
   parameter = c("chl", "ag_440", "bbp_550", "h_w", "rb_class_1", "rb_class_2", "rb_class_3", "sd"),
-  value = c(2, 0.8, 0.005, 2.5, 0.25, 0.25, 0.5, 0.05),
+  value = c(2, 0.8, 0.005, 2, 0.25, 0.25, 0.5, 0.05),
 )
+
+# par_fixed <- tibble(
+#   parameter = c("chl", "h_w"),
+#   value = c(2, 2),
+# )
 
 mle <- inversion_optimization(
     rrs = rrs,
     forward_model = "am03",
     error_fct = "log-ll",
     optim_mtd = "auglag",
-    init_par = par,
-    fixed_par = NULL,
-    verbose = T
+    par_init = par_init,
+    par_fixed = NULL,
+    verbose = F
 )
 
 mle
+```
+
+Use the retrieved parameter to forward model $(\text{OAC} \to \text{IOP}, R_\text{b}) \to R_\text{rs}$ and compare to input $R_\text{rs}$.
+
+```{r}
+oac <- mle %>%
+  select(parameter, estimate) %>%
+  filter(parameter %in% c("chl", "ag_440", "bbp_550")) %>%
+  tidyr::pivot_wider(names_from = "parameter", values_from = "estimate")
+
+iop <- iop_from_oac(
+  rrs$wavelength,
+  oac,
+  verbose = T
+)
+
+rrs_end_member <- read_csv(fs::path_package("SABER", "extdata", "rb_endmembers_algae-wise.csv"))
+# end_member_fraction <- c(0.25, 0.25, 0.5)
+
+end_member_fraction <- mle %>%
+  filter(stringr::str_detect(parameter, "rb_"))
+end_member_fraction <- end_member_fraction$estimate
+
+rrs_bottom <- rrs_bottom_lmm(
+  rrs_end_member = rrs_end_member,
+  end_member_fraction = end_member_fraction,
+  wavelength = rrs$wavelength,
+  verbose = T
+)
+
+rrs_retrieved <- saber_forward(
+  wavelength = rrs$wavelength,
+  iop = iop,
+  water_type = 2,
+  view = 0,
+  sun = 20,
+  optically_shallow = T,
+  h_w = mle$estimate[mle$parameter == "h_w"],
+  rrs_bottom = rrs_bottom,
+  verbose = T
+)
+
+ply <- plot_ly() %>%
+  add_lines(x = rrs$wavelength, y = rrs$rrs_0m) %>%
+  add_lines(x = rrs_retrieved$wavelength, y = rrs_retrieved$rrs_0m)
+  
+
+ply
 ```

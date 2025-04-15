@@ -4,14 +4,14 @@
 #' Allow for unconstrained inversion of chl [mg/m^-3], ag_440 [m^-1],
 #' bbp_550 [m^-1], and in optically shallow waters h_w [m],
 #' and bottom reflectance fraction. Optionally, can perform constrained
-#' inversion by providing parameters in `fixed_par` instead of `init_par`.
+#' inversion by providing parameters in `fixed_par` instead of `par_init`.
 #'
 #' @author Soham Mukherjee, Raphael Mabit
 #'
 #' @param forward_model c("am03", "lee98")
 #' @param error_fct c("log-ll", "SSR", "lee99") SSR is not implemented in the code
 #' @param optim_mtd c("nelder-mead", "BFGS", "CG", "L-BFGS-B", "sann", "brent","levenberg-marqardt", "auglag")
-#' @param init_par a tibble with the initial parameter to be inverted.
+#' @param par_init a tibble with the initial parameter to be inverted.
 #'  For best results, can be estimated with `pre_fit_inversion`.
 #'  \describe{
 #'    \item{chl}{chlorophyl-a concentration in [mg/m^3]}
@@ -21,9 +21,9 @@
 #'    \item{rb_*}{fraction of end-member bottom reflectance class}
 #'    \item{sd}{Optional, standard deviaton of the population for `error_fct = "log-ll"`}
 #'  }
-#' @param fixed_par Optional, a tibble with the same columns as init_par.
+#' @param fixed_par Optional, a tibble with the same columns as par_init.
 #'  Parameter defined here will be considered known, hence not retrieved during
-#'  optimization. If defined here they must not be defined in `init_par`.
+#'  optimization. If defined here they must not be defined in `par_init`.
 #' @param lower_b Optional, lower boundary for `optim_mtd = "L-BFGS-B"`.
 #' If not provided will be calculated in `parse_inverse_parameter`
 #' @param upper_b Optional, same as `lower_b`.
@@ -36,8 +36,8 @@ inversion_optimization <- function(
     forward_model,
     error_fct,
     optim_mtd,
-    init_par,
-    fixed_par = NULL,
+    par_init,
+    par_fixed = NULL,
     lower_b = NULL,
     upper_b = NULL,
     verbose = F
@@ -51,12 +51,12 @@ inversion_optimization <- function(
     forward_model = forward_model,
     error_fct = error_fct,
     rrs_observed = rrs,
-    fixed_par = fixed_par
+    par_fixed = par_fixed
   )
 
   # Instantiate initial values
   params <- parse_inverse_parameter(
-    init_par, optim_mtd, lower_b, upper_b, verbose
+    par_init, optim_mtd, lower_b, upper_b, verbose
     )
 
   par <- params$par
@@ -135,8 +135,8 @@ inversion_optimization <- function(
   }
 
   if (verbose) {
-    rownames(hessian_inverse) <- init_par$parameter
-    colnames(hessian_inverse) <- init_par$parameter
+    rownames(hessian_inverse) <- par_init$parameter
+    colnames(hessian_inverse) <- par_init$parameter
     rlang::inform(paste0("\033[0;32m","#################### VAR-COV HESSIAN MATRIX #########################","\033[0m","\n"))
     prmatrix(hessian_inverse)
   }
@@ -158,7 +158,7 @@ inversion_optimization <- function(
 
   # Maximum Likelihood Estimates
   mle <- tibble(
-    "parameter" = init_par$parameter,
+    "parameter" = par_init$parameter,
     "estimate" = param_estimate,
     "sd" = param_sd
     )

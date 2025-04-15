@@ -1,0 +1,57 @@
+---
+title: "Introduction to SABER MCMC"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Introduction to SABER}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+library(SABER)
+library(ggplot2)
+```
+
+## Overview
+
+SABER is an R package for Bayesian inversion of radiative transfer models using in-situ data and prior distribution fitting.
+
+## Load Sample Data
+
+```{r}
+# data("nomad_sample")
+# head(nomad_sample)
+nomad_sample <- sample_nomad()
+```
+
+## Fit Prior Distributions
+
+```{r}
+chl_prior <- make_prior(nomad_sample$chl, dist = "weibull", name = "chl")
+ag_prior <- make_prior(nomad_sample$ag443, dist = "weibull", name = "ag440")
+ad_prior <- make_prior(nomad_sample$ad443, dist = "weibull", name = "ad440")
+bbp_prior <- make_prior(nomad_sample$bbp555, dist = "weibull", name = "anap440")
+```
+
+## Bundle Priors and Define Likelihood
+
+```{r}
+priors <- list(chl_prior, ag_prior, ad_prior, bbp_prior)
+mock_likelihood <- function(params) {
+  -sum((params - c(1, 0.5, 0.01, 0.005))^2)  # placeholder
+}
+
+prior_bundle <- make_prior_bundle(
+  priors = priors,
+  likelihood = mock_likelihood,
+  lower = c(0, 0, 0, 0.0001),
+  upper = c(30, 5, 0.5, 0.01)
+)
+```
+
+## Run Inversion
+
+```{r, eval=FALSE}
+out <- run_inversion(prior_bundle, iterations = 5000)
+summary(out)
+```

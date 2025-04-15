@@ -10,7 +10,7 @@ fct_compose_minimization <- function(
     forward_model,
     error_fct,
     rrs_observed,
-    fixed_par
+    par_fixed
     ) {
 
   # TODO: should be a packages variable lazy loaded
@@ -30,7 +30,22 @@ fct_compose_minimization <- function(
 
 
 # Prepare generic model inputs --------------------------------------------
+  # Internal function to combine dynamic and fixed parameters
+  complete_par <- function(par) {
+    if (!is.null(par_fixed)) {
+        # Ensure no overlap
+        if (any(par_fixed$parameter %in% names(par))) {
+          stop("Parameters cannot be defined in both `par_init` and `par_fixed`.")
+        }
+
+      fixed_vals <- stats::setNames(par_fixed$value, par_fixed$parameter)
+      par <- c(par, fixed_vals)
+    }
+    par[order(names(par))]
+  }
+
   prepare_model_inputs <- function(par) {
+
     oac <- tibble(
       chl = par["chl"],
       ag_440 = par["ag_440"],
@@ -60,6 +75,7 @@ fct_compose_minimization <- function(
   minimization_fct <- switch (
     error_fct,
     "log-ll" = function(par) {
+      par <- complete_par(par)
       inputs <- prepare_model_inputs(par)
 
       rrs_modeled <- forward_model(
@@ -80,6 +96,7 @@ fct_compose_minimization <- function(
       ))
     },
     "lee99" = function(par) {
+      par <- complete_par(par)
       inputs <- prepare_model_inputs(par)
 
       rrs_modeled <- forward_model(

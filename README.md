@@ -17,4 +17,4 @@ Packaging: Raphael Mabit
 * What's the difference between `SABER_forward_fast.R` and `saber_forward_parametric_conc_wise.R` ?
 * Is Saber_forward the am03 model (is it ok to change the name) ?
 * The inversion of fraction rb_class is not constrained to unity ? Seems like a difficult problem ...
-
+* The prior and sampler function in CreatePrior

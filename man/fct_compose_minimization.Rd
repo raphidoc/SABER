@@ -6,7 +6,7 @@
 a function to dynamically create the minimization function
 passed to inversion}
 \usage{
-fct_compose_minimization(forward_model, error_fct, rrs_observed)
+fct_compose_minimization(forward_model, error_fct, rrs_observed, par_fixed)
 }
 \arguments{
 \item{forward_model}{c("am03", "lee98")}
