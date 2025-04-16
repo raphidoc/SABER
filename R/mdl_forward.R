@@ -1,16 +1,18 @@
-#' saber_forward
+#' Albert and Mobley 2003 forward model
 #'
 #' Fuction repackaged from `SABER_forward_fast.R` in codebase. What's the
 #'  difference with `saber_forward_parametric_conc_wise.R` ?
 #'
+#' @references Albert, A. and Mobley, C.D. (2003) ‘An analytical model for subsurface irradiance and remote sensing reflectance in deep and shallow case-2 waters’, Optics Express, 11(22), pp. 2873–2890. Available at: https://doi.org/10.1364/OE.11.002873.
+#'
 #' @export
 
-saber_forward <- function(
+forward_am03 <- function(
     wavelength,
     iop,
     water_type = 2,
-    view,
-    sun,
+    theta_view,
+    theta_sun,
     optically_shallow,
     h_w = NULL,
     rrs_bottom = NULL,
@@ -48,7 +50,7 @@ saber_forward <- function(
   # RT model ----------------------------------------------------------------
 
   ## Remote sensing reflectance below the surface
-  geometry <- snell_law(view = view, sun = sun)
+  geometry <- snell_law(theta_view = theta_view, theta_sun = theta_sun)
   sun_w <- geometry$sun_w
   view_w <- geometry$view_w
   rho_L <- geometry$rho_L
@@ -122,11 +124,11 @@ saber_forward <- function(
 #' @references Lee, z. et al. (1998) ‘Hyperspectral remote sensing for shallow waters. I. A semianalytical model’, Applied Optics, 37(27), pp. 6329–6338. Available at: https://doi.org/10.1364/AO.37.006329.
 #'
 
-lee98_forward <- function(
+forward_lee98 <- function(
     wavelength,
     iop,
-    view,
-    sun,
+    theta_view,
+    theta_sun,
     optically_shallow,
     h_w = NULL,
     rrs_bottom = NULL,
@@ -163,7 +165,7 @@ lee98_forward <- function(
   # Radiative Transfer Model ------------------------------------------------
 
   ## Remote sensing reflectance 0m the surface
-  geometry <- snell_law(view = view, sun = sun)
+  geometry <- snell_law(theta_view = theta_view, theta_sun = theta_sun)
   sun_w <- geometry$sun_w
   view_w <- geometry$view_w
   rho_L <- geometry$rho_L

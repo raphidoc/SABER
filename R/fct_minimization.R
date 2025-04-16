@@ -18,8 +18,8 @@ fct_compose_minimization <- function(
 
   # Select forward model ----------------------------------------------------
   forward_model <- switch(forward_model,
-    "am03" = saber_forward,
-    "lee98" = lee98_forward,
+    "am03" = forward_am03,
+    "lee98" = forward_lee98,
     rlang::abort(
       glue::glue("forward_model must be one of:", forward_models)
     )
@@ -76,8 +76,8 @@ fct_compose_minimization <- function(
       rrs_modeled <- forward_model(
         wavelength = rrs_observed$wavelength,
         iop = inputs$iop,
-        view = 0,
-        sun = 20,
+        theta_view = 0,
+        theta_sun = 20,
         optically_shallow = T,
         h_w = par["h_w"],
         rrs_bottom = inputs$rrs_bottom,
@@ -97,8 +97,8 @@ fct_compose_minimization <- function(
       rrs_modeled <- forward_model(
         wavelength = rrs_observed$wavelength,
         iop = inputs$iop,
-        view = 0,
-        sun = 20,
+        theta_view = 0,
+        theta_sun = 20,
         optically_shallow = T,
         h_w = par["h_w"],
         rrs_bottom = inputs$rrs_bottom,

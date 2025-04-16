@@ -17,4 +17,6 @@ Packaging: Raphael Mabit
 * What's the difference between `SABER_forward_fast.R` and `saber_forward_parametric_conc_wise.R` ?
 * Is Saber_forward the am03 model (is it ok to change the name) ?
 * The inversion of fraction rb_class is not constrained to unity ? Seems like a difficult problem ...
-* The prior and sampler function in CreatePrior
+* What about the geometry in inversion ? With wihch value do we parametrize forward models ?
+* Is it really rrs_bottom [sr^-1], is it not just Rb [dimensionless] ?
+* What is the logic of `runMCMC` post processing ? 3 Chains ? Take the mean ?

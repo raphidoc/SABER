@@ -24,7 +24,7 @@ library(plotly)
 Run the `inversion_optimization` function. Retrieve a set of unknown parameter (`par_init`) by minimizing the `error_fct` of a `forward_model` with an `optim_mtd`.
 
 ```{r}
-# load_all()
+load_all()
 
 rrs <- read_csv(fs::path_package("SABER", "data", "demo_rrs_Om.csv"))
 
@@ -79,12 +79,12 @@ rrs_bottom <- rrs_bottom_lmm(
   verbose = T
 )
 
-rrs_retrieved <- saber_forward(
+rrs_retrieved <- forward_am03(
   wavelength = rrs$wavelength,
   iop = iop,
   water_type = 2,
-  view = 0,
-  sun = 20,
+  theta_view = 0,
+  theta_sun = 20,
   optically_shallow = T,
   h_w = mle$estimate[mle$parameter == "h_w"],
   rrs_bottom = rrs_bottom,

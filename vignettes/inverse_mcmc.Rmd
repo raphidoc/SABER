@@ -10,6 +10,8 @@ vignette: >
 ```{r setup, include = FALSE}
 library(SABER)
 library(ggplot2)
+library(BayesianTools)
+library(stringr)
 ```
 
 ## Overview
@@ -28,30 +30,101 @@ nomad_sample <- sample_nomad()
 
 ```{r}
 chl_prior <- make_prior(nomad_sample$chl, dist = "weibull", name = "chl")
-ag_prior <- make_prior(nomad_sample$ag443, dist = "weibull", name = "ag440")
-ad_prior <- make_prior(nomad_sample$ad443, dist = "weibull", name = "ad440")
-bbp_prior <- make_prior(nomad_sample$bbp555, dist = "weibull", name = "anap440")
+ag_prior <- make_prior(nomad_sample$ag443, dist = "weibull", name = "ag_440")
+# ad_prior <- make_prior(nomad_sample$ad443, dist = "weibull", name = "ad440")
+bbp_prior <- make_prior(nomad_sample$bbp555, dist = "weibull", name = "bbp_550")
+
+priors <- list(chl_prior, ag_prior, bbp_prior)
+```
+
+## Load Rrs
+
+```{r}
+rrs <- readr::read_csv(fs::path_package("SABER", "data", "demo_rrs_Om.csv"))
+
+par_fixed <- tibble(
+  parameter = c("water_type", "theta_view", "theta_sun", "optically_shallow", "h_w", "rb_class_1", "rb_class_2", "rb_class_3", "sd"),
+  value = c(2, 0, 20, T, 2, 0.25, 0.25, 0.5, 0.05),
+)
 ```
 
 ## Bundle Priors and Define Likelihood
 
 ```{r}
-priors <- list(chl_prior, ag_prior, ad_prior, bbp_prior)
-mock_likelihood <- function(params) {
-  -sum((params - c(1, 0.5, 0.01, 0.005))^2) # placeholder
-}
+load_all()
 
 prior_bundle <- make_prior_bundle(
   priors = priors,
-  likelihood = mock_likelihood,
-  lower = c(0, 0, 0, 0.0001),
-  upper = c(30, 5, 0.5, 0.01)
+  lower = c(0, 0, 0),
+  upper = c(30, 5, 0.5)
+)
+
+likelihood <- make_likelihood(
+  model = "am03",
+  error = "log-ll",
+  rrs_observed = rrs,
+  par_fixed = par_fixed
 )
 ```
 
 ## Run Inversion
 
 ```{r, eval=FALSE}
-out <- run_inversion(prior_bundle, iterations = 5000)
+out <- inverse_mcmc(
+    prior_bundle,
+    likelihood,
+    iterations = 10000,
+    burnin = 2000,
+    sampler = "DEzs",
+    use_prior = T
+)
+
 summary(out)
+plot(out, start = 2000)
 ```
+
+```{r}
+oac_estimates <- tibble(
+  name = names(MAP(out)[[1]]),
+  value = MAP(out)[[1]]
+) %>%
+  filter(name %in% c("chl", "ag_440", "bbp_550")) %>%
+  tidyr::pivot_wider(names_from = "name", values_from = "value")
+
+
+iop <- iop_from_oac(
+  rrs$wavelength,
+  oac_estimates,
+  verbose = T
+)
+
+end_member_fraction <- par_fixed %>%
+  filter(str_detect(parameter, "rb_"))
+
+rrs_bottom <- rrs_bottom_lmm(
+  rrs_end_member = rb_algae_wise,
+  end_member_fraction = end_member_fraction$value,
+  wavelength = rrs$wavelength,
+  verbose = FALSE
+)
+
+rrs_retrieved <- forward_am03(
+  wavelength = rrs$wavelength,
+  iop = iop,
+  water_type = 2,
+  theta_view = 0,
+  theta_sun = 20,
+  optically_shallow = T,
+  h_w = 2,
+  rrs_bottom = rrs_bottom,
+  verbose = T
+)
+
+ply <- plot_ly() %>%
+  add_lines(x = rrs$wavelength, y = rrs$rrs_0m, name = "rrs_observed") %>%
+  add_lines(x = rrs_retrieved$wavelength, y = rrs_retrieved$rrs_0m, name = "rrs_retrieved")
+
+
+ply
+```
+

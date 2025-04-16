@@ -16,6 +16,8 @@ prepare_samples <- function(vec, bounds = NULL, n = 100) {
 #'
 #' @author Soham Mukherjee
 #'
+#' @import dplyr
+#'
 #' @returns input data prior distribution to be used by ?
 
 sample_nomad <- function(
