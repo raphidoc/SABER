@@ -63,9 +63,9 @@ parse_iop <- function(
   return(iop)
 }
 
-#' parse_inverse_parameter
+#' parse_inverse_name
 #'
-#' a function to parse and prepare the init parameter to be passed to optimization function
+#' a function to parse and prepare the init name to be passed to optimization function
 
 parse_inverse_parameter <- function(
     par_df,
@@ -75,33 +75,33 @@ parse_inverse_parameter <- function(
     verbose = F) {
   if (optim_mtd == "L-BFGS-B" & is.null(lower_b)) {
     lower_b <- dplyr::case_when(
-      par_df$parameter %in% c("chl", "ag_440", "bbp_550") ~ par_df$value - 0.8 * par_df$value,
-      par_df$parameter == "h_w" ~ 1,
-      stringr::str_detect(par_df$parameter, "^rb_") ~ 0,
-      par_df$parameter == "sd" ~ 1e-5,
+      par_df$name %in% c("chl", "a_g_440", "bb_p_550") ~ par_df$value - 0.8 * par_df$value,
+      par_df$name == "h_w" ~ 1,
+      stringr::str_detect(par_df$name, "^rb_") ~ 0,
+      par_df$name == "sd" ~ 1e-5,
       TRUE ~ NA_real_
     )
   }
 
   if (optim_mtd == "L-BFGS-B" & is.null(upper_b)) {
     upper_b <- dplyr::case_when(
-      par_df$parameter %in% c("chl", "ag_440", "bbp_550") ~ par_df$value + 5 * par_df$value,
-      par_df$parameter == "h_w" ~ 10,
-      stringr::str_detect(par_df$parameter, "^rb_") ~ 1,
-      par_df$parameter == "sd" ~ 1,
+      par_df$name %in% c("chl", "a_g_440", "bb_p_550") ~ par_df$value + 5 * par_df$value,
+      par_df$name == "h_w" ~ 10,
+      stringr::str_detect(par_df$name, "^rb_") ~ 1,
+      par_df$name == "sd" ~ 1,
       TRUE ~ NA_real_
     )
   }
 
   if (optim_mtd == "L-BFGS-B" & verbose) {
     rlang::inform(
-      glue::glue("{par_df$parameter} lower boundary set at: {lower_b} upper boundary set at: {upper_b}")
+      glue::glue("{par_df$name} lower boundary set at: {lower_b} upper boundary set at: {upper_b}")
     )
   }
 
   list(
     par = par_df$value,
-    names = par_df$parameter,
+    names = par_df$name,
     lower = lower_b,
     upper = upper_b,
     parscale = abs(par_df$value)

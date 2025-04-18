@@ -1,0 +1,152 @@
+#' iop_from_oac
+#' compute Inherent Optical Proprieties from Optically Active constituents.
+#'
+#' @param oac a vector with name {chl, a_g_440, a_nap_440, bb_p_550}
+#' Total IOP will be computed with the combination of oac you provide.
+#' If you don't provide any, the returned value will be equal to the pure water IOP.
+#' Optionally, provide manual for (and/or) a_g, a_nap, bb_p slope with names {a_g_s_g, a_g_s_d, a_nap_s, bb_p_gamma}
+#' @param rrs optionnal, a tibble with columns {wavelength, rrs} used for
+#'  parametric retrieval of a_g and bb slope (if manual slope are not provided).
+#'
+#' @export
+
+iop_from_oac <- function(
+    wavelength,
+    oac,
+    rrs = NULL,
+    optically_shallow = F,
+    verbose = F) {
+
+  # TODO: It would be better to return NA and to propagate it to the objective
+  # function, this way if an optimization method doesn't accept bound, we might
+  # still be able to use it.
+  if (any(oac < 0)) return(NA)
+
+  # Phyto concentration to absorption  --------------------------------------
+  if ("chl" %in% names(oac)) {
+
+    # Plankton absorption (1/m)
+    # load plankton absorption data
+
+    a0 <- Hmisc::approxExtrap(
+      a0_a1_phyto$wavelength,
+      a0_a1_phyto$a0, xout = wavelength,
+      method = "linear")$y # [m^2/mg]
+    a1 <- Hmisc::approxExtrap(
+      a0_a1_phyto$wavelength,
+      a0_a1_phyto$a1,
+      xout = wavelength,
+      method = "linear")$y # [m^2/mg]
+
+    aph_440 <- 0.06 * (oac["chl"])^0.65 # [mg/m^3] #Prieur & Satyendranath (1981)
+
+    a_phy <- sapply(1:length(wavelength), function(i) (a0[i] + a1[i] * log(aph_440)) * aph_440)
+
+    if (any(a_phy < 0)) {
+      # rlang::warn("Some a_phy inferiro to 0")
+      a_phy[a_phy < 0] <- 0
+    }
+  } else {
+    a_phy <- 0
+  }
+
+  # CDOM absorption ---------------------------------------------------------
+  if ("a_g_440" %in% names(oac)) {
+    ## CDOM+NAP absorption coefficient [1/m]
+
+    Ga_CDOM <- 1
+    Oa_CDOM <- 0
+
+    abs_CDM_440 <- (Ga_CDOM * oac["a_g_440"]) + Oa_CDOM # [1/m], CDOM abs. coeff. at 440 [nm]
+
+    # 3 possibilities for CDOM slope: manual, parametric, default
+
+    if (all(c("a_g_s_g", "a_g_s_d") %in% names(oac))) {
+      cdom_slope <- oac["a_g_s_g"] + oac["a_g_s_d"]
+    } else if (optically_shallow && tibble::is_tibble(rrs)) {
+      cdom_slope <- 0.015 + (
+        0.002 / (0.6 + (rrs$rrs[which.min(abs(rrs$wavelength - 443))] /
+                          rrs$rrs[which.min(abs(rrs$wavelength - 555))])))
+    } else {
+      cdom_slope <- 0.017 # Model Default
+    }
+
+    a_g <- sapply(1:length(wavelength), function(i) abs_CDM_440 * exp(-cdom_slope * (wavelength[i] - 440)))
+  } else {
+    a_g <- 0
+  }
+
+  # Non algal particle absorption (a_nap)  ----------------------------------
+  if ("a_nap_440" %in% names(oac)) {
+    if ("a_nap_s_d" %in% names(oac)) {
+      s_nap = as.numeric(oac["a_nap_s_d"])
+    } else {
+      s_nap <- 0.01160 # Model Default
+    }
+
+    # TODO: those coeff don't do anything.
+    Ga_nap <- 1# [m^2/mg]
+    Oa_nap <- 0
+
+    a_nap_440 <-  (Ga_nap * oac["a_nap_440"]) + Oa_nap# [1/m], SPM abs. coeff. at 440 [nm]
+
+    browser()
+
+    a_nap <-sapply(wavelength, function(wl) a_nap_440 * exp(-s_nap * (wl - 440)))
+
+    # abs_CDM = abs_CDOM + abs_X
+  } else {
+    a_nap <- 0
+  }
+
+  # Particulate backscattering ----------------------------------------------
+  if ("bb_p_550" %in% names(oac)) {
+
+    # 3 possibilities for bb slope: manual, parametric, default
+    if ("bb_p_gamma" %in% names(oac)) {
+      bb_gamma <- oac["bb_p_gamma"]
+    } else if (optically_shallow && tibble::is_tibble(rrs)) {
+      bb_gamma <- 2 * (1 - (1.2 * exp(
+        -0.9 * (rrs$rrs[which.min(abs(rrs$wavelength - 443))] /
+                  rrs$rrs[which.min(abs(rrs$wavelength - 555))])
+      )))
+    } else {
+      bb_gamma <- 0.46 # Model Default
+    }
+
+    bb_p <- sapply(1:length(wavelength), function(i) oac["bb_p_550"] * ((wavelength[i] / 550)^-bb_gamma))
+  } else {
+    bb_p <- 0
+  }
+
+  # Pure water IOP ----------------------------------------------------------
+  iop_w <- pure_water_iop(wavelength)
+
+  out <- tibble(
+    wavelength,
+    "a_phy" = if ("chl" %in% names(oac)) a_phy else NULL,
+    "a_nap" = if ("a_nap_440" %in% names(oac)) a_nap else NULL,
+    "a_g" = if ("a_g_440" %in% names(oac)) a_g else NULL,
+    "bb_p" = if ("bb_p_550" %in% names(oac)) bb_p else NULL,
+    "a" = iop_w$a_w + a_phy + a_nap + a_g,
+    "bb" = iop_w$bb_w + bb_p
+  )
+
+  if (verbose) {
+    # Assume `out` is a tibble with at least one column 'wavelength' and others are spectra
+    cols_to_plot <- setdiff(names(out), "wavelength")
+
+    ply <- purrr::reduce(
+      cols_to_plot,
+      .init = plot_ly(out, x = ~wavelength),
+      .f = function(p, colname) {
+        add_lines(p, y = out[[colname]], name = colname)
+      }
+    )
+
+    # Display the plot
+    print(ply)
+  }
+
+  return(out)
+}

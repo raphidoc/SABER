@@ -70,13 +70,15 @@ likelihood <- make_likelihood(
 ## Run Inversion
 
 ```{r, eval=FALSE}
+load_all()
+
 out <- inverse_mcmc(
     prior_bundle,
     likelihood,
     iterations = 10000,
     burnin = 2000,
     sampler = "DEzs",
-    use_prior = T
+    use_prior = F
 )
 
 summary(out)
