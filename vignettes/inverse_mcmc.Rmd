@@ -9,14 +9,188 @@ vignette: >
 
 ```{r setup, include = FALSE}
 library(SABER)
-library(ggplot2)
+library(plotly)
 library(BayesianTools)
 library(stringr)
+library(dplyr)
+library(tidyr)
+library(lubridate)
 ```
 
 ## Overview
 
 SABER is an R package for Bayesian inversion of radiative transfer models using in-situ data and prior distribution fitting.
+
+## Fully unconstrained inversion with uniform priors
+
+```{r}
+rrs <- rrs_hw %>%
+  filter(ensemble == 1657138120) %>%
+  mutate(rrs_0m = rrs_0p_to_0m(rrs_estimate)) %>%
+  select(wavelength, rrs_0m)
+```
+
+```{r}
+# How to retrieve bottom reflectance without specifying a class ?
+# Is it feasible ? Definitely seems useful.
+par_fixed <- c(
+  "water_type" = 2,
+  "theta_view" = 0,
+  "theta_sun" = 20,
+  "rb_rock_2022" = 1,
+  "sd" = 1
+)
+
+par_estimates <- inverse_mcmc(
+  rrs = rrs,
+  forward_model = "am03",
+  par_inversed = c("chl", "a_g_440", "bb_p_550", "h_w"),
+  prior = NULL,
+  lower = c(0, 0, 0, 0),
+  upper = c(100, 10, 0.5, 10),
+  par_fixed = par_fixed,
+  iterations = 10000,
+  burnin = 2000,
+  sampler = "DEzs"
+)
+
+# plot(out)
+```
+
+Now we can compare what those OAC gives in "am03" and compare that with our input rrs.
+
+```{r}
+# par_estimates <- tibble(
+#   name = names(MAP(out)[[1]]),
+#   value = MAP(out)[[1]]
+# ) %>%
+#   filter(name %in% c("chl", "a_g_440", "bb_p_550", "h_w"))
+#
+# par_estimates <- stats::setNames(par_estimates$value, par_estimates$name)
+
+iop <- iop_from_oac(
+  rrs$wavelength,
+  par_estimates
+)
+
+
+r_b_fraction_vec <- par_fixed[grep("^rb_", names(par_fixed))]
+r_b_class <- memoise_r_b_class(rrs$wavelength, r_b_class_egsl, names(r_b_fraction_vec))
+
+rrs_bottom <- r_b_lmm(
+  r_b_class = r_b_class,
+  r_b_fraction = r_b_fraction_vec
+)
+
+rrs_retrieved <- forward_am03(
+  # wavelength = rrs$wavelength,
+  # iop = iop,
+  # water_type = 2,
+  # theta_view = 0,
+  # theta_sun = 20,
+  # optically_shallow = T,
+  # h_w = 2,
+  # rrs_bottom = rrs_bottom,
+  # verbose = T
+  wavelength = rrs$wavelength,
+  iop = iop,
+  water_type = 2,
+  theta_view = 0,
+  theta_sun = 20,
+  optically_shallow = T,
+  h_w = par_estimates["h_w"],
+  r_b = rrs_bottom,
+  verbose = F
+)
+
+ply <- plot_ly() %>%
+  add_lines(x = rrs$wavelength, y = rrs$rrs_0m, name = "rrs_observed") %>%
+  add_lines(x = rrs$wavelength, y = rrs_retrieved, name = "rrs_retrieved")
+
+ply
+```
+### Batch processing
+
+```{r}
+ensembles <- unique(rrs_hw$ensemble)
+
+ensembles <- ensembles[
+  ensembles > as.numeric(ymd_hms("2022-07-06 20:58:20")) &
+    ensembles > as.numeric(ymd_hms("2022-07-06 21:04:50"))
+]
+
+rrs_hw <- rrs_hw %>%
+  filter(ensemble %in% ensembles) %>%
+  mutate(
+    rrs_0m = rrs_0p_to_0m(rrs_estimate),
+    h_w = altitude_m + abs(bottom_elevation_m)
+  )
+
+ply <- plot_ly(rrs_hw) %>%
+  add_lines(x = ~wavelength, y = ~rrs_0m, name = ~ paste0(ensemble, "_", round(plant_height_m, 2)))
+
+ply
+```
+
+```{r}
+par_fixed <- c(
+  "water_type" = 2,
+  "theta_view" = 0,
+  "theta_sun" = 20,
+  "optically_shallow" = T,
+  "sd" = 1
+)
+
+inversed_data <- rrs_hw %>%
+  group_by(ensemble) %>%
+  nest() %>%
+  mutate(
+    par_inversed = purrr::map(
+      .x = data,
+      ~ inverse_mcmc(
+        rrs = .x,
+        forward_model = "am03",
+        par_inversed = c("chl", "a_g_440", "bb_p_550", "h_w", "rb_rock_2022", "rb_saccha_2022", "rb_cca_2022"),
+        prior = NULL,
+        lower = c(0, 0, 0, 0, 0, 0, 0),
+        upper = c(100, 10, 0.5, 10, 1, 1, 1),
+        par_fixed = par_fixed,
+        iterations = 10000,
+        burnin = 2000,
+        sampler = "DEzs"
+      )
+    )
+  )
+```
+
+```{r}
+par_inversed <- inversed_data$par_inversed %>%
+  bind_rows() %>%
+  rename_with(.fn = ~ paste0(.x, "_estim")) %>%
+  mutate(ensemble = inversed_data$ensemble, .before = 1)
+
+compare_h_w <- rrs_hw %>%
+  select(ensemble, h_w, plant_height_m) %>%
+  unique() %>%
+  inner_join(par_inversed, by = c("ensemble"))
+```
+
+```{r}
+ply <- plot_ly(compare_h_w) %>%
+  add_markers(x = ~h_w, y = ~h_w_estim, color = ~plant_height_m) %>%
+  layout(shapes = list(list(
+    type = "line",
+    x0 = ~ min(h_w, h_w_estim),
+    x1 = ~ max(h_w, h_w_estim),
+    xref = "x",
+    y0 = ~ min(h_w, h_w_estim),
+    y1 = ~ max(h_w, h_w_estim),
+    yref = "y",
+    line = list(color = "black")
+  )))
+
+ply
+```
 
 ## Load Sample Data
 
@@ -51,8 +225,6 @@ par_fixed <- tibble(
 ## Bundle Priors and Define Likelihood
 
 ```{r}
-load_all()
-
 prior_bundle <- make_prior_bundle(
   priors = priors,
   lower = c(0, 0, 0),
@@ -70,15 +242,13 @@ likelihood <- make_likelihood(
 ## Run Inversion
 
 ```{r, eval=FALSE}
-load_all()
-
 out <- inverse_mcmc(
-    prior_bundle,
-    likelihood,
-    iterations = 10000,
-    burnin = 2000,
-    sampler = "DEzs",
-    use_prior = F
+  prior_bundle,
+  likelihood,
+  iterations = 10000,
+  burnin = 2000,
+  sampler = "DEzs",
+  use_prior = F
 )
 
 summary(out)

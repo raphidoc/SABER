@@ -1,18 +1,24 @@
 Package: SABER
-Title: What the Package Does (One Line, Title Case)
+Type: Package
+Title: SABER - Spectral Absorption and Backscattering Estimation in Radiative Transfer
 Version: 0.0.0.9000
 Authors@R: 
-    person("Soham", "Mukherjee", , "first.last@example.com", role = c("aut", "cre"),
+    person("Soham", "Mukherjee", email = "first.last@example.com", role = c("aut", "cre"),
            comment = c(ORCID = "YOUR-ORCID-ID"))
-Description: What the package does (one paragraph).
+Description: Tools for modeling inherent optical properties (IOPs) in aquatic environments
+    using modular, fast forward models based on radiative transfer principles.
 License: GPL (>= 3)
 Encoding: UTF-8
+LazyData: true
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.1
+RoxygenNote: 7.3.2
 Depends: 
     R (>= 3.5)
-LazyData: true
+Imports: 
+    methods
+LinkingTo:
 Suggests: 
     knitr,
-    rmarkdown
+    rmarkdown,
+    testthat
 VignetteBuilder: knitr

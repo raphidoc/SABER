@@ -35,28 +35,32 @@ make_prior_bundle <- function(priors, lower, upper, best_guess = NULL) {
 }
 
 inverse_mcmc <- function(
-    prior_bundle,
-    likelihood,
+    rrs,
+    forward_model,
+    par_inversed,
+    prior = NULL,
+    lower = NULL,
+    best = NULL,
+    upper = NULL,
+    par_fixed = NULL,
     iterations = 10000,
     burnin = 2000,
-    sampler = "DEzs",
-    use_prior = TRUE
-    ) {
-
-  # Wrap likelihood to restore names
-  prior_names <- prior_bundle$names
-
-  named_likelihood <- function(par) {
-    names(par) <- prior_names
-    likelihood(par)
-  }
+    sampler = "DEzs") {
+  likelihood <- objective_factory(
+    model = forward_model,
+    objective = "log-ll",
+    rrs_observed = rrs,
+    par_inversed = par_inversed,
+    par_fixed = par_fixed
+  )
 
   setup <- BayesianTools::createBayesianSetup(
-    prior = if (use_prior) prior_bundle$prior else NULL,
-    likelihood = named_likelihood,
-    lower = c(0, 0, 0),
-    upper = c(100, 5, 0.1),
-    names = prior_names,
+    prior = prior,
+    likelihood = likelihood,
+    lower = lower,
+    best = best,
+    upper = upper,
+    names = par_inversed,
     parallel = FALSE
   )
 
@@ -73,89 +77,17 @@ inverse_mcmc <- function(
     sampler = sampler
   )
 
-  return(out)
+  estimates_sd <- purrr::map_df(
+    .x = out[["chain"]],
+    ~ apply(.x[, ncol(.x) - 3:ncol(.x)], 2, sd)
+  )
+
+  estimates_sd <- colMeans(estimates_sd)
+
+  par_estimates <- stats::setNames(
+    c(MAP(out)[[1]], estimates_sd),
+    c(names(MAP(out)[[1]]), paste0(names(MAP(out)[[1]]), "_sd"))
+  )
+
+  return(par_estimates)
 }
-
-
-#' #' density_fct
-#' #'
-#' #' density function input pareter to `BayesianTools::createPrior`
-#' #'
-#'
-#' density <- function(par) {
-#'   chl <- par[1]
-#'   acdom.440 <- par[2]
-#'   anap.440 <- par[3]
-#'   x.sd <- par[5]
-#'
-#'   density_chl <- dweibull(
-#'     x = chl,
-#'     shape = fit.chl.norm$estimate[1],
-#'     scale = fit.chl.norm$estimate[2],
-#'     log = T
-#'   )
-#'
-#'   density_ag440 <- dweibull(
-#'     x = acdom.440,
-#'     shape = fit.acdom440.norm$estimate[1],
-#'     scale = fit.acdom440.norm$estimate[2],
-#'     log = T
-#'   )
-#'
-#'   density_anap440 <- dweibull(
-#'     x = anap.440,
-#'     shape = fit.anap440.norm$estimate[1],
-#'     scale = fit.anap440.norm$estimate[2],
-#'     log = T
-#'   )
-#'
-#'   density_lklhood <- dunif(
-#'     x = x.sd,
-#'     min = 0.0001,
-#'     max = 0.01,
-#'     log = T
-#'   )
-#'
-#'   return(density_chl + density_ag440 + density_anap440 + density_lklhood)
-#' }
-#'
-#'
-#' #' sampler_fct
-#' #'
-#' #' sampler function input pareter to `BayesianTools::createPrior`
-#' #'
-#'
-#' sampler_fct <- function(n = 1) {
-#'   density_chl <- rweibull(
-#'     n,
-#'     shape = fit.chl.norm$estimate[1],
-#'     scale = fit.chl.norm$estimate[2]
-#'   )
-#'
-#'   density_ag440 <- rweibull(
-#'     n,
-#'     shape = fit.acdom440.norm$estimate[1],
-#'     scale = fit.acdom440.norm$estimate[2]
-#'   )
-#'
-#'   density_anap440 <- rweibull(
-#'     n,
-#'     shape = fit.anap440.norm$estimate[1],
-#'     scale = fit.anap440.norm$estimate[2]
-#'   )
-#'
-#'   density_lklhood <- runif(
-#'     n,
-#'     min = 0.0001,
-#'     max = 0.01
-#'   )
-#'
-#'   return(
-#'     cbind(
-#'       density_chl,
-#'       density_ag440,
-#'       density_anap440,
-#'       density_lklhood
-#'     )
-#'   )
-#' }

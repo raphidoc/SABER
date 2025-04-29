@@ -7,7 +7,7 @@
 lee99(modelled, observed, wavelength)
 }
 \value{
-the error (or likelihood) of modelled vs observed values
+the spectral error index of modelled vs observed values
 }
 \description{
 lee 1998 spectral error index

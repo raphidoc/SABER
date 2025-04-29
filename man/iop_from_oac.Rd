@@ -5,13 +5,15 @@
 \title{iop_from_oac
 compute Inherent Optical Proprieties from Optically Active constituents.}
 \usage{
-iop_from_oac(wavelength, oac, rrs = NULL, optically_shallow = F, verbose = F)
+iop_from_oac(wavelength, par)
 }
 \arguments{
-\item{oac}{a vector with optional name {chl, a_g_440, a_nap_440, bb_p_550}
+\item{wavelength}{Numeric vector of wavelengths \link{nm}}
+
+\item{oac}{a vector with name {chl, a_g_440, a_nap_440, bb_p_550}
 Total IOP will be computed with the combination of oac you provide.
 If you don't provide any, the returned value will be equal to the pure water IOP.
-Optionally, provide manual for (and/or) a_g, a_nap, bb_p slope with names {ag_s_g, ag_s_d, a_nap_s, bb_gamma}}
+Optionally, provide manual for (and/or) a_g, a_nap, bb_p slope with names {a_g_s_g, a_g_s_d, a_nap_s, bb_p_gamma}}
 
 \item{rrs}{optionnal, a tibble with columns {wavelength, rrs} used for
 parametric retrieval of a_g and bb slope (if manual slope are not provided).}

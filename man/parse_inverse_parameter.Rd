@@ -2,7 +2,7 @@
 % Please edit documentation in R/utils_parser.R
 \name{parse_inverse_parameter}
 \alias{parse_inverse_parameter}
-\title{parse_inverse_parameter}
+\title{parse_inverse_name}
 \usage{
 parse_inverse_parameter(
   par_df,
@@ -13,5 +13,5 @@ parse_inverse_parameter(
 )
 }
 \description{
-a function to parse and prepare the init parameter to be passed to optimization function
+a function to parse and prepare the init name to be passed to optimization function
 }

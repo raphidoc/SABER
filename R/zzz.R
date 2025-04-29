@@ -1,30 +1,40 @@
 .onLoad <- function(libname, pkgname) {
+  # C data ------------------------------------------------------------------
+
+  # browser()
+  data("a_w", package = pkgname, envir = environment())
+  .Call("c_load_pure_water_data", a_w$wavelength, a_w$a_w)
+
+  data("a0_a1_phyto", package = pkgname, envir = environment())
+  .Call("c_load_a0_a1_data", a0_a1_phyto$wavelength, a0_a1_phyto$a0, a0_a1_phyto$a1)
+
+
+  # Registry ----------------------------------------------------------------
   register_input_preparer("input_am03", function(par, rrs) {
     input_am03(par, rrs)
   })
 
-  register_forward_model("am03", function(par) {
+  register_forward_model("am03", function(inputs) {
     forward_am03(
-      wavelength = par$wavelength,
-      iop = par$iop,
-      water_type = par$water_type,
-      theta_view = par$theta_view,
-      theta_sun = par$theta_sun,
-      optically_shallow = par$optically_shallow,
-      h_w = par$h_w,
-      r_b = par$r_b
+      wavelength = inputs$wavelength,
+      iop = inputs$iop,
+      water_type = inputs$water_type,
+      theta_view = inputs$theta_view,
+      theta_sun = inputs$theta_sun,
+      h_w = inputs$h_w,
+      r_b = inputs$r_b
     )
   })
 
-  register_forward_model("lee98", function(par) {
+  register_forward_model("lee98", function(inputs) {
     forward_lee98(
-      wavelength = par$wavelength,
-      iop = par$iop,
-      theta_view = par$theta_view,
-      theta_sun = par$theta_sun,
-      optically_shallow = par$optically_shallow,
-      h_w = par$h_w,
-      r_b = par$r_b
+      wavelength = inputs$wavelength,
+      iop = inputs$iop,
+      theta_view = inputs$theta_view,
+      theta_sun = inputs$theta_sun,
+      optically_shallow = inputs$optically_shallow,
+      h_w = inputs$h_w,
+      r_b = inputs$r_b
     )
   })
 

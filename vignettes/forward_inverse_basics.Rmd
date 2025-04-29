@@ -45,7 +45,7 @@ wavelength <- seq(350, 800, 5)
 oac <- tibble(
   name = c("chl", "a_g_440", "bb_p_550", "a_g_s_g", "a_g_s_d", "bb_p_gamma"),
   value = c(0.1, 2.5, 0.05, 0.014, 0.003, 0.5)
-  )
+)
 
 oac_vec <- stats::setNames(oac$value, oac$name)
 
@@ -54,7 +54,8 @@ iop <- iop_from_oac(
   oac = oac_vec,
   rrs = NULL,
   optically_shallow = T,
-  verbose = T)
+  verbose = T
+)
 ```
 
 ### Computing bottom reflectance
@@ -65,7 +66,7 @@ If we are in shallow waters, we need to account for the bottom reflectance impac
 r_b_fraction <- tibble(
   name = c("rb_rock_2023", "rb_sand_2023", "rb_saccha_2023"),
   value = c(0.1, 0.1, 0.8)
-  )
+)
 
 r_b_fraction_vec <- stats::setNames(r_b_fraction$value, r_b_fraction$name)
 
@@ -86,7 +87,7 @@ The model we use here is Albert & Mobley 2003 (`"am03"`).
 test_case <- tibble(
   name = c("water_type", "theta_view", "theta_sun", "optically_shallow", "h_w"),
   value = c(2, 0, 20, T, 2)
-  )
+)
 
 test_case_vec <- stats::setNames(test_case$value, test_case$name)
 
@@ -98,7 +99,8 @@ rrs <- forward_am03(
   theta_sun = test_case_vec["theta_sun"],
   optically_shallow = test_case_vec["optically_shallow"],
   h_w = test_case_vec["h_w"],
-  r_b = r_b)
+  r_b = r_b
+)
 
 ply <- plot_ly(rrs) %>%
   add_lines(
@@ -132,7 +134,7 @@ par_init <- tibble(
 )
 
 par_fixed <- bind_rows(test_case, r_b_fraction)
-par_fixed <- bind_rows(par_fixed, tibble(name="sd", value=1))
+par_fixed <- bind_rows(par_fixed, tibble(name = "sd", value = 1))
 
 res_grad <- inversion_gradient(
   rrs = rrs,
@@ -163,7 +165,8 @@ rrs_grad <- forward_am03(
   theta_sun = test_case_vec["theta_sun"],
   optically_shallow = test_case_vec["optically_shallow"],
   h_w = test_case_vec["h_w"],
-  r_b = r_b)
+  r_b = r_b
+)
 
 ply <- plot_ly() %>%
   add_lines(x = rrs$wavelength, y = rrs$rrs_0m, name = "rrs_input") %>%
@@ -184,16 +187,16 @@ Use uniform prior (pass NULL in bayesconfig prior). Only retrieved chl, a_g_440 
 # ag_prior <- make_prior(nomad_sample$ag443, dist = "weibull", name = "ag_440")
 # # ad_prior <- make_prior(nomad_sample$ad443, dist = "weibull", name = "ad440")
 # bbp_prior <- make_prior(nomad_sample$bbp555, dist = "weibull", name = "bbp_550")
-# 
+#
 # priors <- list(chl_prior, ag_prior, bbp_prior)
-# 
+#
 # prior_bundle <- make_prior_bundle(
 #   priors = priors,
 #   lower = c(0, 0, 0),
 #   upper = c(30, 5, 0.5)
 # )
 
-likelihood <- factory_objective(
+likelihood <- objective_factory(
   model = "am03",
   objective = "log-ll",
   rrs_observed = rrs,
@@ -244,7 +247,8 @@ rrs_grad <- forward_am03(
   theta_sun = test_case_vec["theta_sun"],
   optically_shallow = test_case_vec["optically_shallow"],
   h_w = test_case_vec["h_w"],
-  r_b = r_b)
+  r_b = r_b
+)
 
 ply <- plot_ly() %>%
   add_lines(x = rrs$wavelength, y = rrs$rrs_0m, name = "rrs_input") %>%

@@ -5,7 +5,7 @@
 \title{pure_water_iop
 compute pure water iop at requested wavelength}
 \usage{
-pure_water_iop(wavelength, water_type = 2)
+pure_water_iop(wavelength)
 }
 \arguments{
 \item{wavelength}{vector of requested wavelength}

@@ -43,7 +43,7 @@ inversion_gradient <- function(
   rlang::inform(paste0("\033[0;39m", "########### ALL GOOD THINGS ARE WILD & FREE, LET'S RUN FREE #######", "\033[0m", "\n"))
   rlang::inform(paste0("\033[0;32m", "###################################################################", "\033[0m", "\n"))
 
-  minimization_fct <- factory_objective(
+  minimization_fct <- objective_factory(
     model = forward_model,
     objective = objective_fct,
     rrs_observed = rrs,
@@ -116,7 +116,7 @@ inversion_gradient <- function(
     }
 
     fhin <- function(pars) {
-      pars[fraction_indices]  # All should be ≥ 0
+      pars[fraction_indices] # All should be ≥ 0
     }
 
     optim_result <- alabama::auglag(

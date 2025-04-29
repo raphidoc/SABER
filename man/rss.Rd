@@ -7,7 +7,7 @@
 rss(modelled, observed)
 }
 \value{
-the error (or likelihood) of modelled vs observed values
+the residual sum of square
 }
 \description{
 residual sum of square

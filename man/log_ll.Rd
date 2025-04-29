@@ -7,7 +7,7 @@
 log_ll(modelled, observed, sd)
 }
 \value{
-the error (or likelihood) of modelled vs observed values
+the likelihood of modeled vs observed values
 }
 \description{
 log likelihood

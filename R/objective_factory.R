@@ -8,7 +8,7 @@
 #' @return A function returning the model objective/likelihood to be used in an optimization process
 #' @export
 
-factory_objective <- function(model, objective, rrs_observed, par_fixed = NULL) {
+objective_factory <- function(model, objective, rrs_observed, par_inversed, par_fixed = NULL) {
   prepare_input <- get_input_preparer(paste0("input_", model))
   forward_model <- get_forward_model(model)
   objective_function <- get_objective_function(objective)
@@ -19,25 +19,25 @@ factory_objective <- function(model, objective, rrs_observed, par_fixed = NULL) 
 
   complete_par <- function(par) {
     if (!is.null(par_fixed)) {
+      # if (any(par_fixed$name %in% names(par))) {
+      #   stop("Parameters cannot be defined in both `par_init` and `par_fixed`.")
+      # }
 
-      if (any(par_fixed$name %in% names(par))) {
-        stop("Parameters cannot be defined in both `par_init` and `par_fixed`.")
-      }
-
-      fixed_vals <- stats::setNames(par_fixed$value, par_fixed$name)
-      par <- c(par, fixed_vals)
+      par <- c(par, par_fixed)
     }
 
     par[order(names(par))]
   }
 
   function(par) {
+    # Restore names destroyed by mcmc sampling
+    names(par) <- par_inversed
     par <- complete_par(par)
     inputs <- prepare_input(par, rrs_observed)
     rrs_modeled <- forward_model(inputs)
 
     objective_function(
-      modelled = rrs_modeled$rrs_0m,
+      modelled = rrs_modeled,
       observed = rrs_observed$rrs_0m,
       par = par
     )
