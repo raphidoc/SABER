@@ -18,18 +18,11 @@ input_am03 <- function(par, rrs) {
 
   iop <- iop_from_oac(rrs$wavelength, par)
 
-  r_b_fraction_vec <- par[grep("^rb_", names(par))]
-  r_b_class <- memoise_r_b_class(rrs$wavelength, r_b_class_egsl, names(r_b_fraction_vec))
+  r_b_fraction_vec <- par[grep("^r_rs_b", names(par))]
 
-  r_b <- r_b_lmm(
-    r_b_class = r_b_class,
-    r_b_fraction = r_b_fraction_vec
+  r_b <- compute_r_rs_b_lmm(
+    fractions = r_b_fraction_vec
   )
-
-  # r_b <- tibble(
-  #   wavelength = rrs$wavelength,
-  #   r_b = r_b
-  # )
 
   list(
     wavelength = rrs$wavelength,

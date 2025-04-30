@@ -4,12 +4,10 @@
 \alias{compute_r_rs_b_lmm}
 \title{Compute interpolated Rrs_b mixture}
 \usage{
-compute_r_rs_b_lmm(fractions, wavelength)
+compute_r_rs_b_lmm(fractions)
 }
 \arguments{
 \item{fractions}{named numeric vector (e.g., c(sand = 0.6, seagrass = 0.4))}
-
-\item{wavelength}{numeric vector}
 }
 \description{
 Compute interpolated Rrs_b mixture

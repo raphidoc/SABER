@@ -9,8 +9,7 @@ load_r_rs_b <- function(wavelength, rrs_b) {
 
 #' Compute interpolated Rrs_b mixture
 #' @param fractions named numeric vector (e.g., c(sand = 0.6, seagrass = 0.4))
-#' @param wavelength numeric vector
 #' @export
-compute_r_rs_b_lmm <- function(fractions, wavelength) {
-  .Call("c_compute_r_rs_b_lmm", fractions, as.numeric(wavelength))
+compute_r_rs_b_lmm <- function(fractions) {
+  .Call("c_compute_r_rs_b_lmm", fractions)
 }

@@ -37,7 +37,7 @@ par_fixed <- c(
   "water_type" = 2,
   "theta_view" = 0,
   "theta_sun" = 20,
-  "rb_rock_2022" = 1,
+  "r_rs_b_saccharina" = 1,
   "sd" = 1
 )
 
@@ -74,12 +74,10 @@ iop <- iop_from_oac(
 )
 
 
-r_b_fraction_vec <- par_fixed[grep("^rb_", names(par_fixed))]
-r_b_class <- memoise_r_b_class(rrs$wavelength, r_b_class_egsl, names(r_b_fraction_vec))
+r_b_fraction_vec <- par_fixed[grep("^r_rs_b", names(par_fixed))]
 
-rrs_bottom <- r_b_lmm(
-  r_b_class = r_b_class,
-  r_b_fraction = r_b_fraction_vec
+rrs_bottom <- compute_r_rs_b_lmm(
+  fractions = r_b_fraction_vec
 )
 
 rrs_retrieved <- forward_am03(
@@ -97,10 +95,8 @@ rrs_retrieved <- forward_am03(
   water_type = 2,
   theta_view = 0,
   theta_sun = 20,
-  optically_shallow = T,
   h_w = par_estimates["h_w"],
-  r_b = rrs_bottom,
-  verbose = F
+  r_b = rrs_bottom
 )
 
 ply <- plot_ly() %>%
@@ -119,14 +115,15 @@ ensembles <- ensembles[
     ensembles > as.numeric(ymd_hms("2022-07-06 21:04:50"))
 ]
 
-rrs_hw <- rrs_hw %>%
-  filter(ensemble %in% ensembles) %>%
+rrs_hw_sub <- rrs_hw %>%
+  # filter(ensemble %in% ensembles) %>%
+  filter(wavelength < 725) %>%
   mutate(
     rrs_0m = rrs_0p_to_0m(rrs_estimate),
     h_w = altitude_m + abs(bottom_elevation_m)
   )
 
-ply <- plot_ly(rrs_hw) %>%
+ply <- plot_ly(rrs_hw_sub) %>%
   add_lines(x = ~wavelength, y = ~rrs_0m, name = ~ paste0(ensemble, "_", round(plant_height_m, 2)))
 
 ply
@@ -137,11 +134,10 @@ par_fixed <- c(
   "water_type" = 2,
   "theta_view" = 0,
   "theta_sun" = 20,
-  "optically_shallow" = T,
   "sd" = 1
 )
 
-inversed_data <- rrs_hw %>%
+inversed_data <- rrs_hw_sub %>%
   group_by(ensemble) %>%
   nest() %>%
   mutate(
@@ -150,7 +146,7 @@ inversed_data <- rrs_hw %>%
       ~ inverse_mcmc(
         rrs = .x,
         forward_model = "am03",
-        par_inversed = c("chl", "a_g_440", "bb_p_550", "h_w", "rb_rock_2022", "rb_saccha_2022", "rb_cca_2022"),
+        par_inversed = c("chl", "a_g_440", "bb_p_550", "h_w", "r_rs_b_saccharina", "r_rs_b_cca", "r_rs_b_gravel"),
         prior = NULL,
         lower = c(0, 0, 0, 0, 0, 0, 0),
         upper = c(100, 10, 0.5, 10, 1, 1, 1),
@@ -169,8 +165,8 @@ par_inversed <- inversed_data$par_inversed %>%
   rename_with(.fn = ~ paste0(.x, "_estim")) %>%
   mutate(ensemble = inversed_data$ensemble, .before = 1)
 
-compare_h_w <- rrs_hw %>%
-  select(ensemble, h_w, plant_height_m) %>%
+compare_h_w <- rrs_hw_sub %>%
+  select(ensemble, h_w, plant_height_m, percent_coverage) %>%
   unique() %>%
   inner_join(par_inversed, by = c("ensemble"))
 ```

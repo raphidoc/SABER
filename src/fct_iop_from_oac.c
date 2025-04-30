@@ -32,9 +32,9 @@ SEXP c_iop_from_oac(SEXP wavelength_sexp, SEXP par_sexp) {
   int nprotect = 0;
 
   if (!Rf_isReal(wavelength_sexp))
-    Rf_error("wavelength must be a numeric vector");
+    Rf_error("wavelength must be a numeric vector\n");
   if (!Rf_isReal(par_sexp) || Rf_isNull(Rf_getAttrib(par_sexp, R_NamesSymbol)))
-    Rf_error("par must be a named numeric vector");
+    Rf_error("par must be a named numeric vector\n");
 
   // Coerce integer wavelength to real
   if (TYPEOF(wavelength_sexp) == INTSXP) {

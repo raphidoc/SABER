@@ -8,6 +8,15 @@
   data("a0_a1_phyto", package = pkgname, envir = environment())
   .Call("c_load_a0_a1_data", a0_a1_phyto$wavelength, a0_a1_phyto$a0, a0_a1_phyto$a1)
 
+  data("r_rs_b_gamache", package = pkgname, envir = environment())
+  r_rs_b <- r_rs_b_gamache %>%
+    select(class, wavelength, r_rs_b_mean) %>%
+    tidyr::pivot_wider(
+      names_from = "class",
+      values_from = "r_rs_b_mean",
+      names_prefix = "r_rs_b_"
+    )
+  .Call("c_load_r_rs_b", r_rs_b[[1]] , as.matrix(r_rs_b[,-1]))
 
   # Registry ----------------------------------------------------------------
   register_input_preparer("input_am03", function(par, rrs) {

@@ -30,7 +30,7 @@ static SEXP cached_r_rs_b = NULL;
 // [[register]]
 SEXP c_load_pure_water_data(SEXP wl, SEXP a) {
   if (!Rf_isReal(wl) || !Rf_isReal(a) || Rf_length(wl) != Rf_length(a))
-    Rf_error("Invalid pure water data");
+    Rf_error("Invalid pure water data\n");
 
   if (a_w_wavelength != NULL) R_ReleaseObject(a_w_wavelength);
   if (a_w_value != NULL) R_ReleaseObject(a_w_value);
@@ -47,9 +47,9 @@ SEXP c_load_pure_water_data(SEXP wl, SEXP a) {
 // [[register]]
 SEXP c_load_a0_a1_data(SEXP wl, SEXP a0, SEXP a1) {
   if (!Rf_isReal(wl) || !Rf_isReal(a0) || Rf_length(wl) != Rf_length(a0))
-    Rf_error("Invalid a0 data");
+    Rf_error("Invalid a0 data\n");
   if (!Rf_isReal(wl) || !Rf_isReal(a1) || Rf_length(wl) != Rf_length(a1))
-    Rf_error("Invalid a1 data");
+    Rf_error("Invalid a1 data\n");
 
   if (a0_a1_wavelength != NULL) R_ReleaseObject(a0_a1_wavelength);
   if (a0_value != NULL) R_ReleaseObject(a0_value);
@@ -69,19 +69,19 @@ SEXP c_load_a0_a1_data(SEXP wl, SEXP a0, SEXP a1) {
 // [[register]]
 SEXP c_load_r_rs_b(SEXP wavelength, SEXP matrix) {
   if (!Rf_isReal(wavelength) || !Rf_isMatrix(matrix))
-    Rf_error("Expecting numeric wavelength and matrix");
+    Rf_error("Expecting numeric wavelength and matrix\n");
 
   int nrow = Rf_nrows(matrix);
   if (Rf_length(wavelength) != nrow)
-    Rf_error("wavelength length must match number of rows");
+    Rf_error("wavelength length must match number of rows\n");
 
   SEXP dimnames = Rf_getAttrib(matrix, R_DimNamesSymbol);
   if (TYPEOF(dimnames) != VECSXP || LENGTH(dimnames) != 2)
-    Rf_error("matrix must have dimnames");
+    Rf_error("matrix must have dimnames\n");
 
   SEXP colnames = VECTOR_ELT(dimnames, 1);
   if (!Rf_isString(colnames))
-    Rf_error("column names must be character vector");
+    Rf_error("column names must be character vector\n");
 
   // --- Free old objects safely ---
   if (r_rs_b_wavelength != NULL) R_ReleaseObject(r_rs_b_wavelength);
@@ -116,17 +116,17 @@ double linear_interpolation(SEXP wl_vec, SEXP val_vec, double wl) {
       return val_arr[i] + slope * (wl - wl_arr[i]);
     }
   }
-  Rf_error("Interpolation failed");
+  Rf_error("Interpolation failed\n");
   return NA_REAL;
 }
 
 // --- vector linear interpolation ---
 SEXP interpolate_vector(SEXP wl_old, SEXP val_old, SEXP wl_new, SEXP data_name_sexp) {
   if (!Rf_isReal(wl_old) || !Rf_isReal(val_old) || !Rf_isReal(wl_new))
-    Rf_error("Inputs must be numeric vectors");
+    Rf_error("Inputs must be numeric vectors\n");
 
   if (!Rf_isString(data_name_sexp) || Rf_length(data_name_sexp) != 1)
-    Rf_error("data_name must be a single string");
+    Rf_error("data_name must be a single string\n");
 
   int n_old = Rf_length(wl_old);
   int n_new = Rf_length(wl_new);
@@ -150,7 +150,7 @@ SEXP interpolate_vector(SEXP wl_old, SEXP val_old, SEXP wl_new, SEXP data_name_s
 
   if (extrapolated) {
     const char* data_name = CHAR(STRING_ELT(data_name_sexp, 0));
-    Rf_warning("Extrapolation detected in %s: requested wavelengths outside [%.1f, %.1f] nm; values set to 0",
+    Rf_warning("Extrapolation detected in %s: requested wavelengths outside [%.1f, %.1f] nm; values set to 0\n",
                data_name, wl_min, wl_max);
   }
 
@@ -161,10 +161,10 @@ SEXP interpolate_vector(SEXP wl_old, SEXP val_old, SEXP wl_new, SEXP data_name_s
 // --- matrix linear interpolation ---
 SEXP interpolate_matrix(SEXP wl_old, SEXP mat_old, SEXP wl_new, SEXP data_name_sexp) {
   if (!Rf_isReal(wl_old) || !Rf_isReal(wl_new) || !Rf_isMatrix(mat_old))
-    Rf_error("Inputs must be numeric vectors and matrix");
+    Rf_error("Inputs must be numeric vectors and matrix\n");
 
   if (!Rf_isString(data_name_sexp) || Rf_length(data_name_sexp) != 1)
-    Rf_error("data_name must be a single string");
+    Rf_error("data_name must be a single string\n");
 
   int n_old = Rf_length(wl_old);
   int n_new = Rf_length(wl_new);
@@ -181,10 +181,31 @@ SEXP interpolate_matrix(SEXP wl_old, SEXP mat_old, SEXP wl_new, SEXP data_name_s
   double wl_min = wl_old_ptr[0];
   double wl_max = wl_old_ptr[n_old - 1];
 
+  // for (int j = 0; j < n_class; j++) {
+  //   for (int i = 0; i < n_new; i++) {
+  //     double wl = wl_new_ptr[i];
+  //
+  //     mat_new_ptr[i + j * n_new] = linear_interpolation(wl_old, VECTOR_ELT(mat_old, j), wl);
+  //     if (wl <= wl_min || wl >= wl_max)
+  //       extrapolated = 1;
+  //   }
+  // }
+
   for (int j = 0; j < n_class; j++) {
     for (int i = 0; i < n_new; i++) {
       double wl = wl_new_ptr[i];
-      mat_new_ptr[i + j * n_new] = linear_interpolation(wl_old, VECTOR_ELT(mat_old, j), wl);
+
+      // Extract column slice for interpolation (pointer to column j)
+      SEXP temp_col = PROTECT(Rf_allocVector(REALSXP, n_old));
+      double* temp_col_ptr = REAL(temp_col);
+
+      for (int k = 0; k < n_old; k++) {
+        temp_col_ptr[k] = mat_old_ptr[k + j * n_old];
+      }
+
+      mat_new_ptr[i + j * n_new] = linear_interpolation(wl_old, temp_col, wl);
+      UNPROTECT(1);
+
       if (wl <= wl_min || wl >= wl_max)
         extrapolated = 1;
     }
@@ -192,7 +213,7 @@ SEXP interpolate_matrix(SEXP wl_old, SEXP mat_old, SEXP wl_new, SEXP data_name_s
 
   if (extrapolated) {
     const char* data_name = CHAR(STRING_ELT(data_name_sexp, 0));
-    Rf_warning("Extrapolation detected in %s: requested wavelengths outside [%.1f, %.1f] nm; values set to 0",
+    Rf_warning("Extrapolation detected in %s: requested wavelengths outside [%.1f, %.1f] nm; values set to 0\n",
                data_name, wl_min, wl_max);
   }
 
@@ -224,13 +245,13 @@ SEXP c_build_cache(SEXP wavelengths) {
   if (a_w_wavelength == NULL || a_w_value == NULL ||
       a0_a1_wavelength == NULL || a0_value == NULL || a1_value == NULL ||
       r_rs_b_wavelength == NULL || r_rs_b_matrix == NULL) {
-    Rf_error("Spectral reference data not fully loaded. Call SABER::.onLoad() to initialize datasets.");
+    Rf_error("Spectral reference data not fully loaded. Call SABER::.onLoad() to initialize datasets.\n");
   }
 
   int nprotect = 0;
 
   if (!Rf_isReal(wavelengths) && !Rf_isInteger(wavelengths))
-    Rf_error("wavelength must be numeric or integer vector");
+    Rf_error("wavelength must be numeric or integer vector\n");
 
   if (TYPEOF(wavelengths) == INTSXP)
     wavelengths = Rf_coerceVector(wavelengths, REALSXP);
