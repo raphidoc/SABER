@@ -81,15 +81,6 @@ rrs_bottom <- compute_r_rs_b_lmm(
 )
 
 rrs_retrieved <- forward_am03(
-  # wavelength = rrs$wavelength,
-  # iop = iop,
-  # water_type = 2,
-  # theta_view = 0,
-  # theta_sun = 20,
-  # optically_shallow = T,
-  # h_w = 2,
-  # rrs_bottom = rrs_bottom,
-  # verbose = T
   wavelength = rrs$wavelength,
   iop = iop,
   water_type = 2,
@@ -123,9 +114,49 @@ rrs_hw_sub <- rrs_hw %>%
     h_w = altitude_m + abs(bottom_elevation_m)
   )
 
-ply <- plot_ly(rrs_hw_sub) %>%
-  add_lines(x = ~wavelength, y = ~rrs_0m, name = ~ paste0(ensemble, "_", round(plant_height_m, 2)))
+rrs_hw_sub <- rrs_hw_sub %>%
+  group_by(ensemble) %>%
+  nest() %>%
+  mutate(
+    pass = purrr::map(
+      .x = data, ~ any(.x$rrs_unc > 0.002, na.rm = T)
+    )
+  ) %>%
+  filter(
+    pass == F
+  ) #%>%
+  # unnest(cols=c(data))
 
+# Split by ensemble
+# rrs_split <- split(rrs_hw_sub, rrs_hw_sub$ensemble)
+
+# Build traces for each ensemble
+traces <- purrr::map2(rrs_hw_sub$ensemble, rrs_hw_sub$data, function(ensemble, df) {
+  ens_name <- unique(ensemble)
+
+  plot_ly(data = df) %>%
+    add_ribbons(
+      x = ~wavelength,
+      ymin = ~rrs_estimate - rrs_unc,
+      ymax = ~rrs_estimate + rrs_unc,
+      name = paste0(ens_name, " (uncertainty)"),
+      legendgroup = ens_name,
+      line = list(color = "transparent"),
+      fillcolor = NULL,
+      showlegend = FALSE
+    ) %>%
+    add_lines(
+      x = ~wavelength,
+      y = ~rrs_estimate,
+      name = ens_name,
+      legendgroup = ens_name
+    )
+})
+
+rrs_hw_sub <- rrs_hw_sub %>%
+  unnest(cols=c(data))
+
+ply <- traces[[140]]#purrr::reduce(traces, add_trace)
 ply
 ```
 
@@ -149,7 +180,8 @@ inversed_data <- rrs_hw_sub %>%
         par_inversed = c("chl", "a_g_440", "bb_p_550", "h_w", "r_rs_b_saccharina", "r_rs_b_cca", "r_rs_b_gravel"),
         prior = NULL,
         lower = c(0, 0, 0, 0, 0, 0, 0),
-        upper = c(100, 10, 0.5, 10, 1, 1, 1),
+        best = c(1, 4, 0.04, 5, 0.5, 0.25, 0.25),
+        upper = c(100, 10, 0.5, 20, 1, 1, 1),
         par_fixed = par_fixed,
         iterations = 10000,
         burnin = 2000,
@@ -166,9 +198,11 @@ par_inversed <- inversed_data$par_inversed %>%
   mutate(ensemble = inversed_data$ensemble, .before = 1)
 
 compare_h_w <- rrs_hw_sub %>%
-  select(ensemble, h_w, plant_height_m, percent_coverage) %>%
+  select(ensemble, lat, lon, h_w, plant_height_m, percent_coverage) %>%
   unique() %>%
   inner_join(par_inversed, by = c("ensemble"))
+
+# readr::write_csv(compare_h_w, "~/compare_h_w.csv")
 ```
 
 ```{r}
@@ -226,73 +260,4 @@ prior_bundle <- make_prior_bundle(
   lower = c(0, 0, 0),
   upper = c(30, 5, 0.5)
 )
-
-likelihood <- make_likelihood(
-  model = "am03",
-  error = "log-ll",
-  rrs_observed = rrs,
-  par_fixed = par_fixed
-)
 ```
-
-## Run Inversion
-
-```{r, eval=FALSE}
-out <- inverse_mcmc(
-  prior_bundle,
-  likelihood,
-  iterations = 10000,
-  burnin = 2000,
-  sampler = "DEzs",
-  use_prior = F
-)
-
-summary(out)
-plot(out, start = 2000)
-```
-
-```{r}
-oac_estimates <- tibble(
-  name = names(MAP(out)[[1]]),
-  value = MAP(out)[[1]]
-) %>%
-  filter(name %in% c("chl", "ag_440", "bbp_550")) %>%
-  tidyr::pivot_wider(names_from = "name", values_from = "value")
-
-
-iop <- iop_from_oac(
-  rrs$wavelength,
-  oac_estimates,
-  verbose = T
-)
-
-end_member_fraction <- par_fixed %>%
-  filter(str_detect(parameter, "rb_"))
-
-rrs_bottom <- rrs_bottom_lmm(
-  rrs_end_member = rb_algae_wise,
-  end_member_fraction = end_member_fraction$value,
-  wavelength = rrs$wavelength,
-  verbose = FALSE
-)
-
-rrs_retrieved <- forward_am03(
-  wavelength = rrs$wavelength,
-  iop = iop,
-  water_type = 2,
-  theta_view = 0,
-  theta_sun = 20,
-  optically_shallow = T,
-  h_w = 2,
-  rrs_bottom = rrs_bottom,
-  verbose = T
-)
-
-ply <- plot_ly() %>%
-  add_lines(x = rrs$wavelength, y = rrs$rrs_0m, name = "rrs_observed") %>%
-  add_lines(x = rrs_retrieved$wavelength, y = rrs_retrieved$rrs_0m, name = "rrs_retrieved")
-
-
-ply
-```
-

@@ -3,10 +3,10 @@
 
   # browser()
   data("a_w", package = pkgname, envir = environment())
-  .Call("c_load_pure_water_data", a_w$wavelength, a_w$a_w)
+  .Call("c_load_pure_water", a_w$wavelength, a_w$a_w)
 
   data("a0_a1_phyto", package = pkgname, envir = environment())
-  .Call("c_load_a0_a1_data", a0_a1_phyto$wavelength, a0_a1_phyto$a0, a0_a1_phyto$a1)
+  .Call("c_load_a0_a1", a0_a1_phyto$wavelength, a0_a1_phyto$a0, a0_a1_phyto$a1)
 
   data("r_rs_b_gamache", package = pkgname, envir = environment())
   r_rs_b <- r_rs_b_gamache %>%
@@ -16,7 +16,7 @@
       values_from = "r_rs_b_mean",
       names_prefix = "r_rs_b_"
     )
-  .Call("c_load_r_rs_b", r_rs_b[[1]] , as.matrix(r_rs_b[,-1]))
+  .Call("c_load_r_rs_b", r_rs_b[[1]], colnames(r_rs_b[,-1]) , as.matrix(r_rs_b[,-1]))
 
   # Registry ----------------------------------------------------------------
   register_input_preparer("input_am03", function(par, rrs) {
