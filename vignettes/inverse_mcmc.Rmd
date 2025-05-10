@@ -15,6 +15,30 @@ library(stringr)
 library(dplyr)
 library(tidyr)
 library(lubridate)
+
+font <- list(family = "Times New Roman", size = 20, weight = "normal")
+
+border <- list(
+  type = "rect",
+  fillcolor = "transparent",
+  line = list(width = 0.5),
+  xref = "paper",
+  yref = "paper",
+  x0 = 0,
+  x1 = 1,
+  y0 = 0,
+  y1 = 1
+)
+
+library(reticulate)
+use_condaenv("kaleido", required = TRUE)
+py_config()
+py_run_string("import sys")
+
+here <- function(...) {
+  start <- "/D/Documents/phd/thesis"
+  file.path(start, ...)
+}
 ```
 
 ## Overview
@@ -25,32 +49,33 @@ SABER is an R package for Bayesian inversion of radiative transfer models using 
 
 ```{r}
 rrs <- rrs_hw %>%
-  filter(ensemble == 1657138120) %>%
+  filter(
+    wavelength > 400, wavelength < 720, 
+    ensemble == 1657138160
+    ) %>%
   mutate(rrs_0m = rrs_0p_to_0m(rrs_estimate)) %>%
   select(wavelength, rrs_0m)
 ```
 
 ```{r}
-# How to retrieve bottom reflectance without specifying a class ?
-# Is it feasible ? Definitely seems useful.
 par_fixed <- c(
   "water_type" = 2,
   "theta_view" = 0,
   "theta_sun" = 20,
-  "r_rs_b_saccharina" = 1,
   "sd" = 1
 )
 
 par_estimates <- inverse_mcmc(
   rrs = rrs,
   forward_model = "am03",
-  par_inversed = c("chl", "a_g_440", "bb_p_550", "h_w"),
-  prior = NULL,
-  lower = c(0, 0, 0, 0),
-  upper = c(100, 10, 0.5, 10),
+        par_inversed = c("chl", "a_g_440", "a_g_s", "bb_p_550", "bb_p_gamma", "h_w", "r_rs_b_saccharina", "r_rs_b_cca", "r_rs_b_gravel"),
+        prior = NULL,
+        lower = c(0, 0, 0, 0, 0, 0, 0, 0, 0),
+        best = c(1, 4, 0.017, 0.04, 0.46, 5, 0.5, 0.1, 0.25),
+        upper = c(100, 10, 1, 0.5, 5, 20, 1, 0.15, 1),
   par_fixed = par_fixed,
-  iterations = 10000,
-  burnin = 2000,
+  iterations = 5e4,
+  burnin = 5e3,
   sampler = "DEzs"
 )
 
@@ -74,7 +99,7 @@ iop <- iop_from_oac(
 )
 
 
-r_b_fraction_vec <- par_fixed[grep("^r_rs_b", names(par_fixed))]
+r_b_fraction_vec <- par_estimates[grepl("^r_rs_b(?!.*_sd$)", names(par_estimates), perl = TRUE)]
 
 rrs_bottom <- compute_r_rs_b_lmm(
   fractions = r_b_fraction_vec
@@ -90,12 +115,82 @@ rrs_retrieved <- forward_am03(
   r_b = rrs_bottom
 )
 
+sub_par <- par_estimates[1:9]
+
 ply <- plot_ly() %>%
   add_lines(x = rrs$wavelength, y = rrs$rrs_0m, name = "rrs_observed") %>%
-  add_lines(x = rrs$wavelength, y = rrs_retrieved, name = "rrs_retrieved")
+  add_lines(x = rrs$wavelength, y = rrs_retrieved, name = "rrs_retrieved") %>% 
+  add_annotations(
+    text = ~paste(glue::glue("{names(sub_par)}: {round(sub_par, 3)}"), collapse = "\n"),
+    textangle = 0,
+    x = 1,
+    xshift = 0,
+    y = 1,
+    yref = "paper",
+    xref = "paper",
+    xanchor = "top-left",
+    yanchor = "top-left",
+    showarrow = FALSE,
+    font = font
+  ) %>%
+  layout(
+    yaxis = list(
+      title = TeX("R_\\text{rs}(0^-) [\\text{sr}^{-1}]")
+    ),
+    xaxis = list(
+      title = TeX("\\text{wavelength} [\\text{nm}]")
+    ),
+    font = font,
+    shapes = list(border),
+    legend = list(
+      font = list(
+        size = 20),
+      bgcolor = "rgba(105, 159, 245, 0.0)",#"#FFFFFF",
+      xanchor = "top-right",
+      yanchor = "top-right",
+      x = 0.1,
+      y = 1
+    )
+  ) %>%
+  config(mathjax = "cdn", displayModeBar = T)
 
 ply
+
+# save_image(ply, here("2_chapter/figure/rrs_input_estimates_output_unconstrained.png"), width = 800, height = 700, scale = 4)
 ```
+
+### Bottom reflectance retrieval
+
+```{r}
+r_rs_b_retrieved_unconstrained <- retrieve_r_rs_b_am03(
+  wavelength = rrs$wavelength,
+  iop = iop,
+  r_rs = rrs$rrs_0m,
+  water_type = 2,
+  theta_view = 0,
+  theta_sun = 20,
+  h_w = par_estimates["h_w"]
+)
+
+ply <- plot_ly() %>%
+  add_lines(x = rrs$wavelength, y = r_rs_b_retrieved_unconstrained, name = "r_rs_b_unconstrained") %>%
+  layout(
+    yaxis = list(
+      title = TeX("R_\\text{rs}(\\text{bottom}) [sr^{-1}]")#,
+      # range = c(-0.01, 0.6)
+      ),
+    xaxis = list(
+      title = TeX("\\text{wavelength}[\\text{nm}]")
+      ),
+    font = font,
+    shapes = list(border)
+  ) %>%
+  config(mathjax = "cdn", displayModeBar = T)
+
+ply
+# save_image(ply, here("2_chapter/figure/retrieved_bottom_reflectance_unconstrained.png"), width = 800, height = 700, scale = 4)
+```
+
 ### Batch processing
 
 ```{r}
@@ -108,7 +203,7 @@ ensembles <- ensembles[
 
 rrs_hw_sub <- rrs_hw %>%
   # filter(ensemble %in% ensembles) %>%
-  filter(wavelength < 725) %>%
+  filter(wavelength > 400, wavelength < 720,) %>%
   mutate(
     rrs_0m = rrs_0p_to_0m(rrs_estimate),
     h_w = altitude_m + abs(bottom_elevation_m)
@@ -174,19 +269,20 @@ inversed_data <- rrs_hw_sub %>%
   mutate(
     par_inversed = purrr::map(
       .x = data,
-      ~ inverse_mcmc(
-        rrs = .x,
-        forward_model = "am03",
-        par_inversed = c("chl", "a_g_440", "bb_p_550", "h_w", "r_rs_b_saccharina", "r_rs_b_cca", "r_rs_b_gravel"),
-        prior = NULL,
-        lower = c(0, 0, 0, 0, 0, 0, 0),
-        best = c(1, 4, 0.04, 5, 0.5, 0.25, 0.25),
-        upper = c(100, 10, 0.5, 20, 1, 1, 1),
-        par_fixed = par_fixed,
-        iterations = 10000,
-        burnin = 2000,
-        sampler = "DEzs"
-      )
+      ~ {message(ensemble)
+        inverse_mcmc(
+          rrs = .x,
+          forward_model = "am03",
+          par_inversed = c("chl", "a_g_440", "a_g_s", "bb_p_550", "bb_p_gamma", "h_w", "r_rs_b_saccharina", "r_rs_b_cca", "r_rs_b_gravel"),
+          prior = NULL,
+          lower = c(0, 0, 0, 0, 0, 0, 0, 0, 0),
+          best = c(1, 4, 0.017, 0.04, 0.46, 5, 0.5, 0.25, 0.25),
+          upper = c(100, 10, 1, 0.5, 5, 20, 1, 1, 1),
+          par_fixed = par_fixed,
+          iterations = 5e4,
+          burnin = 5000,
+          sampler = "DEzs"
+        )}
     )
   )
 ```
@@ -207,57 +303,188 @@ compare_h_w <- rrs_hw_sub %>%
 
 ```{r}
 ply <- plot_ly(compare_h_w) %>%
-  add_markers(x = ~h_w, y = ~h_w_estim, color = ~plant_height_m) %>%
-  layout(shapes = list(list(
-    type = "line",
-    x0 = ~ min(h_w, h_w_estim),
-    x1 = ~ max(h_w, h_w_estim),
-    xref = "x",
-    y0 = ~ min(h_w, h_w_estim),
-    y1 = ~ max(h_w, h_w_estim),
-    yref = "y",
-    line = list(color = "black")
-  )))
+  add_markers(
+    x = ~h_w,
+    y = ~h_w_estim,
+    color = ~if_else(ensemble == 1657138160, I("red"), I("blue")),
+    text = ~ensemble
+    ) %>%
+  layout(
+    font=font,
+    
+    xaxis = list(
+      title = list(
+        text = TeX("h_\\text{w}[\\text{m}]\\ \\text{measured}")
+      )
+    ),
+    yaxis = list(
+      title = list(
+        text = TeX("\\hat{h_\\text{w}}[\\text{m}]\\ \\text{retrieved}")
+      )
+    ),
+    shapes = list(
+      border,
+      list(
+        type = "line",
+        x0 = ~ min(h_w, h_w_estim),
+        x1 = ~ max(h_w, h_w_estim),
+        xref = "x",
+        y0 = ~ min(h_w, h_w_estim),
+        y1 = ~ max(h_w, h_w_estim),
+        yref = "y",
+        line = list(color = "black")
+      )
+    )
+  ) %>%
+  config(mathjax = "cdn", displayModeBar = T)
+
 
 ply
+
+# save_image(ply, here("2_chapter/figure/h_w_retrieved_5e4.png"), width = 700, height = 700, scale = 4)
 ```
 
-## Load Sample Data
+## Water depth constrained inversion
 
 ```{r}
-# data("nomad_sample")
-# head(nomad_sample)
-nomad_sample <- sample_nomad()
-```
-
-## Fit Prior Distributions
-
-```{r}
-chl_prior <- make_prior(nomad_sample$chl, dist = "weibull", name = "chl")
-ag_prior <- make_prior(nomad_sample$ag443, dist = "weibull", name = "ag_440")
-# ad_prior <- make_prior(nomad_sample$ad443, dist = "weibull", name = "ad440")
-bbp_prior <- make_prior(nomad_sample$bbp555, dist = "weibull", name = "bbp_550")
-
-priors <- list(chl_prior, ag_prior, bbp_prior)
-```
-
-## Load Rrs
-
-```{r}
-rrs <- readr::read_csv(fs::path_package("SABER", "data", "demo_rrs_Om.csv"))
-
-par_fixed <- tibble(
-  parameter = c("water_type", "theta_view", "theta_sun", "optically_shallow", "h_w", "rb_class_1", "rb_class_2", "rb_class_3", "sd"),
-  value = c(2, 0, 20, T, 2, 0.25, 0.25, 0.5, 0.05),
+# How to retrieve bottom reflectance without specifying a class ?
+# Is it feasible ? Definitely seems useful.
+par_fixed <- c(
+  "water_type" = 2,
+  "theta_view" = 0,
+  "theta_sun" = 20,
+  "h_w" = 4.34,
+  "sd" = 1
 )
+
+par_estimates <- inverse_mcmc(
+  rrs = rrs,
+  forward_model = "am03",
+          par_inversed = c("chl", "a_g_440", "a_g_s", "bb_p_550", "bb_p_gamma", "h_w", "r_rs_b_saccharina", "r_rs_b_cca", "r_rs_b_gravel"),
+          prior = NULL,
+          lower = c(0, 0, 0, 0, 0, 0, 0, 0, 0),
+          best = c(1, 4, 0.017, 0.04, 0.46, 5, 0.5, 0.25, 0.25),
+          upper = c(100, 10, 1, 0.5, 5, 20, 1, 1, 1),
+  par_fixed = par_fixed,
+  iterations = 5e4,
+  burnin = 2000,
+  sampler = "DEzs"
+)
+
+# plot(out)
 ```
 
-## Bundle Priors and Define Likelihood
+```{r}
+# par_estimates <- tibble(
+#   name = names(MAP(out)[[1]]),
+#   value = MAP(out)[[1]]
+# ) %>%
+#   filter(name %in% c("chl", "a_g_440", "bb_p_550", "h_w"))
+#
+# par_estimates <- stats::setNames(par_estimates$value, par_estimates$name)
+
+iop <- iop_from_oac(
+  rrs$wavelength,
+  par_estimates
+)
+
+
+r_b_fraction_vec <- par_estimates[grepl("^r_rs_b(?!.*_sd$)", names(par_estimates), perl = TRUE)]
+
+rrs_bottom <- compute_r_rs_b_lmm(
+  fractions = r_b_fraction_vec
+)
+
+rrs_retrieved <- forward_am03(
+  wavelength = rrs$wavelength,
+  iop = iop,
+  water_type = 2,
+  theta_view = 0,
+  theta_sun = 20,
+  h_w = par_fixed["h_w"],
+  r_b = rrs_bottom
+)
+
+sub_par <- par_estimates[1:6]
+
+ply <- plot_ly() %>%
+  add_lines(x = rrs$wavelength, y = rrs$rrs_0m, name = "rrs_observed") %>%
+  add_lines(x = rrs$wavelength, y = rrs_retrieved, name = "rrs_retrieved") %>% 
+  add_annotations(
+    text = ~paste(glue::glue("{names(sub_par)}: {round(sub_par, 3)}"), collapse = "\n"),
+    textangle = 0,
+    x = 1,
+    xshift = 0,
+    y = 1,
+    yref = "paper",
+    xref = "paper",
+    xanchor = "top-left",
+    yanchor = "top-left",
+    showarrow = FALSE,
+    font = font
+  ) %>%
+  layout(
+    yaxis = list(
+      title = TeX("R_\\text{rs}(0^-) [\\text{sr}^{-1}]")
+    ),
+    xaxis = list(
+      title = TeX("\\text{wavelength} [\\text{nm}]")
+    ),
+    font = font,
+    shapes = list(border),
+    legend = list(
+      font = list(
+        size = 20),
+      bgcolor = "rgba(105, 159, 245, 0.0)",#"#FFFFFF",
+      xanchor = "top-right",
+      yanchor = "top-right",
+      x = 0.1,
+      y = 1
+    )
+  ) %>%
+  config(mathjax = "cdn", displayModeBar = T)
+
+ply
+
+# save_image(ply, here("2_chapter/figure/rrs_input_estimates_output_constrained_hw.png"), width = 800, height = 700, scale = 4)
+```
 
 ```{r}
-prior_bundle <- make_prior_bundle(
-  priors = priors,
-  lower = c(0, 0, 0),
-  upper = c(30, 5, 0.5)
+r_rs_b_retrieved_constrained <- retrieve_r_rs_b_am03(
+  wavelength = rrs$wavelength,
+  iop = iop,
+  r_rs = rrs$rrs_0m,
+  water_type = 2,
+  theta_view = 0,
+  theta_sun = 20,
+  h_w = par_fixed["h_w"]
 )
+
+ply <- plot_ly() %>%
+  add_lines(x = rrs$wavelength, y = r_rs_b_retrieved_constrained, name = "r_rs_b_constrained") %>%
+  add_lines(x = rrs$wavelength, y = r_rs_b_retrieved_unconstrained, name = "r_rs_b_unconstrained") %>%
+  layout(
+    yaxis = list(
+      title = TeX("R_\\text{rs}(\\text{bottom}) [sr^{-1}]"),
+      range = c(-0.01, 0.4)
+      ),
+    xaxis = list(
+      title = TeX("\\text{wavelength}[\\text{nm}]")
+      ),
+    legend = list(
+      font = list(
+        size = 20),
+      bgcolor = "rgba(105, 159, 245, 0.0)",#"#FFFFFF",
+      xanchor = "top-right",
+      yanchor = "top-right",
+      x = 0.5,
+      y = 1
+    ),
+    font = font,
+    shapes = list(border)
+  ) %>%
+  config(mathjax = "cdn", displayModeBar = T)
+
+ply
+# save_image(ply, here("2_chapter/figure/retrieved_bottom_reflectance_constrained_hw.png"), width = 800, height = 700, scale = 4)
 ```

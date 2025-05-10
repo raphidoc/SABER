@@ -37,6 +37,39 @@ forward_am03 <- function(wavelength, iop, water_type = 2,
   )
 }
 
+#' Function to retrieve Rrs_b
+#' `Rrs_Bottom <- (obs_rrs - Rrs_below_deep * (1 - Ars1 * exp(-zB * (Kd + kuW)))) / (Ars2 * exp(-zB * (Kd + kuB)))`
+#'
+#' @export
+retrieve_r_rs_b_am03 <- function(
+    wavelength,
+    iop,
+    r_rs,
+    water_type = 2,
+    theta_sun,
+    theta_view,
+    h_w
+    ) {
+  stopifnot(is.numeric(wavelength))
+  stopifnot(is.list(iop), all(c("a", "bb") %in% names(iop)))
+  stopifnot(is.numeric(iop$a), is.numeric(iop$bb))
+  stopifnot(
+    length(iop$a) == length(wavelength),
+    length(iop$bb) == length(wavelength)
+  )
+
+  .Call(
+    "c_retrieve_r_rs_b_am03",
+    as.numeric(wavelength),
+    list(a = iop$a, bb = iop$bb),
+    as.numeric(r_rs),
+    as.integer(water_type),
+    as.numeric(theta_sun),
+    as.numeric(theta_view),
+    h_w
+  )
+}
+
 # forward_am03 <- function(
 #     wavelength,
 #     iop,

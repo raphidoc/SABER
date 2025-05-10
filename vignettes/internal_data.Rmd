@@ -1,0 +1,72 @@
+---
+title: "internal_data"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{internal_data}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(SABER)
+library(plotly)
+```
+
+## Internal data used by saber bio-optical and forward algorithms
+
+*bio-optical seems restrictive, some element are not biological at all like inorganic matter. What would be a better name ?*
+
+SABER use various pre-computed data tables found in the literature to implement the bio-opticals and forward models algorithm.
+Those data tables used internally are:
+* Pure water absorption spectra (*NO REF*)
+* Phytoplancton absorption spectra (Prieur & Satyendranath, 1981)
+* End-members bottom reflectance spectra (Mabit et al. (in preparation))
+
+### Data cache
+
+The SABER R package use, the C saber-lib for it's speed and single implementation that can be used across various programming language (R, STAN, Python).
+
+For efficient data management, the sabr-lib use a data cache approach where all the input spectral tables are stored and kept as is for the lifetime of the program. Internally, the function `ensure_cache` and `build_cache` will respectively ensure that the user requested wavelength match the wavelength in the data cache. If not, the cache will be build by interpolating all the original tables at the user requested wavelength. The original tables are never changed. This approach allow a single interpolation of all spectral data at the requested wavelength, which gives a massive speed up when hundred of thousands of simulation are required in Markov Chain Monte Carlo Inversion. The program can change the input parameters (chl, a_g_440, bb_p_550, \*class_fraction\*) without having to re-interpolate on each iteration.
+
+For debug purpose, those c internal function are available, but not exported (you can access them with SABER:::):
+`build_cache(wavelength)`
+`get_a_w()`
+
+## Pure water absorption
+
+I don't know where the pure water absortion data used in SABER originally came from.
+It goes from 190 to 3995 nm. We are mostly interested in the 350 - 800 range.
+
+```{r}
+a_w %>%
+  filter(wavelength > 350 & wavelength < 800) %>%
+  plot_ly() %>%
+  add_lines(x = ~wavelength, y = ~a_w, name = "raw a_w")
+```
+
+## Phytoplankton absorption data
+
+a0 and a1 phytoplankton absorption coefficient Prieur & Satyendranath (1981).
+
+```{r}
+a0_a1_phyto %>%
+  plot_ly(x = ~wavelength) %>%
+  add_lines(y = ~a0, name = "raw a0") %>%
+  add_lines(y = ~a1, name = "raw a1")
+```
+
+## Bottom remote sensing reflectance
+
+```{r}
+r_rs_b_gamache %>%
+  plot_ly(x = ~wavelength) %>%
+  add_lines(y = ~r_rs_b_mean, color = ~class)
+```
+

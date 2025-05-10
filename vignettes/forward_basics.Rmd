@@ -1,0 +1,140 @@
+---
+title: "forward_basics"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{forward_basics}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(SABER)
+library(plotly)
+
+font <- list(family = "Times New Roman", size = 20, weight = "normal")
+
+border <- list(
+  type = "rect",
+  fillcolor = "transparent",
+  line = list(width = 0.5),
+  xref = "paper",
+  yref = "paper",
+  x0 = 0,
+  x1 = 1,
+  y0 = 0,
+  y1 = 1
+)
+
+library(reticulate)
+use_condaenv("kaleido", required = TRUE)
+py_config()
+py_run_string("import sys")
+
+here <- function(...) {
+  start <- "/D/Documents/phd/thesis"
+  file.path(start, ...)
+}
+
+wavelength <- seq(350, 800, 10)
+```
+
+# Bio-optical modeling
+
+Bio-optical modelling refer to the link we draw between Optically Active Constituents (OAC) and Inherent Optical Proprieties (IOP). The function `iop_from_oac` implement this, using some data and option presented in the literature.
+
+```{r}
+oac <- c("chl" = 1, "a_g_440" = 0.4, "bb_p_550" = 0.09, "a_g_s" = 0.017, "bb_p_gamma" = 0.1)
+
+iop <- iop_from_oac(wavelength, oac)
+
+plot_ly(x = wavelength) %>%
+  add_lines(y = iop$a, name = "absorption") %>%
+  add_lines(y = iop$bb, name = "backscattering")
+```
+
+## Bottom reflectance
+
+```{r}
+r_frac <- c("r_rs_b_saccharina" = 1)
+
+r_rs_b_saccharina <- compute_r_rs_b_lmm(r_frac)
+
+plot_ly(x = wavelength) %>%
+  add_lines(y = r_rs_b_saccharina)
+```
+
+## Albert and Mobley 2003 forward model
+
+```{r}
+rrs <- forward_am03(
+  wavelength = wavelength,
+  iop = iop,
+  water_type = 2,
+  theta_sun = 20, theta_view = 0,
+  h_w = 5,
+  r_b = r_rs_b
+  )
+
+plot_ly(x = wavelength) %>%
+  add_lines(y = rrs)
+```
+
+### Black OSW vs Deep Rrs
+
+Assume that the bottom is black at ~4 m
+
+```{r}
+h_w <- c(1, 2, 3, 4, 6, 8, 100)
+
+res <- purrr::map_df(
+  .x = h_w,
+  ~ tibble(
+    h_w = .x,
+    wavelength = wavelength,
+    rrs = forward_am03(
+      wavelength = wavelength,
+      iop = iop,
+      water_type = 2,
+      theta_sun = 20, theta_view = 0,
+      h_w = .x,
+      r_b = rep(0, times = length(wavelength))#r_rs_b_saccharina#
+    ))
+)
+
+ply <- res %>%
+  group_by(h_w) %>%
+  plot_ly(x = ~wavelength) %>%
+  add_lines(y = ~rrs, color = ~as.factor(h_w), colors = c("#CAF0F8", "#90E0EF", "#00B4D8", "#0077B6", "#03045E", "#03045E", "#03045E")) %>%
+  layout(
+    xaxis = list(
+      title = TeX("\\Large{\\text{wavelength} [\\text{nm}]}")#,
+      # range=c(25,50)
+    ),
+    yaxis = list(
+      title = TeX("\\Large{R_\\text{rs}(0^-) [\\text{sr}^{-1}]}")
+    ),
+    font = font,
+    shapes=list(border),
+    legend = list(
+      font = list(
+        size = 20),
+      bgcolor = "rgba(105, 159, 245, 0.0)",#"#FFFFFF",
+      xanchor = "top-left",
+      yanchor = "top-left",
+      x = 0.01,
+      y = 1
+    )
+    ) %>%
+  config(mathjax = "cdn", displayModeBar = F)
+
+ply
+
+# save_image(ply, here("2_chapter/figure/rrs_deep_vs_black_osw.png"), width = 800, height = 700, scale = 4)
+```

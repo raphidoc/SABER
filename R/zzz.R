@@ -1,7 +1,8 @@
 .onLoad <- function(libname, pkgname) {
   # C data ------------------------------------------------------------------
 
-  # browser()
+  message("saber-lib v", .Call("c_saber_version"))
+
   data("a_w", package = pkgname, envir = environment())
   .Call("c_load_pure_water", a_w$wavelength, a_w$a_w)
 
@@ -58,4 +59,11 @@
   register_objective_function("lee99", function(modelled, observed, par) {
     lee99(modelled = modelled, observed = observed, wavelength = par[["wavelength"]])
   })
+}
+
+.onUnload <- function(libpath)
+{
+  # Tell the DLL to free every malloc() it owns
+  invisible(.Call("c_saber_reset_tables"))
+  library.dynam.unload("SABER", libpath)
 }
