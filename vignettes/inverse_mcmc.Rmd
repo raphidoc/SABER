@@ -8,7 +8,7 @@ vignette: >
 ---
 
 ```{r setup, include = FALSE}
-library(SABER)
+# library(SABER)
 library(plotly)
 library(BayesianTools)
 library(stringr)
@@ -50,8 +50,9 @@ SABER is an R package for Bayesian inversion of radiative transfer models using 
 ```{r}
 rrs <- rrs_hw %>%
   filter(
-    wavelength > 400, wavelength < 720, 
-    ensemble == 1657138160
+    wavelength > 400, wavelength < 720,
+    # ensemble == 1657138160
+    ensemble == 1657138460
     ) %>%
   mutate(rrs_0m = rrs_0p_to_0m(rrs_estimate)) %>%
   select(wavelength, rrs_0m)
@@ -65,21 +66,19 @@ par_fixed <- c(
   "sd" = 1
 )
 
-par_estimates <- inverse_mcmc(
+par_unconstrained <- inverse_mcmc(
   rrs = rrs,
   forward_model = "am03",
         par_inversed = c("chl", "a_g_440", "a_g_s", "bb_p_550", "bb_p_gamma", "h_w", "r_rs_b_saccharina", "r_rs_b_cca", "r_rs_b_gravel"),
         prior = NULL,
         lower = c(0, 0, 0, 0, 0, 0, 0, 0, 0),
-        best = c(1, 4, 0.017, 0.04, 0.46, 5, 0.5, 0.1, 0.25),
-        upper = c(100, 10, 1, 0.5, 5, 20, 1, 0.15, 1),
+        best = c(1, 4, 0.017, 0.04, 0.46, 4, 0.5, 0.1, 0.25),
+        upper = c(10, 10, 1, 0.1, 5, 20, 1, 0.15, 1),
   par_fixed = par_fixed,
   iterations = 5e4,
-  burnin = 5e3,
+  burnin = 2000,
   sampler = "DEzs"
 )
-
-# plot(out)
 ```
 
 Now we can compare what those OAC gives in "am03" and compare that with our input rrs.
@@ -93,33 +92,32 @@ Now we can compare what those OAC gives in "am03" and compare that with our inpu
 #
 # par_estimates <- stats::setNames(par_estimates$value, par_estimates$name)
 
-iop <- iop_from_oac(
+iop_unconstrained <- iop_from_oac(
   rrs$wavelength,
-  par_estimates
+  par_unconstrained
 )
 
-
-r_b_fraction_vec <- par_estimates[grepl("^r_rs_b(?!.*_sd$)", names(par_estimates), perl = TRUE)]
+r_b_fraction_vec <- par_unconstrained[grepl("^r_rs_b(?!.*_sd$)", names(par_unconstrained), perl = TRUE)]
 
 rrs_bottom <- compute_r_rs_b_lmm(
   fractions = r_b_fraction_vec
 )
 
-rrs_retrieved <- forward_am03(
+rrs_unconstrained <- forward_am03(
   wavelength = rrs$wavelength,
-  iop = iop,
+  iop = iop_unconstrained,
   water_type = 2,
   theta_view = 0,
   theta_sun = 20,
-  h_w = par_estimates["h_w"],
+  h_w = par_unconstrained["h_w"],
   r_b = rrs_bottom
 )
 
-sub_par <- par_estimates[1:9]
+sub_par <- par_unconstrained[1:9]
 
 ply <- plot_ly() %>%
   add_lines(x = rrs$wavelength, y = rrs$rrs_0m, name = "rrs_observed") %>%
-  add_lines(x = rrs$wavelength, y = rrs_retrieved, name = "rrs_retrieved") %>% 
+  add_lines(x = rrs$wavelength, y = rrs_unconstrained, name = "rrs_retrieved") %>% 
   add_annotations(
     text = ~paste(glue::glue("{names(sub_par)}: {round(sub_par, 3)}"), collapse = "\n"),
     textangle = 0,
@@ -164,20 +162,20 @@ ply
 ```{r}
 r_rs_b_retrieved_unconstrained <- retrieve_r_rs_b_am03(
   wavelength = rrs$wavelength,
-  iop = iop,
+  iop = iop_unconstrained,
   r_rs = rrs$rrs_0m,
   water_type = 2,
   theta_view = 0,
   theta_sun = 20,
-  h_w = par_estimates["h_w"]
+  h_w = par_unconstrained["h_w"]
 )
 
 ply <- plot_ly() %>%
   add_lines(x = rrs$wavelength, y = r_rs_b_retrieved_unconstrained, name = "r_rs_b_unconstrained") %>%
   layout(
     yaxis = list(
-      title = TeX("R_\\text{rs}(\\text{bottom}) [sr^{-1}]")#,
-      # range = c(-0.01, 0.6)
+      title = TeX("R_\\text{rs}(\\text{bottom}) [sr^{-1}]"),
+      range = c(-0.01, 0.6)
       ),
     xaxis = list(
       title = TeX("\\text{wavelength}[\\text{nm}]")
@@ -277,10 +275,10 @@ inversed_data <- rrs_hw_sub %>%
           prior = NULL,
           lower = c(0, 0, 0, 0, 0, 0, 0, 0, 0),
           best = c(1, 4, 0.017, 0.04, 0.46, 5, 0.5, 0.25, 0.25),
-          upper = c(100, 10, 1, 0.5, 5, 20, 1, 1, 1),
+          upper = c(20, 10, 1, 0.5, 5, 20, 1, 1, 1),
           par_fixed = par_fixed,
           iterations = 5e4,
-          burnin = 5000,
+          burnin = 2000,
           sampler = "DEzs"
         )}
     )
@@ -306,7 +304,8 @@ ply <- plot_ly(compare_h_w) %>%
   add_markers(
     x = ~h_w,
     y = ~h_w_estim,
-    color = ~if_else(ensemble == 1657138160, I("red"), I("blue")),
+    # color = ~if_else(ensemble == 1657138160, I("red"), I("blue")),
+    color = ~if_else(ensemble == 1657138460, I("red"), I("blue")),
     text = ~ensemble
     ) %>%
   layout(
@@ -353,18 +352,19 @@ par_fixed <- c(
   "water_type" = 2,
   "theta_view" = 0,
   "theta_sun" = 20,
-  "h_w" = 4.34,
+  # "h_w" = 4.34,
+  "h_w" = 4.44,
   "sd" = 1
 )
 
-par_estimates <- inverse_mcmc(
+par_constrained <- inverse_mcmc(
   rrs = rrs,
   forward_model = "am03",
-          par_inversed = c("chl", "a_g_440", "a_g_s", "bb_p_550", "bb_p_gamma", "h_w", "r_rs_b_saccharina", "r_rs_b_cca", "r_rs_b_gravel"),
+          par_inversed = c("chl", "a_g_440", "a_g_s", "bb_p_550", "bb_p_gamma", "r_rs_b_saccharina", "r_rs_b_cca", "r_rs_b_gravel"),
           prior = NULL,
-          lower = c(0, 0, 0, 0, 0, 0, 0, 0, 0),
-          best = c(1, 4, 0.017, 0.04, 0.46, 5, 0.5, 0.25, 0.25),
-          upper = c(100, 10, 1, 0.5, 5, 20, 1, 1, 1),
+          lower = c(0, 0, 0, 0, 0, 0, 0, 0),
+          best = c(1, 4, 0.017, 0.04, 0.46, 0.5, 0.25, 0.25),
+          upper = c(20, 10, 1, 0.5, 5, 1, 1, 1),
   par_fixed = par_fixed,
   iterations = 5e4,
   burnin = 2000,
@@ -385,17 +385,16 @@ par_estimates <- inverse_mcmc(
 
 iop <- iop_from_oac(
   rrs$wavelength,
-  par_estimates
+  par_constrained
 )
 
-
-r_b_fraction_vec <- par_estimates[grepl("^r_rs_b(?!.*_sd$)", names(par_estimates), perl = TRUE)]
+r_b_fraction_vec <- par_constrained[grepl("^r_rs_b(?!.*_sd$)", names(par_constrained), perl = TRUE)]
 
 rrs_bottom <- compute_r_rs_b_lmm(
   fractions = r_b_fraction_vec
 )
 
-rrs_retrieved <- forward_am03(
+rrs_constrained <- forward_am03(
   wavelength = rrs$wavelength,
   iop = iop,
   water_type = 2,
@@ -405,11 +404,11 @@ rrs_retrieved <- forward_am03(
   r_b = rrs_bottom
 )
 
-sub_par <- par_estimates[1:6]
+sub_par <- par_constrained[1:8]
 
 ply <- plot_ly() %>%
   add_lines(x = rrs$wavelength, y = rrs$rrs_0m, name = "rrs_observed") %>%
-  add_lines(x = rrs$wavelength, y = rrs_retrieved, name = "rrs_retrieved") %>% 
+  add_lines(x = rrs$wavelength, y = rrs_constrained, name = "rrs_retrieved") %>% 
   add_annotations(
     text = ~paste(glue::glue("{names(sub_par)}: {round(sub_par, 3)}"), collapse = "\n"),
     textangle = 0,
@@ -463,13 +462,18 @@ r_rs_b_retrieved_constrained <- retrieve_r_rs_b_am03(
 ply <- plot_ly() %>%
   add_lines(x = rrs$wavelength, y = r_rs_b_retrieved_constrained, name = "r_rs_b_constrained") %>%
   add_lines(x = rrs$wavelength, y = r_rs_b_retrieved_unconstrained, name = "r_rs_b_unconstrained") %>%
+  add_lines(
+    x = unique(r_rs_b_gamache$wavelength),
+    y = r_rs_b_gamache$r_rs_b_mean[r_rs_b_gamache$class == "saccharina"],
+    name = "saccharina") %>%
   layout(
     yaxis = list(
       title = TeX("R_\\text{rs}(\\text{bottom}) [sr^{-1}]"),
-      range = c(-0.01, 0.4)
+      range = c(-0.01, 0.06)
       ),
     xaxis = list(
-      title = TeX("\\text{wavelength}[\\text{nm}]")
+      title = TeX("\\text{wavelength}[\\text{nm}]"),
+      range = c(450, 720)
       ),
     legend = list(
       font = list(

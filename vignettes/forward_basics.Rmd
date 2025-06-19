@@ -42,7 +42,7 @@ here <- function(...) {
   file.path(start, ...)
 }
 
-wavelength <- seq(350, 800, 10)
+wavelength <- unique(rrs_hw$wavelength)
 ```
 
 # Bio-optical modeling
@@ -50,19 +50,22 @@ wavelength <- seq(350, 800, 10)
 Bio-optical modelling refer to the link we draw between Optically Active Constituents (OAC) and Inherent Optical Proprieties (IOP). The function `iop_from_oac` implement this, using some data and option presented in the literature.
 
 ```{r}
-oac <- c("chl" = 1, "a_g_440" = 0.4, "bb_p_550" = 0.09, "a_g_s" = 0.017, "bb_p_gamma" = 0.1)
+# oac <- c("chl" = 24.442, "a_g_440" = 0.798, "bb_p_550" = 0.009, "a_g_s" = 0.032, "bb_p_gamma" = 3.166)
+oac <- c("chl" = 3.065, "a_g_440" = 0.234, "bb_p_550" = 0.003, "a_g_s" = 0.027, "bb_p_gamma" = 0.209)
 
 iop <- iop_from_oac(wavelength, oac)
 
 plot_ly(x = wavelength) %>%
   add_lines(y = iop$a, name = "absorption") %>%
-  add_lines(y = iop$bb, name = "backscattering")
+  add_lines(y = iop$bb, name = "backscattering") %>%
+  add_lines(y = - iop$a+iop$bb, name = "transmission")
 ```
 
 ## Bottom reflectance
 
 ```{r}
-r_frac <- c("r_rs_b_saccharina" = 1)
+# r_frac <- c("r_rs_b_saccharina" = 0.54, "r_rs_b_cca" = 0.136, "r_rs_b_gravel" = 0.015)
+r_frac <- c("r_rs_b_saccharina" = 1)#, "r_rs_b_cca" = 0.008, "r_rs_b_gravel" = 0.013)
 
 r_rs_b_saccharina <- compute_r_rs_b_lmm(r_frac)
 
@@ -78,15 +81,15 @@ rrs <- forward_am03(
   iop = iop,
   water_type = 2,
   theta_sun = 20, theta_view = 0,
-  h_w = 5,
-  r_b = r_rs_b
+  h_w = 4.34,
+  r_b = r_rs_b_saccharina
   )
 
 plot_ly(x = wavelength) %>%
   add_lines(y = rrs)
 ```
 
-### Black OSW vs Deep Rrs
+## Black OSW vs Deep Rrs
 
 Assume that the bottom is black at ~4 m
 
@@ -104,31 +107,52 @@ res <- purrr::map_df(
       water_type = 2,
       theta_sun = 20, theta_view = 0,
       h_w = .x,
-      r_b = rep(0, times = length(wavelength))#r_rs_b_saccharina#
+      r_b = r_rs_b_saccharina#rep(0, times = length(wavelength))#
     ))
 )
 
 ply <- res %>%
   group_by(h_w) %>%
   plot_ly(x = ~wavelength) %>%
-  add_lines(y = ~rrs, color = ~as.factor(h_w), colors = c("#CAF0F8", "#90E0EF", "#00B4D8", "#0077B6", "#03045E", "#03045E", "#03045E")) %>%
+  add_lines(y = ~rrs, color = ~as.factor(h_w), colors = c("#CAF0F8", "#90E0EF", "#00B4D8",
+                                                          "#0077B6",
+                                                          "#03045E",
+                                                          "red",#"#03045E",
+                                                          "#03045E")) %>% 
+  add_annotations(
+    text = ~paste(glue::glue("{names(oac)}: {round(oac, 3)}"), collapse = "\n"),
+    textangle = 0,
+    x = 0,
+    xshift = 0,
+    y = 1,
+    yref = "paper",
+    xref = "paper",
+    xanchor = "top-left",
+    yanchor = "top-left",
+    showarrow = FALSE,
+    font = font
+  ) %>%
   layout(
     xaxis = list(
       title = TeX("\\Large{\\text{wavelength} [\\text{nm}]}")#,
       # range=c(25,50)
     ),
     yaxis = list(
-      title = TeX("\\Large{R_\\text{rs}(0^-) [\\text{sr}^{-1}]}")
+      title = TeX("\\Large{R_\\text{rs}(0^-) [\\text{sr}^{-1}]}"),
+      range = c(0, 0.006)
     ),
     font = font,
     shapes=list(border),
     legend = list(
+      title = list(text=TeX("\\Large{h_\\text{w} [\\text{m}]}")),
       font = list(
         size = 20),
       bgcolor = "rgba(105, 159, 245, 0.0)",#"#FFFFFF",
-      xanchor = "top-left",
-      yanchor = "top-left",
-      x = 0.01,
+      yref = "paper",
+      xref = "paper",
+      xanchor = "top-right",
+      yanchor = "top-right",
+      x = 1,
       y = 1
     )
     ) %>%
@@ -136,5 +160,5 @@ ply <- res %>%
 
 ply
 
-# save_image(ply, here("2_chapter/figure/rrs_deep_vs_black_osw.png"), width = 800, height = 700, scale = 4)
+# save_image(ply, here("2_chapter/figure/rrs_deep_vs_saccharina_osw.png"), width = 800, height = 700, scale = 4)
 ```

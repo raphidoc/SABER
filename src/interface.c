@@ -126,7 +126,7 @@ SEXP c_compute_r_rs_b_lmm(SEXP s_fractions) {
   int n_cls = LENGTH(s_fractions);
   const double *fractions = REAL(s_fractions);
 
-  // Extract class names from the names() attribute
+  // Extract class names
   SEXP s_names = getAttrib(s_fractions, R_NamesSymbol);
   if (s_names == R_NilValue || LENGTH(s_names) != n_cls) {
     Rf_error("`fractions` must be a *named* numeric vector");
@@ -137,7 +137,7 @@ SEXP c_compute_r_rs_b_lmm(SEXP s_fractions) {
     class_names[i] = CHAR(STRING_ELT(s_names, i));
   }
 
-  int n_wl = get_n_wl(); // from your saber-lib
+  int n_wl = get_n_wl();
 
   SEXP result = PROTECT(allocVector(REALSXP, n_wl));
   double *rrs_b = REAL(result);

@@ -34,6 +34,7 @@ make_prior_bundle <- function(priors, lower, upper, best_guess = NULL) {
   )
 }
 
+#' @export
 inverse_mcmc <- function(
     rrs,
     forward_model,
@@ -46,6 +47,8 @@ inverse_mcmc <- function(
     iterations = 10000,
     burnin = 2000,
     sampler = "DEzs") {
+
+
   likelihood <- objective_factory(
     model = forward_model,
     objective = "log-ll",
@@ -71,8 +74,7 @@ inverse_mcmc <- function(
     settings = list(
       iterations = iterations,
       burnin = burnin,
-      message = TRUE,
-      nrChains = 1
+      message = TRUE
     ),
     sampler = sampler
   )
