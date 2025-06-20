@@ -3,6 +3,8 @@
 
   message("saber-lib v", .Call("c_saber_version"))
 
+  # browser()
+
   data("a_w", package = pkgname, envir = environment())
   .Call("c_load_pure_water", a_w$wavelength, a_w$a_w)
 
