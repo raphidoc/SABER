@@ -1,8 +1,5 @@
 .onLoad <- function(libname, pkgname) {
   # C data ------------------------------------------------------------------
-
-  message("saber-lib v", .Call("c_saber_version"))
-
   data("a_w", package = pkgname, envir = environment())
   .Call("c_load_pure_water", a_w$wavelength, a_w$a_w)
 
@@ -17,7 +14,7 @@
       values_from = "r_rs_b_mean",
       names_prefix = "r_rs_b_"
     )
-  .Call("c_load_r_rs_b", r_rs_b[[1]], colnames(r_rs_b[,-1]) , as.matrix(r_rs_b[,-1]))
+  .Call("c_load_r_rs_b", r_rs_b[[1]], as.matrix(r_rs_b[,-1]))
 
   # Registry ----------------------------------------------------------------
   register_input_preparer("input_am03", function(par, rrs) {
