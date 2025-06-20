@@ -28,7 +28,7 @@ static SEXP cached_r_rs_b = NULL;
 // --- Loader functions ---
 
 // [[register]]
-SEXP c_load_pure_water_data(SEXP wl, SEXP a) {
+SEXP c_load_pure_water(SEXP wl, SEXP a) {
   if (!Rf_isReal(wl) || !Rf_isReal(a) || Rf_length(wl) != Rf_length(a))
     Rf_error("Invalid pure water data\n");
 
@@ -45,7 +45,7 @@ SEXP c_load_pure_water_data(SEXP wl, SEXP a) {
 }
 
 // [[register]]
-SEXP c_load_a0_a1_data(SEXP wl, SEXP a0, SEXP a1) {
+SEXP c_load_a0_a1(SEXP wl, SEXP a0, SEXP a1) {
   if (!Rf_isReal(wl) || !Rf_isReal(a0) || Rf_length(wl) != Rf_length(a0))
     Rf_error("Invalid a0 data\n");
   if (!Rf_isReal(wl) || !Rf_isReal(a1) || Rf_length(wl) != Rf_length(a1))

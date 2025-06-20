@@ -2,8 +2,8 @@
 #include <Rinternals.h>
 #include <R_ext/Rdynload.h>
 
-extern SEXP c_load_pure_water_data(SEXP, SEXP);
-extern SEXP c_load_a0_a1_data(SEXP, SEXP, SEXP);
+extern SEXP c_load_pure_water(SEXP, SEXP);
+extern SEXP c_load_a0_a1(SEXP, SEXP, SEXP);
 extern SEXP c_pure_water_iop(SEXP);
 extern SEXP c_iop_from_oac(SEXP, SEXP);
 extern SEXP c_forward_am03(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
@@ -11,8 +11,8 @@ extern SEXP c_load_r_rs_b(SEXP, SEXP);
 extern SEXP c_compute_r_rs_b_lmm(SEXP);
 
 static const R_CallMethodDef CallEntries[] = {
-  {"c_load_pure_water_data", (DL_FUNC) &c_load_pure_water_data, 2},
-  {"c_load_a0_a1_data", (DL_FUNC) &c_load_a0_a1_data, 3},
+  {"c_load_pure_water", (DL_FUNC) &c_load_pure_water, 2},
+  {"c_load_a0_a1", (DL_FUNC) &c_load_a0_a1, 3},
   {"c_pure_water_iop", (DL_FUNC) &c_pure_water_iop, 1},
   {"c_iop_from_oac", (DL_FUNC) &c_iop_from_oac, 2},
   {"c_forward_am03", (DL_FUNC) &c_forward_am03, 7},

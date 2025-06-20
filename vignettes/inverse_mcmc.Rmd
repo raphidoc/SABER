@@ -9,6 +9,7 @@ vignette: >
 
 ```{r setup, include = FALSE}
 # library(SABER)
+devtools::load_all(".")
 library(plotly)
 library(BayesianTools)
 library(stringr)
@@ -62,20 +63,19 @@ rrs <- rrs_hw %>%
 par_fixed <- c(
   "water_type" = 2,
   "theta_view" = 0,
-  "theta_sun" = 20,
-  "sd" = 1
+  "theta_sun" = 20
 )
 
 par_unconstrained <- inverse_mcmc(
   rrs = rrs,
   forward_model = "am03",
-        par_inversed = c("chl", "a_g_440", "a_g_s", "bb_p_550", "bb_p_gamma", "h_w", "r_rs_b_saccharina", "r_rs_b_cca", "r_rs_b_gravel"),
+        par_inversed = c("chl", "a_g_440", "a_g_s", "bb_p_550", "bb_p_gamma", "h_w", "r_rs_b_saccharina", "r_rs_b_cca", "r_rs_b_gravel", "sd"),
         prior = NULL,
-        lower = c(0, 0, 0, 0, 0, 0, 0, 0, 0),
-        best = c(1, 4, 0.017, 0.04, 0.46, 4, 0.5, 0.1, 0.25),
-        upper = c(10, 10, 1, 0.1, 5, 20, 1, 0.15, 1),
+        lower = c(0, 0, 0, 0, 0, 0, 0, 0, 0, 0.0001),
+        best = c(1, 4, 0.017, 0.04, 0.46, 4, 0.5, 0.1, 0.25, 0.1),
+        upper = c(10, 10, 1, 0.1, 5, 20, 1, 0.15, 1, 1),
   par_fixed = par_fixed,
-  iterations = 5e4,
+  iterations = 2.5e4,
   burnin = 2000,
   sampler = "DEzs"
 )
@@ -212,7 +212,7 @@ rrs_hw_sub <- rrs_hw_sub %>%
   nest() %>%
   mutate(
     pass = purrr::map(
-      .x = data, ~ any(.x$rrs_unc > 0.002, na.rm = T)
+      .x = data, ~ any(.x$rrs_unc > 0.001, na.rm = T)
     )
   ) %>%
   filter(
@@ -275,9 +275,9 @@ inversed_data <- rrs_hw_sub %>%
           prior = NULL,
           lower = c(0, 0, 0, 0, 0, 0, 0, 0, 0),
           best = c(1, 4, 0.017, 0.04, 0.46, 5, 0.5, 0.25, 0.25),
-          upper = c(20, 10, 1, 0.5, 5, 20, 1, 1, 1),
+          upper = c(20, 10, 1, 0.5, 5, 9, 1, 1, 1),
           par_fixed = par_fixed,
-          iterations = 5e4,
+          iterations = 2.5e4,
           burnin = 2000,
           sampler = "DEzs"
         )}
@@ -305,12 +305,12 @@ ply <- plot_ly(compare_h_w) %>%
     x = ~h_w,
     y = ~h_w_estim,
     # color = ~if_else(ensemble == 1657138160, I("red"), I("blue")),
-    color = ~if_else(ensemble == 1657138460, I("red"), I("blue")),
+    # color = ~if_else(ensemble == 1657138460, I("red"), I("blue")),
+    color = ~a_g_440_estim,
     text = ~ensemble
     ) %>%
   layout(
     font=font,
-    
     xaxis = list(
       title = list(
         text = TeX("h_\\text{w}[\\text{m}]\\ \\text{measured}")
@@ -353,18 +353,17 @@ par_fixed <- c(
   "theta_view" = 0,
   "theta_sun" = 20,
   # "h_w" = 4.34,
-  "h_w" = 4.44,
-  "sd" = 1
+  "h_w" = 4.44
 )
 
 par_constrained <- inverse_mcmc(
   rrs = rrs,
   forward_model = "am03",
-          par_inversed = c("chl", "a_g_440", "a_g_s", "bb_p_550", "bb_p_gamma", "r_rs_b_saccharina", "r_rs_b_cca", "r_rs_b_gravel"),
+          par_inversed = c("chl", "a_g_440", "a_g_s", "bb_p_550", "bb_p_gamma", "r_rs_b_saccharina", "r_rs_b_cca", "r_rs_b_gravel", "sd"),
           prior = NULL,
-          lower = c(0, 0, 0, 0, 0, 0, 0, 0),
-          best = c(1, 4, 0.017, 0.04, 0.46, 0.5, 0.25, 0.25),
-          upper = c(20, 10, 1, 0.5, 5, 1, 1, 1),
+          lower = c(0, 0, 0, 0, 0, 0, 0, 0, 0.001),
+          best = c(1, 4, 0.017, 0.04, 0.46, 0.5, 0.25, 0.25, 0.1),
+          upper = c(20, 10, 1, 0.5, 5, 1, 1, 1, 1),
   par_fixed = par_fixed,
   iterations = 5e4,
   burnin = 2000,

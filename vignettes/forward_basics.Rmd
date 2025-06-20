@@ -57,15 +57,15 @@ iop <- iop_from_oac(wavelength, oac)
 
 plot_ly(x = wavelength) %>%
   add_lines(y = iop$a, name = "absorption") %>%
-  add_lines(y = iop$bb, name = "backscattering") %>%
-  add_lines(y = - iop$a+iop$bb, name = "transmission")
+  add_lines(y = iop$bb, name = "backscattering") #%>%
+  # add_lines(y = - iop$a+iop$bb, name = "transmission")
 ```
 
 ## Bottom reflectance
 
 ```{r}
 # r_frac <- c("r_rs_b_saccharina" = 0.54, "r_rs_b_cca" = 0.136, "r_rs_b_gravel" = 0.015)
-r_frac <- c("r_rs_b_saccharina" = 1)#, "r_rs_b_cca" = 0.008, "r_rs_b_gravel" = 0.013)
+r_frac <- c("r_rs_b_saccharina" = 1)#0.265, "r_rs_b_cca" = 0.011, "r_rs_b_gravel" = 0.029)
 
 r_rs_b_saccharina <- compute_r_rs_b_lmm(r_frac)
 
