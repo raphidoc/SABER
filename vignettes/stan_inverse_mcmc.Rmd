@@ -1,0 +1,885 @@
+---
+title: "Introduction to SABER MCMC"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Introduction to SABER}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+# library(SABER)
+devtools::load_all(".")
+library(plotly)
+library(BayesianTools)
+library(stringr)
+library(dplyr)
+library(tidyr)
+library(lubridate)
+library(cmdstanr)
+
+font <- list(family = "Times New Roman", size = 20, weight = "normal")
+
+border <- list(
+  type = "rect",
+  fillcolor = "transparent",
+  line = list(width = 0.5),
+  xref = "paper",
+  yref = "paper",
+  x0 = 0,
+  x1 = 1,
+  y0 = 0,
+  y1 = 1
+)
+
+library(reticulate)
+use_condaenv("kaleido", required = TRUE)
+py_config()
+py_run_string("import sys")
+
+here <- function(...) {
+  start <- "/D/Documents/phd/thesis"
+  file.path(start, ...)
+}
+```
+
+## Overview
+
+SABER is an R package for Bayesian inversion of radiative transfer models using in-situ data and prior distribution fitting.
+
+### Compile STAN model
+
+```{r}
+# model <- cmdstan_model("/home/raphael/CLionProjects/saber-lib/src/model.stan")
+
+model <- cmdstan_model(
+  stan_file = "/home/raphael/CLionProjects/saber-lib/src/model.stan",
+  user_header = "/home/raphael/CLionProjects/saber-lib/src/rtm_stan_funcs.hpp"
+)
+```
+
+## Fully unconstrained inversion with uniform priors
+
+```{r}
+rrs <- rrs_hw %>%
+  filter(
+    wavelength > 400, wavelength < 720,
+    # ensemble == 1657138160
+    ensemble == 1657138460
+    ) %>%
+  mutate(rrs_0m = rrs_0p_to_0m(rrs_estimate)) %>%
+  select(wavelength, rrs_0m, rrs_unc)
+```
+
+
+```{r}
+library(dplyr)
+library(tidyr)
+
+interp1 <- function(x, y, xout) {
+  approx(x = x, y = y, xout = xout, rule = 2, ties = "ordered")$y
+}
+
+# Main builder -------------------------------------------------------------
+build_saber_stan_luts <- function(wavelength,
+                                 a_w_df,
+                                 a0_a1_df,
+                                 r_rs_b_long,
+                                 bb_w_fun = function(wl) 0.00111 * (wl / 500)^(-4.32)) {
+
+  stopifnot(is.numeric(wavelength), length(wavelength) >= 2)
+
+  # ---- a_w ----
+  a_w <- interp1(a_w_df$wavelength, a_w_df$a_w, wavelength)
+
+  # ---- a0/a1 ----
+  a0 <- interp1(a0_a1_df$wavelength, a0_a1_df$a0, wavelength)
+  a1 <- interp1(a0_a1_df$wavelength, a0_a1_df$a1, wavelength)
+
+  # ---- bb_w (pure water backscatter) ----
+  bb_w <- bb_w_fun(wavelength)
+
+  # ---- bottom library: long -> wide matrix ----
+  # Expect columns: class, wavelength, r_rs_b_mean (adjust names below if needed)
+  rb <- r_rs_b_long %>%
+    transmute(class = as.character(.data$class),
+              wl    = .data$wavelength,
+              mean  = .data$r_rs_b_mean)
+
+  classes <- rb %>%
+    distinct(class) %>%
+    arrange(class) %>%
+    pull(class)
+
+  rb_wide <- rb %>%
+    pivot_wider(names_from = class, values_from = mean) %>%
+    arrange(wl)
+
+  rb_wl_master <- rb_wide$wl
+
+  r_rs_b_lib <- sapply(classes, function(cl) {
+    interp1(rb_wl_master, rb_wide[[cl]], wavelength)
+  })
+
+  r_rs_b_lib <- matrix(r_rs_b_lib, nrow = length(wavelength), ncol = length(classes))
+  colnames(r_rs_b_lib) <- classes
+
+  list(
+    a_w = a_w,
+    a0 = a0,
+    a1 = a1,
+    bb_w = bb_w,
+    r_rs_b_lib = r_rs_b_lib,
+    classes = classes
+  )
+}
+
+make_saber_stan_data <- function(rrs_obs, wavelength, sigma,
+                                water_type, theta_sun_deg, theta_view_deg, shallow,
+                                bottom_class_names,
+                                pkgname = "SABER") {
+
+  # load datasets from package (like your .onLoad did)
+  a_w_df     <- get(data("a_w", package = pkgname), envir = environment())
+  a0_a1_df   <- get(data("a0_a1_phyto", package = pkgname), envir = environment())
+  r_rs_b_long <- get(data("r_rs_b_gamache", package = pkgname), envir = environment())
+
+  luts <- build_saber_stan_luts(
+    wavelength = wavelength,
+    a_w_df = a_w_df,
+    a0_a1_df = a0_a1_df,
+    r_rs_b_long = r_rs_b_long
+  )
+
+  bottom_class_ids <- match(bottom_class_names, luts$classes)
+  if (any(is.na(bottom_class_ids))) {
+    missing <- bottom_class_names[is.na(bottom_class_ids)]
+    stop("Bottom class not found in library: ", paste(missing, collapse = ", "))
+  }
+
+  list(
+    n_wl = length(wavelength),
+    wavelength = wavelength,
+    rrs_obs = rrs_obs,
+    sigma = sigma,
+
+    a_w = luts$a_w,
+    a0 = luts$a0,
+    a1 = luts$a1,
+    bb_w = luts$bb_w,
+
+    n_class = length(luts$classes),
+    r_rs_b_lib = luts$r_rs_b_lib,
+    bottom_class_ids = bottom_class_ids,
+
+    water_type = water_type,
+    theta_sun_deg = theta_sun_deg,
+    theta_view_deg = theta_view_deg,
+    shallow = shallow
+  )
+}
+
+
+stan_data <- make_saber_stan_data(
+  rrs_obs = rrs$rrs_0m,
+  wavelength = rrs$wavelength,
+  sigma = rrs$rrs_unc,
+  water_type = 2,
+  theta_sun_deg = 20,
+  theta_view_deg = 0,
+  shallow = 1,
+  bottom_class_names = c("saccharina", "cca", "gravel"),
+  pkgname = "SABER")
+```
+
+```{r}
+# bottom_class_id = c(1 = "r_rs_b_saccharina", 2 = "r_rs_b_cca", 3 = "r_rs_b_gravel")
+
+fit <- model$sample(
+  data = stan_data,
+  chains = 4,
+  parallel_chains = 4,
+  iter_warmup = 500,
+  iter_sampling = 500
+)
+```
+
+Now we can compare what those OAC gives in "am03" and compare that with our input rrs.
+
+```{r}
+library(posterior)
+library(plotly)
+library(latex2exp)
+library(glue)
+
+# --- Extract posterior draws for rrs_hat ---
+draws_hat <- fit$draws(variables = "rrs_hat")
+rrs_hat_mat <- as_draws_matrix(draws_hat)  # draws x n_wl columns
+
+rrs_hat_mean <- colMeans(rrs_hat_mat)
+rrs_hat_q <- apply(rrs_hat_mat, 2, quantile, probs = c(0.05, 0.95))
+rrs_hat_lo <- rrs_hat_q[1, ]
+rrs_hat_hi <- rrs_hat_q[2, ]
+
+# --- Parameter summary for annotation (posterior mean) ---
+# Added: a_g_s, a_nap_s, bb_p_gamma
+par_vars <- c(
+  "chl", "a_g_440", "a_g_s",
+  "a_nap_440", "a_nap_s",
+  "bb_p_550", "bb_p_gamma",
+  "h_w", "bottom_frac"
+)
+
+draws_par <- fit$draws(variables = par_vars)
+par_mean <- colMeans(as_draws_matrix(draws_par))
+
+# keep it readable (optional)
+sub_par <- par_mean
+sub_par <- sub_par[order(names(sub_par))]
+
+annot_text <- paste(glue("{names(sub_par)}: {round(sub_par, 3)}"), collapse = "\n")
+
+# --- Plotly ---
+ply <- plot_ly() %>%
+  # Observed
+  add_lines(x = rrs$wavelength, y = rrs$rrs_0m, name = "rrs_observed") %>%
+
+  # 90% band (filled polygon)
+  add_ribbons(
+    x = rrs$wavelength,
+    ymin = rrs_hat_lo,
+    ymax = rrs_hat_hi,
+    name = "rrs_hat 90% CI",
+    hoverinfo = "skip",
+    line = list(width = 0)
+  ) %>%
+
+  # Posterior mean forward model
+  add_lines(
+    x = rrs$wavelength, y = rrs_hat_mean,
+    name = "rrs_hat mean",
+    line = list(width = 3)
+  ) %>%
+
+  # Annotation block
+  add_annotations(
+    text = annot_text,
+    textangle = 0,
+    x = 1,
+    xshift = 0,
+    y = 1,
+    yref = "paper",
+    xref = "paper",
+    xanchor = "top-left",
+    yanchor = "top-left",
+    showarrow = FALSE,
+    font = font
+  ) %>%
+
+  layout(
+    yaxis = list(title = TeX("R_\\text{rs}(0^-) [\\text{sr}^{-1}]")),
+    xaxis = list(title = TeX("\\text{wavelength} [\\text{nm}]")),
+    font = font,
+    shapes = list(border),
+    legend = list(
+      font = list(size = 20),
+      bgcolor = "rgba(105, 159, 245, 0.0)",
+      xanchor = "top-right",
+      yanchor = "top-right",
+      x = 0.1,
+      y = 1
+    )
+  ) %>%
+  config(mathjax = "cdn", displayModeBar = TRUE)
+
+ply
+```
+
+### Bottom reflectance retrieval
+
+```{r}
+r_rs_b_retrieved_unconstrained <- retrieve_r_rs_b_am03(
+  wavelength = rrs$wavelength,
+  iop = iop_unconstrained,
+  r_rs = rrs$rrs_0m,
+  water_type = 2,
+  theta_view = 0,
+  theta_sun = 20,
+  h_w = par_unconstrained["h_w"]
+)
+
+ply <- plot_ly() %>%
+  add_lines(x = rrs$wavelength, y = r_rs_b_retrieved_unconstrained, name = "r_rs_b_unconstrained") %>%
+  layout(
+    yaxis = list(
+      title = TeX("R_\\text{rs}(\\text{bottom}) [sr^{-1}]"),
+      range = c(-0.01, 0.6)
+      ),
+    xaxis = list(
+      title = TeX("\\text{wavelength}[\\text{nm}]")
+      ),
+    font = font,
+    shapes = list(border)
+  ) %>%
+  config(mathjax = "cdn", displayModeBar = T)
+
+ply
+# save_image(ply, here("2_chapter/figure/retrieved_bottom_reflectance_unconstrained.png"), width = 800, height = 700, scale = 4)
+```
+
+### Batch processing
+
+```{r}
+library(posterior)
+
+# Fast-ish quantiles (posterior::quantile2 avoids some overhead)
+qfun <- function(x, probs) posterior::quantile2(x, probs = probs)
+
+summarize_rrs_hat <- function(fit, probs = c(0.05, 0.95), chunk_wl = 64) {
+  # Pull only rrs_hat, keep as matrix: draws x (n_obs*n_wl)
+  mat <- as_draws_matrix(fit$draws(variables = "rrs_hat"))
+  cn  <- colnames(mat)
+
+  # Parse indices rrs_hat[n,wl]
+  idx <- do.call(
+    rbind,
+    strcapture("rrs_hat\\[(\\d+),(\\d+)\\]", cn,
+               proto = list(n = integer(), wl = integer()))
+  )
+  n_obs <- max(idx[, "n"])
+  n_wl  <- max(idx[, "wl"])
+
+  # Order columns by (n, wl) so we can reshape cheaply
+  o <- order(idx[, "n"], idx[, "wl"])
+  mat <- mat[, o, drop = FALSE]
+  idx <- idx[o, , drop = FALSE]
+
+  # Preallocate outputs
+  mean_hat <- matrix(NA_real_, n_obs, n_wl)
+  qs_hat   <- array(NA_real_, dim = c(n_obs, n_wl, length(probs)),
+                    dimnames = list(NULL, NULL, paste0("q", probs*100)))
+
+  # Process by wavelength chunks (better cache/memory behavior)
+  # columns are ordered by n then wl, so each wl forms a regular stride
+  for (wl0 in seq(1, n_wl, by = chunk_wl)) {
+    wl1 <- min(n_wl, wl0 + chunk_wl - 1)
+
+    cols <- which(idx[, "wl"] >= wl0 & idx[, "wl"] <= wl1)
+    sub  <- mat[, cols, drop = FALSE]
+
+    m <- colMeans(sub)
+    q <- apply(sub, 2, qfun, probs = probs)  # returns length(probs) x ncol
+
+    # Reshape back: because ordered by (n,wl), we can fill by index quickly
+    n_idx  <- idx[cols, "n"]
+    wl_idx <- idx[cols, "wl"]
+    mean_hat[cbind(n_idx, wl_idx)] <- m
+    for (k in seq_along(probs)) {
+      qs_hat[cbind(n_idx, wl_idx, k)] <- q[k, ]
+    }
+  }
+
+  list(mean = mean_hat, quantiles = qs_hat)
+}
+
+summarize_params <- function(fit, par_vars,
+                             probs = c(0.05, 0.5, 0.95)) {
+  summarise_draws(
+    fit$draws(variables = par_vars),
+    mean, sd,
+    ~posterior::quantile2(.x, probs = probs),
+    rhat, ess_bulk, ess_tail
+  )
+}
+
+fit_metrics <- function(rrs_obs, mean_hat, q05, q95) {
+  stopifnot(all(dim(rrs_obs) == dim(mean_hat)))
+
+  resid <- rrs_obs - mean_hat
+  rmse <- sqrt(rowMeans(resid^2))
+
+  # Spectral Angle Mapper (SAM)
+  dotp <- rowSums(rrs_obs * mean_hat)
+  n1   <- sqrt(rowSums(rrs_obs^2))
+  n2   <- sqrt(rowSums(mean_hat^2))
+  sam  <- acos(pmax(-1, pmin(1, dotp / (n1 * n2))))
+
+  # Coverage of 90% CI (or whatever probs you used)
+  coverage <- rowMeans(rrs_obs >= q05 & rrs_obs <= q95)
+
+  data.frame(rmse = rmse, sam = sam, coverage = coverage)
+}
+
+postprocess_stan <- function(fit, rrs_obs, par_vars,
+                             spec_probs = c(0.05, 0.95),
+                             chunk_wl = 64) {
+
+  spec <- summarize_rrs_hat(fit, probs = spec_probs, chunk_wl = chunk_wl)
+
+  mean_hat <- spec$mean
+  q_lo <- spec$quantiles[, , 1]
+  q_hi <- spec$quantiles[, , 2]
+
+  metrics <- fit_metrics(rrs_obs, mean_hat, q_lo, q_hi)
+  par_sum <- summarize_params(fit, par_vars)
+
+  list(
+    spectrum_mean = mean_hat,
+    spectrum_q_lo = q_lo,
+    spectrum_q_hi = q_hi,
+    metrics = metrics,
+    param_summary = par_sum
+  )
+}
+
+
+```
+
+
+```{r}
+ensembles <- unique(rrs_hw$ensemble)
+
+ensembles <- ensembles[
+  ensembles > as.numeric(ymd_hms("2022-07-06 20:58:20")) &
+    ensembles > as.numeric(ymd_hms("2022-07-06 21:04:50"))
+]
+
+rrs_hw_sub <- rrs_hw %>%
+  filter(wavelength > 400, wavelength < 720) %>%
+  mutate(
+    rrs_0m = rrs_0p_to_0m(rrs_estimate),
+    h_w_meas = altitude_m + abs(bottom_elevation_m)
+  )
+
+rrs_hw_sub <- rrs_hw_sub %>%
+  group_by(ensemble) %>%
+  nest() %>%
+  mutate(
+    pass = purrr::map_lgl(data, ~ any(.x$rrs_unc > 0.001, na.rm = TRUE))
+  ) %>%
+  filter(pass == FALSE)# & ensemble %in% ensembles)
+```
+
+```{r}
+run_one_ensemble <- function(df, ensemble_id, mod, stan_data_base,
+                             out_dir,
+                             iter_warmup = 500, iter_sampling = 500,
+                             chains = 4, seed = 123,
+                             use_measured_sigma = TRUE,
+                             spec_probs = c(0.05, 0.95),
+                             keep_fit = FALSE) {
+
+  stopifnot(dir.exists(out_dir))
+
+  # --- Inputs aligned to Stan wavelength grid ---
+  rrs_obs <- as.numeric(df$rrs_0m)
+  wl      <- as.numeric(df$wavelength)
+
+  stopifnot(length(wl) == stan_data_base$n_wl)
+  stopifnot(all(abs(wl - stan_data_base$wavelength) < 1e-8))
+
+
+  
+  sigma_vec <- if (use_measured_sigma) {
+    as.numeric(df$rrs_unc)          # already 1 SD per wavelength
+  } else {
+    rep(0.005, stan_data_base$n_wl)  # fallback
+  }
+  
+  # safety floor
+  sigma_vec[!is.finite(sigma_vec) | sigma_vec <= 0] <- NA_real_
+  sigma_floor <- 1e-12
+  sigma_vec <- pmax(sigma_vec, sigma_floor)
+  
+  stopifnot(length(sigma_vec) == stan_data_base$n_wl)
+  
+  stan_data <- within(stan_data_base, {
+    rrs_obs <- rrs_obs
+    sigma   <- sigma_vec
+  })
+
+  # --- Output folder per ensemble ---
+  ens_dir <- file.path(out_dir, paste0("ensemble_", ensemble_id))
+  dir.create(ens_dir, recursive = TRUE, showWarnings = FALSE)
+
+  # --- Sample, saving CSVs into the ensemble folder (best way to "save Stan result") ---
+  fit <- mod$sample(
+    data = stan_data,
+    seed = seed,
+    chains = chains,
+    parallel_chains = chains,
+    iter_warmup = iter_warmup,
+    iter_sampling = iter_sampling,
+    refresh = 0,
+    output_dir = ens_dir
+  )
+
+  # Save minimal provenance
+  # saveRDS(
+  #   list(ensemble_id = ensemble_id,
+  #        wl = wl,
+  #        sigma = sigma,
+  #        iter_warmup = iter_warmup,
+  #        iter_sampling = iter_sampling,
+  #        chains = chains,
+  #        seed = seed),
+  #   file = file.path(ens_dir, "run_info.rds")
+  # )
+  # saveRDS(stan_data, file = file.path(ens_dir, "stan_data.rds"))
+
+  # --- Diagnostics (fast, robust) ---
+  summ_all <- fit$summary()
+
+  diag_draws <- fit$sampler_diagnostics()
+  diag_mat   <- posterior::as_draws_matrix(diag_draws)
+
+  n_divergent <- if ("divergent__" %in% colnames(diag_mat)) sum(diag_mat[, "divergent__"]) else NA_integer_
+
+  diag <- list(
+    n_divergent = n_divergent,
+    max_rhat = max(summ_all$rhat, na.rm = TRUE),
+    min_ess_bulk = min(summ_all$ess_bulk, na.rm = TRUE)
+  )
+  saveRDS(diag, file = file.path(ens_dir, "diagnostics.rds"))
+
+  # --- Parameter posterior summaries (mean/sd/quantiles + rhat/ess) ---
+  par_vars <- c("chl", "a_g_440", "a_nap_440", "bb_p_550", "h_w", "bottom_frac")
+
+  par_sum <- posterior::summarise_draws(
+    fit$draws(variables = par_vars),
+    mean, sd,
+    ~posterior::quantile2(.x, probs = c(0.05, 0.5, 0.95)),
+    rhat, ess_bulk, ess_tail
+  )
+  saveRDS(par_sum, file = file.path(ens_dir, "param_summary.rds"))
+
+  # A wide "means" row (handy for quick joins)
+  par_mean_wide <- try({
+    par_sum |>
+      dplyr::filter(.data$variable %in% c("chl","a_g_440","a_nap_440","bb_p_550","h_w") |
+                      grepl("^bottom_frac\\[", .data$variable)) |>
+      dplyr::select(.data$variable, .data$mean) |>
+      tidyr::pivot_wider(names_from = .data$variable, values_from = .data$mean)
+  }, silent = TRUE)
+  if (!inherits(par_mean_wide, "try-error")) {
+    saveRDS(par_mean_wide, file = file.path(ens_dir, "param_mean_wide.rds"))
+  } else {
+    par_mean_wide <- NULL
+  }
+
+  # --- Spectrum post-processing: mean + quantiles + fit metrics ---
+  # Works for rrs_hat[wl] OR rrs_hat[1,wl]
+  rrs_out <- NULL
+  draws_hat <- try(fit$draws(variables = "rrs_hat"), silent = TRUE)
+
+  if (!inherits(draws_hat, "try-error")) {
+    mat <- posterior::as_draws_matrix(draws_hat)
+    cn  <- colnames(mat)
+
+    # Parse either [wl] or [n,wl]
+    idx1 <- suppressWarnings(
+      strcapture("rrs_hat\\[(\\d+)\\]$", cn, proto = list(wl = integer()))
+    )
+    idx2 <- suppressWarnings(
+      strcapture("rrs_hat\\[(\\d+),(\\d+)\\]$", cn, proto = list(n = integer(), wl = integer()))
+    )
+
+    if (!all(is.na(idx1[, "wl"]))) {
+      wl_idx <- idx1[, "wl"]
+    } else if (!all(is.na(idx2[, "wl"]))) {
+      # take n==1 if present; otherwise just use wl
+      keep <- is.na(idx2[, "n"]) | idx2[, "n"] == 1
+      mat  <- mat[, keep, drop = FALSE]
+      wl_idx <- idx2[keep, "wl"]
+      cn <- colnames(mat)
+    } else {
+      stop("Could not parse rrs_hat indices. Expected rrs_hat[wl] or rrs_hat[n,wl].")
+    }
+
+    o <- order(wl_idx)
+    mat <- mat[, o, drop = FALSE]
+    wl_idx <- wl_idx[o]
+
+    # Summaries per wavelength
+    rrs_hat_mean <- colMeans(mat)
+    rrs_hat_q    <- apply(mat, 2, posterior::quantile2, probs = spec_probs)
+    # rrs_hat_q: length(probs) x n_wl
+
+    # Ensure full length n_wl (in case some indices missing)
+    mean_full <- rep(NA_real_, stan_data_base$n_wl)
+    q_lo_full <- rep(NA_real_, stan_data_base$n_wl)
+    q_hi_full <- rep(NA_real_, stan_data_base$n_wl)
+
+    mean_full[wl_idx] <- rrs_hat_mean
+    q_lo_full[wl_idx] <- rrs_hat_q[1, ]
+    q_hi_full[wl_idx] <- rrs_hat_q[2, ]
+
+    # Fit metrics
+    resid <- rrs_obs - mean_full
+    rmse  <- sqrt(mean(resid^2, na.rm = TRUE))
+
+    dotp <- sum(rrs_obs * mean_full, na.rm = TRUE)
+    n1   <- sqrt(sum(rrs_obs^2, na.rm = TRUE))
+    n2   <- sqrt(sum(mean_full^2, na.rm = TRUE))
+    sam  <- acos(max(-1, min(1, dotp / (n1 * n2))))
+
+    coverage <- mean(rrs_obs >= q_lo_full & rrs_obs <= q_hi_full, na.rm = TRUE)
+
+    rrs_out <- list(
+      wl = wl,
+      mean = mean_full,
+      q_lo = q_lo_full,
+      q_hi = q_hi_full,
+      probs = spec_probs,
+      metrics = data.frame(rmse = rmse, sam = sam, coverage = coverage)
+    )
+
+    saveRDS(rrs_out, file = file.path(ens_dir, "rrs_posterior_summaries.rds"))
+    saveRDS(rrs_out$metrics, file = file.path(ens_dir, "rrs_fit_metrics.rds"))
+  }
+
+  # Save a lightweight overall summary table (optional but handy)
+  saveRDS(summ_all, file = file.path(ens_dir, "stan_summary_all.rds"))
+
+  # If you want to persist the CmdStanMCMC object itself:
+  # - the CSVs in ens_dir are already the canonical saved result
+  # - you can also serialize the fit object, but it can be large
+  if (keep_fit) {
+    saveRDS(fit, file = file.path(ens_dir, "fit_object.rds"))
+  }
+
+  list(
+    ensemble = ensemble_id,
+    out_dir = ens_dir,
+    diag = diag,
+    par_mean = par_mean_wide,
+    par_summary = par_sum,
+    rrs = rrs_out,
+    fit = if (keep_fit) fit else NULL
+  )
+}
+```
+
+```{r}
+# run_one_ensemble(df, ensemble_id, mod, stan_data_base,
+#                              out_dir,
+#                              iter_warmup = 500, iter_sampling = 500,
+#                              chains = 4, seed = 123,
+#                              use_measured_sigma = TRUE,
+#                              spec_probs = c(0.05, 0.95),
+#                              keep_fit = FALSE)
+
+results <- rrs_hw_sub %>%
+  mutate(
+    stan = purrr::map2(
+      data,
+      ensemble,
+      ~ run_one_ensemble(
+        .x, .y, model, stan_data, out_dir = "/D/Documents/phd/thesis/4_chapter/data/stan/"
+          )
+      )
+  )
+```
+
+```{r}
+par_inversed <- results %>%
+  transmute(ensemble, par_mean = purrr::map(stan, "par_mean")) %>%
+  tidyr::unnest(par_mean) %>%
+  rename_with(~ paste0(.x, "_estim"), .cols = -ensemble)
+
+diag_tbl <- results %>%
+  transmute(
+    ensemble,
+    n_divergent = purrr::map_int(stan, ~ .x$diag$n_divergent),
+    max_rhat = purrr::map_dbl(stan, ~ .x$diag$max_rhat),
+    min_ess_bulk = purrr::map_dbl(stan, ~ .x$diag$min_ess_bulk)
+  )
+```
+
+
+```{r}
+
+compare_h_w <- rrs_hw_sub %>%
+  unnest(cols = c(data)) %>%
+  select(ensemble, lat, lon, h_w_meas, plant_height_m, percent_coverage) %>%
+  distinct() %>%
+  inner_join(par_inversed, by = "ensemble")
+
+ply <- plot_ly(compare_h_w) %>%
+  add_markers(
+    x = ~h_w_meas,
+    y = ~`h_w_estim`,
+    # color = ~`a_g_440_estim`,
+    text = ~ensemble
+  ) %>%
+  layout(
+    font = font,
+    xaxis = list(title = list(text = TeX("h_\\text{w}[\\text{m}]\\ \\text{measured}"))),
+    yaxis = list(title = list(text = TeX("\\hat{h_\\text{w}}[\\text{m}]\\ \\text{retrieved}"))),
+    shapes = list(
+      border,
+      list(
+        type = "line",
+        x0 = min(compare_h_w$h_w_meas, compare_h_w$`h_w_estim`, na.rm = TRUE),
+        x1 = max(compare_h_w$h_w_meas, compare_h_w$`h_w_estim`, na.rm = TRUE),
+        xref = "x",
+        y0 = min(compare_h_w$h_w_meas, compare_h_w$`h_w_estim`, na.rm = TRUE),
+        y1 = max(compare_h_w$h_w_meas, compare_h_w$`h_w_estim`, na.rm = TRUE),
+        yref = "y",
+        line = list(color = "black")
+      )
+    )
+  ) %>%
+  config(mathjax = "cdn", displayModeBar = TRUE)
+
+ply
+```
+
+## Water depth constrained inversion
+
+```{r}
+# How to retrieve bottom reflectance without specifying a class ?
+# Is it feasible ? Definitely seems useful.
+par_fixed <- c(
+  "water_type" = 2,
+  "theta_view" = 0,
+  "theta_sun" = 20,
+  # "h_w" = 4.34,
+  "h_w" = 4.44
+)
+
+par_constrained <- inverse_mcmc(
+  rrs = rrs,
+  forward_model = "am03",
+          par_inversed = c("chl", "a_g_440", "a_g_s", "bb_p_550", "bb_p_gamma", "r_rs_b_saccharina", "r_rs_b_cca", "r_rs_b_gravel", "sd"),
+          prior = NULL,
+          lower = c(0, 0, 0, 0, 0, 0, 0, 0, 0.001),
+          best = c(1, 4, 0.017, 0.04, 0.46, 0.5, 0.25, 0.25, 0.1),
+          upper = c(20, 10, 1, 0.5, 5, 1, 1, 1, 1),
+  par_fixed = par_fixed,
+  iterations = 5e4,
+  burnin = 2000,
+  sampler = "DEzs"
+)
+
+# plot(out)
+```
+
+```{r}
+# par_estimates <- tibble(
+#   name = names(MAP(out)[[1]]),
+#   value = MAP(out)[[1]]
+# ) %>%
+#   filter(name %in% c("chl", "a_g_440", "bb_p_550", "h_w"))
+#
+# par_estimates <- stats::setNames(par_estimates$value, par_estimates$name)
+
+iop <- iop_from_oac(
+  rrs$wavelength,
+  par_constrained
+)
+
+r_b_fraction_vec <- par_constrained[grepl("^r_rs_b(?!.*_sd$)", names(par_constrained), perl = TRUE)]
+
+rrs_bottom <- compute_r_rs_b_lmm(
+  fractions = r_b_fraction_vec
+)
+
+rrs_constrained <- forward_am03(
+  wavelength = rrs$wavelength,
+  iop = iop,
+  water_type = 2,
+  theta_view = 0,
+  theta_sun = 20,
+  h_w = par_fixed["h_w"],
+  r_b = rrs_bottom
+)
+
+sub_par <- par_constrained[1:8]
+
+ply <- plot_ly() %>%
+  add_lines(x = rrs$wavelength, y = rrs$rrs_0m, name = "rrs_observed") %>%
+  add_lines(x = rrs$wavelength, y = rrs_constrained, name = "rrs_retrieved") %>% 
+  add_annotations(
+    text = ~paste(glue::glue("{names(sub_par)}: {round(sub_par, 3)}"), collapse = "\n"),
+    textangle = 0,
+    x = 1,
+    xshift = 0,
+    y = 1,
+    yref = "paper",
+    xref = "paper",
+    xanchor = "top-left",
+    yanchor = "top-left",
+    showarrow = FALSE,
+    font = font
+  ) %>%
+  layout(
+    yaxis = list(
+      title = TeX("R_\\text{rs}(0^-) [\\text{sr}^{-1}]")
+    ),
+    xaxis = list(
+      title = TeX("\\text{wavelength} [\\text{nm}]")
+    ),
+    font = font,
+    shapes = list(border),
+    legend = list(
+      font = list(
+        size = 20),
+      bgcolor = "rgba(105, 159, 245, 0.0)",#"#FFFFFF",
+      xanchor = "top-right",
+      yanchor = "top-right",
+      x = 0.1,
+      y = 1
+    )
+  ) %>%
+  config(mathjax = "cdn", displayModeBar = T)
+
+ply
+
+# save_image(ply, here("2_chapter/figure/rrs_input_estimates_output_constrained_hw.png"), width = 800, height = 700, scale = 4)
+```
+
+```{r}
+r_rs_b_retrieved_constrained <- retrieve_r_rs_b_am03(
+  wavelength = rrs$wavelength,
+  iop = iop,
+  r_rs = rrs$rrs_0m,
+  water_type = 2,
+  theta_view = 0,
+  theta_sun = 20,
+  h_w = par_fixed["h_w"]
+)
+
+ply <- plot_ly() %>%
+  add_lines(x = rrs$wavelength, y = r_rs_b_retrieved_constrained, name = "r_rs_b_constrained") %>%
+  add_lines(x = rrs$wavelength, y = r_rs_b_retrieved_unconstrained, name = "r_rs_b_unconstrained") %>%
+  add_lines(
+    x = unique(r_rs_b_gamache$wavelength),
+    y = r_rs_b_gamache$r_rs_b_mean[r_rs_b_gamache$class == "saccharina"],
+    name = "saccharina") %>%
+  layout(
+    yaxis = list(
+      title = TeX("R_\\text{rs}(\\text{bottom}) [sr^{-1}]"),
+      range = c(-0.01, 0.06)
+      ),
+    xaxis = list(
+      title = TeX("\\text{wavelength}[\\text{nm}]"),
+      range = c(450, 720)
+      ),
+    legend = list(
+      font = list(
+        size = 20),
+      bgcolor = "rgba(105, 159, 245, 0.0)",#"#FFFFFF",
+      xanchor = "top-right",
+      yanchor = "top-right",
+      x = 0.5,
+      y = 1
+    ),
+    font = font,
+    shapes = list(border)
+  ) %>%
+  config(mathjax = "cdn", displayModeBar = T)
+
+ply
+# save_image(ply, here("2_chapter/figure/retrieved_bottom_reflectance_constrained_hw.png"), width = 800, height = 700, scale = 4)
+```
