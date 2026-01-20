@@ -1,5 +1,3 @@
-
-
 # data builders -----------------------------------------------------------
 
 interp1 <- function(x, y, xout) {
@@ -125,13 +123,11 @@ build_saber_stan_luts <- function(wavelength,
 
 
 make_saber_stan_data_base <- function(wavelength,
-                                      water_type, theta_sun_deg, theta_view_deg, shallow,
+                                      water_type, theta_view, shallow,
                                       bottom_class_names,
-                                      K = 3,
-                                      delta_scale = 0.5,
-                                      basis = c("cosine", "poly"),
+                                      a_gnap_s = 0.0168,
+                                      bb_p_gamma = 0.45,
                                       pkgname = "SABER") {
-  basis <- match.arg(basis)
 
   data("a_w", package = pkgname, envir = environment())
   data("a0_a1_phyto", package = pkgname, envir = environment())
@@ -160,25 +156,6 @@ make_saber_stan_data_base <- function(wavelength,
   wl <- as.numeric(wavelength)
   n_wl <- length(wl)
 
-  if (!is.numeric(K) || length(K) != 1 || K < 1) stop("K must be a single integer >= 1.")
-  K <- as.integer(K)
-
-  if (!is.numeric(delta_scale) || length(delta_scale) != 1 || delta_scale <= 0) {
-    stop("delta_scale must be a single numeric > 0.")
-  }
-  delta_scale <- as.numeric(delta_scale)
-
-  # normalize wavelength to [0,1] for stable basis
-  t <- (wl - min(wl)) / (max(wl) - min(wl))
-  if (basis == "cosine") {
-    # columns: cos(pi * k * t), k = 1..K (no intercept; amplitude already handles global level)
-    Phi <- sapply(seq_len(K), function(k) cos(pi * k * t))
-  } else {
-    # polynomial basis: t^k, k = 1..K
-    Phi <- sapply(seq_len(K), function(k) t^k)
-  }
-  Phi <- matrix(as.numeric(Phi), nrow = n_wl, ncol = K)
-
   list(
     n_wl = n_wl,
     wavelength = wl,
@@ -199,15 +176,12 @@ make_saber_stan_data_base <- function(wavelength,
 
     bottom_class_ids = bottom_class_ids,
 
-    # NEW for the SD-constrained low-rank deviation
-    K = K,
-    Phi = Phi,
-    delta_scale = delta_scale,
-
     water_type = as.integer(water_type),
-    theta_sun_deg = as.numeric(theta_sun_deg),
-    theta_view_deg = as.numeric(theta_view_deg),
-    shallow = as.integer(shallow)
+    theta_view = as.numeric(theta_view),
+    shallow = as.integer(shallow),
+
+    a_gnap_s = a_gnap_s,
+    bb_p_gamma = bb_p_gamma
   )
 }
 
@@ -216,6 +190,7 @@ prepare_obs_inputs <- function(df, stan_data_base, use_measured_sigma = TRUE,
 
   wl <- as.numeric(df$wavelength)
   rrs_obs <- as.numeric(df$rrs_0m)
+  theta_sun <- abs(unique(as.numeric(df$theta_sun)))
   h_w <- abs(unique(as.numeric(df$h_w)))
 
   stopifnot(length(wl) == stan_data_base$n_wl)
@@ -231,7 +206,13 @@ prepare_obs_inputs <- function(df, stan_data_base, use_measured_sigma = TRUE,
   }
   sigma_vec <- pmax(sigma_vec, sigma_floor)
 
-  list(rrs_obs = rrs_obs, sigma_rrs = sigma_vec, h_w = h_w, wl = wl)
+  list(
+    rrs_obs = rrs_obs,
+    sigma_rrs = sigma_vec,
+    theta_sun = theta_sun,
+    h_w = h_w,
+    wl = wl
+    )
 }
 
 # stan_data_from_obs <- function(stan_data_base, rrs_obs, sigma_vec) {
@@ -240,14 +221,13 @@ prepare_obs_inputs <- function(df, stan_data_base, use_measured_sigma = TRUE,
 #   stan_data_base
 # }
 
-stan_data_from_obs <- function(stan_data_base, rrs_obs, sigma_vec, h_w) {
+stan_data_from_obs <- function(stan_data_base, rrs_obs, sigma_vec, theta_sun, h_w) {
   stan_data_base$rrs_obs <- rrs_obs
-  stan_data_base$sigma_rrs   <- sigma_vec
+  stan_data_base$sigma_rrs <- sigma_vec
+  stan_data_base$theta_sun <- theta_sun
   stan_data_base$h_w <- h_w
   stan_data_base
 }
-
-
 
 # sampling ----------------------------------------------------------------
 
@@ -304,7 +284,7 @@ run_one_ensemble <- function(df, ensemble_id, mod, stan_data_base,
   # stan_data <- stan_data_from_obs(stan_data_base, obs$rrs_obs, obs$sigma_rrs)
 
   obs <- prepare_obs_inputs(df, stan_data_base, use_measured_sigma = use_measured_sigma)
-  stan_data <- stan_data_from_obs(stan_data_base, obs$rrs_obs, obs$sigma_rrs, obs$h_w)
+  stan_data <- stan_data_from_obs(stan_data_base, obs$rrs_obs, obs$sigma_rrs, obs$theta_sun, obs$h_w)
 
   ens_dir <- file.path(out_dir, paste0("ensemble_", ensemble_id))
   dir.create(ens_dir, recursive = TRUE, showWarnings = FALSE)
@@ -355,7 +335,7 @@ run_one_ensemble <- function(df, ensemble_id, mod, stan_data_base,
     #     grepl("^r_b*", variable)
     # ) %>%
     filter(
-      variable %in% c("chl","a_g_440","a_nap_440","bb_p_550") |
+      variable %in% c("chl","a_gnap_440","bb_p_550") |
         grepl("^r_b*", variable)
     ) %>%
     select(variable, mean) %>%
@@ -433,10 +413,9 @@ fit_metrics_1 <- function(rrs_obs, mean_hat, q_lo, q_hi, sigma_vec = NULL) {
 
 summarize_params_fast <- function(fit,
                                   par_vars =
-                                    # c("chl","a_g_440","a_nap_440","bb_p_550","h_w","bottom_mix","a_bottom"),
-                                    # c("chl","a_g_440","a_nap_440","bb_p_550","h_w","bottom_mix"),
-                                    # c("chl","a_g_440","a_nap_440", "a_nap_s", "a_g_s", "bb_p_550", "bb_p_gamma", "h_w","r_b_mix", "r_b_a", "sigma_model"),
-                                    c("chl","a_g_440","a_nap_440", "a_nap_s", "a_g_s", "bb_p_550", "bb_p_gamma", "r_b_mix", "r_b_a", "sigma_model"),
+                                    c("chl","a_gnap_440", "a_gnap_s", "bb_p_550", "bb_p_gamma", "h_w","r_b_mix", "r_b_a", "sigma_model"),
+                                    # c("chl","a_gnap_440", "a_gnap_s", "bb_p_550", "bb_p_gamma", "r_b_mix", "r_b_a", "sigma_model"),
+                                    # c("chl","a_gnap_440","a_gnap_440", "bb_p_550", "r_b_mix", "r_b_a", "sigma_model"),
                                   probs = c(0.05, 0.5, 0.95)) {
   posterior::summarise_draws(
     fit$draws(variables = par_vars),

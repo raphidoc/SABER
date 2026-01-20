@@ -33,56 +33,52 @@ inline void snell_law_double(double theta_view_deg, double theta_sun_deg,
 // ============================================================
 
 // Returns [n_wl, 2] where col1=a, col2=bb
-template <typename T>
-inline Eigen::Matrix<T, Eigen::Dynamic, 2>
+template <typename Tchl, typename Tagnap440, typename Tbbp550,
+          typename Tsgnap, typename Tgamma>
+inline Eigen::Matrix<
+  stan::return_type_t<Tchl, Tagnap440, Tbbp550, Tsgnap, Tgamma>,
+  Eigen::Dynamic, 2>
 iop_from_oac_all(const Eigen::Ref<const Eigen::VectorXd>& wavelength,
-                 const Eigen::Ref<const Eigen::VectorXd>& a_w,
-                 const Eigen::Ref<const Eigen::VectorXd>& a0,
-                 const Eigen::Ref<const Eigen::VectorXd>& a1,
-                 const Eigen::Ref<const Eigen::VectorXd>& bb_w,
-                 const T& chl,
-                 const T& a_g_440,
-                 const T& a_nap_440,
-                 const T& a_g_s,
-                 const T& a_nap_s,
-                 const T& bb_p_550,
-                 const T& bb_p_gamma,
-                 std::ostream* pstream__) {
-    using stan::math::exp;
-    using stan::math::log;
-    using stan::math::pow;
+                          const Eigen::Ref<const Eigen::VectorXd>& a_w,
+                          const Eigen::Ref<const Eigen::VectorXd>& a0,
+                          const Eigen::Ref<const Eigen::VectorXd>& a1,
+                          const Eigen::Ref<const Eigen::VectorXd>& bb_w,
+                          const Tchl& chl,
+                          const Tagnap440& a_gnap_440,
+                          const Tbbp550& bb_p_550,
+                          const Tsgnap& a_gnap_s,
+                          const Tgamma& bb_p_gamma,
+                          std::ostream* pstream__) {
 
-    const int n = wavelength.size();
-    if (a_w.size() != n || a0.size() != n || a1.size() != n || bb_w.size() != n)
-        throw std::domain_error("iop_from_oac_all: LUT size mismatch vs wavelength");
+  using stan::math::exp;
+  using stan::math::log;
+  using stan::math::pow;
 
-    Eigen::Matrix<T, Eigen::Dynamic, 2> out(n, 2);
+  using T = stan::return_type_t<Tchl, Tagnap440, Tbbp550, Tsgnap, Tgamma>;
 
-//    const double a_g_s   = 0.017;
-//    const double a_nap_s = 0.0116;
-//    const double bb_p_gamma   = 0.46;
+  const int n = wavelength.size();
+  if (a_w.size() != n || a0.size() != n || a1.size() != n || bb_w.size() != n)
+    throw std::domain_error("iop_from_oac_all_combined: LUT size mismatch vs wavelength");
 
-    const T aph_440 = T(0.06) * pow(chl, 0.65);
+  Eigen::Matrix<T, Eigen::Dynamic, 2> out(n, 2);
 
-    for (int i = 0; i < n; ++i) {
-        const double wl_d = wavelength(i);
-        const T wl = T(wl_d);
+  const T aph_440 = T(0.06) * pow(T(chl), T(0.65));
 
-        // phytoplankton absorption
-        T a_phy = (T(a0(i)) + T(a1(i)) * log(aph_440)) * aph_440;
-        if (stan::math::value_of(a_phy) < 0.0) a_phy = T(0.0);
+  for (int i = 0; i < n; ++i) {
+    const T wl = T(wavelength(i));
 
-        const T a_g   = a_g_440   * exp(-a_g_s   * (wl - 440.0));
-        const T a_nap = a_nap_440 * exp(-a_nap_s * (wl - 440.0));
-        const T bb_p  = bb_p_550  * pow(wl / 550.0, -bb_p_gamma);
+    T a_phy = (T(a0(i)) + T(a1(i)) * log(aph_440)) * aph_440;
+    if (stan::math::value_of(a_phy) < 0.0) a_phy = T(0.0);
 
-        out(i, 0) = T(a_w(i))  + a_phy + a_g + a_nap;
-        out(i, 1) = T(bb_w(i)) + bb_p;
-    }
+    const T a_gnap  = T(a_gnap_440) * exp(-T(a_gnap_s) * (wl - T(440.0)));
+    const T bb_p  = T(bb_p_550) * pow(wl / T(550.0), -T(bb_p_gamma));
 
-    return out;
+    out(i, 0) = T(a_w(i))  + a_phy + a_gnap;
+    out(i, 1) = T(bb_w(i)) + bb_p;
+  }
+
+  return out;
 }
-
 
 // Forward model (returns vector[n_wl])
 template <typename DerivedA, typename DerivedBB, typename DerivedRB>
@@ -123,12 +119,6 @@ forward_am03_ad(const Eigen::Ref<const Eigen::VectorXd>& wavelength,  // data
         const T omega_b = bb(i) / ext;
 
         T omega = omega_b;
-
-        // clamp omega to [0, 0.999] in value space (keeps things finite)
-//        double omv = stan::math::value_of(omega);
-//        if (!std::isfinite(omv)) { rrs(i) = T(0.0); continue; }
-//        if (omv < 0.0) omega = T(0.0);
-//        if (omv > 0.999) omega = T(0.999);
 
         T f_rs;
         if (water_type == 1) {

@@ -56,9 +56,9 @@ SABER is an R package for Bayesian inversion of radiative transfer models using 
 # model <- cmdstan_model("/home/raphael/CLionProjects/saber-lib/src/model.stan")
 
 model <- cmdstan_model(
-  # stan_file = "/home/raphael/CLionProjects/saber-lib/src/model_r_b_sd_amplitude.stan",
-  # stan_file = "/home/raphael/R/SABER/inst/stan/model_r_b_mix_amplitude.stan",
-  stan_file = "/home/raphael/R/SABER/inst/stan/model_h_w_fixed.stan",
+  stan_file = "/home/raphael/R/SABER/inst/stan/model_uc.stan",
+  # stan_file = "/home/raphael/R/SABER/inst/stan/model_hc.stan",
+  # stan_file = "/home/raphael/R/SABER/inst/stan/model_fc.stan",
   user_header = "/home/raphael/R/SABER/inst/stan/rtm_stan_funcs.hpp"
 )
 ```
@@ -73,7 +73,7 @@ rrs <- rrs_hw %>%
     # ensemble == 1657138460
     ) %>%
   mutate(rrs_0m = rrs_0p_to_0m(rrs_estimate)) %>%
-  select(wavelength, rrs_0m, rrs_unc, h_w = bottom_elevation_m)
+  select(wavelength, rrs_0m, rrs_unc, theta_sun = sol_zen, h_w = bottom_elevation_mu)
 ```
 
 ```{r}
@@ -83,8 +83,7 @@ rrs <- rrs_hw %>%
 stan_data_base <- make_saber_stan_data_base(
   wavelength = rrs$wavelength,
   water_type = 2,
-  theta_sun_deg = 20,
-  theta_view_deg = 0,
+  theta_view = 0,
   shallow = 1,
   bottom_class_names = c("coraline_crustose_algae", "saccharina_latissima", "sediment"),
   pkgname = "SABER"
@@ -102,6 +101,7 @@ stan_data <- stan_data_from_obs(
   stan_data_base,
   rrs_obs = obs$rrs_obs,
   sigma_vec = obs$sigma_rrs,
+  theta_sun = obs$theta_sun,
   h_w = obs$h_w
 )
 
@@ -138,11 +138,11 @@ print(diag)
 # par_vars <- c("chl","a_g_440","a_nap_440", "a_nap_s", "a_g_s", "bb_p_550",
 #               "bb_p_gamma", "h_w","bottom_w", "sigma_model")
 
-# par_vars <- c("chl","a_g_440","a_nap_440","bb_p_550","h_w","r_b_mix",
-#               "r_b_a")
-
-par_vars <- c("chl","a_g_440","a_nap_440","bb_p_550","r_b_mix",
+par_vars <- c("chl","a_gnap_440","bb_p_550","h_w","r_b_mix",
               "r_b_a")
+
+# par_vars <- c("chl","a_g_440","a_nap_440","bb_p_550","r_b_mix",
+#               "r_b_a")
 
 par_sum <- summarize_params_fast(fit, par_vars)
 print(par_sum)
@@ -234,7 +234,8 @@ Plot for bottom spectrum if spectrally inversed.
 #   filter(wavelength > 370, wavelength < 800) %>%
 #   mutate(
 #     rrs_0m = rrs_0p_to_0m(rrs_estimate),
-#     h_w_meas = altitude_m + abs(bottom_elevation_m)
+#     h_w_meas = altitude_mu + abs(bottom_elevation_mu),
+#     theta_sun = sol_zen
 #   )
 
 # rrs_hw_sub <- rrs_hw_gamache %>%
@@ -277,21 +278,23 @@ rrs_hw_sub <- readr::read_csv(here("4_chapter/data/algae-wise/rrs_iop_matchup.cs
   filter(wavelength > 370, wavelength < 800) %>%
   mutate(
     rrs_0m = rrs_0p_to_0m(rrs_estimate),
+    theta_sun = sol_zen,
     h_w_meas = abs(h_w)
   )
 
 rrs_hw_sub <- rrs_hw_sub %>%
   group_by(ensemble) %>%
-  nest() #%>%
-#   mutate(
-#     pass = purrr::map_lgl(data, ~ any(.x$rrs_unc > 0.001 | is.na(.x$rrs_estimate), na.rm = TRUE))
-#   ) %>%
-#   filter(pass == FALSE)# & ensemble %in% ensembles)
+  nest() %>%
+  mutate(
+    pass = purrr::map_lgl(data, ~ any(.x$rrs_unc > 0.001 | is.na(.x$rrs_estimate), na.rm = TRUE))
+  ) %>%
+  filter(pass == FALSE)# & ensemble %in% ensembles)
 
 # build base once (same wavelength grid!)
 stan_data_base <- make_saber_stan_data_base(
   wavelength = rrs_hw_sub[[1,2]][[1]]$wavelength,
-  water_type = 2, theta_sun_deg = 20, theta_view_deg = 0,
+  water_type = 2,
+  theta_view = 0,
   shallow = 1,
   bottom_class_names = c("coraline_crustose_algae", "saccharina_latissima", "sediment"),
   pkgname = "SABER"
@@ -336,7 +339,7 @@ plot_batch_diagnostics(tabs$diag)
 plot_sampler_cost(tabs$diag)
 ```
 
-### Observed vs retrieved Hw
+### Hw
 
 ```{r}
 par_summary <- results %>% 
@@ -353,19 +356,22 @@ par_summary <- results %>%
     data_select = purrr::map(
       .x = data,
       ~ .x %>% 
-        # select(date_time, lat, lon, altitude, z, h_w_meas) %>%
         select(
-          date_time_iop = date_time.x,
-          date_time_rrs = date_time.y,
-          lat_iop = lat.x,
-          lon_iop = lat.y,
+          id,
+          date_time_iop,
+          lat_iop,
+          lon_iop,
+          date_time_rrs,
+          lat_rrs,
+          lon_rrs,
           h_w_meas,
+          # plant_height_mu,
           chla_mean_meas = chla_mean,
           chla_sd_meas = chla_sd,
-          ag_440_meas = ag_440,
-          a_g_s_meas = a_g_s,
+          a_gnap_440_meas = a_gnap_440,
           bbp_555_mean_meas = bbp_555_mean,
           bbp_555_sd_meas = bbp_555_sd,
+          a_gnap_s_meas = a_gnap_s,
           bbp_gamma_mean_meas = bbp_gamma_mean,
           bbp_gamma_sd_meas = bbp_gamma_sd
           ) %>%
@@ -374,6 +380,8 @@ par_summary <- results %>%
   ) %>%
   select(ensemble, data_select, par_summary) %>%
   unnest(cols = c(data_select, par_summary))
+
+# readr::write_csv(par_summary, here("4_chapter/data/par_summary_position.csv"))
 ```
 
 ```{r}
@@ -382,24 +390,26 @@ library(plotly)
 xy_min <- min(par_summary$h_w_meas, par_summary$h_w_mean, na.rm = TRUE) -0.5
 xy_max <- max(par_summary$h_w_meas, par_summary$h_w_mean, na.rm = TRUE) +0.5
 
-ply <- plot_ly(par_summary) %>%
+ply <- par_summary %>%
+  plot_ly() %>%
   add_markers(
     x = ~h_w_meas,
     y = ~h_w_mean,
-    # color = ~a_g_440_mean,
+    # color = ~a_dg_440_mean,
+    color = ~id,
     text = ~paste0(
       "ensemble: ", ensemble,
       "<br>h_w_meas: ", round(h_w_meas, 2), " m",
       "<br>h_w_estim: ", round(h_w_mean, 2), " m"
     ),
-    hoverinfo = "text",
-    name = "Ensembles"
+    hoverinfo = "text"
   ) %>%
   add_lines(
     x = c(xy_min, xy_max),
     y = c(xy_min, xy_max),
     name = "1:1",
-    line = list(dash = "dash", color = "black")
+    line = list(dash = "dash", color = "black"),
+    showlegend = F
   ) %>%
   layout(
     xaxis = list(title = "Observed h_w (m)", range = c(xy_min, xy_max)),
@@ -421,10 +431,10 @@ ply <- plot_ly(par_summary) %>%
 
 ply
 
-# save_image(ply, here("4_chapter/figure/h_w_hat_vs_h_w.png"), width = 550, height = 550, scale = 4)
+# save_image(ply, here("4_chapter/figure/h_w_matchup_.png"), width = 550, height = 550, scale = 4)
 ```
 
-Plot IOPs
+### IOPs
 
 ```{r}
 xy_min <- min(par_summary$chla_mean_meas, par_summary$chl_mean, na.rm = TRUE) - 0.1
@@ -434,13 +444,16 @@ ply_chl <- par_summary %>%
   plot_ly() %>%
   add_markers(
     x = ~chla_mean_meas,
-    y = ~chl_mean
+    y = ~chl_mean,
+    color = ~id,
+    showlegend = T
   ) %>%
   add_lines(
     x = c(xy_min, xy_max),
     y = c(xy_min, xy_max),
     name = "1:1",
-    line = list(dash = "dash", color = "black")
+    line = list(dash = "dash", color = "black"),
+    showlegend = F
   ) %>%
   layout(
     xaxis = list(
@@ -461,27 +474,27 @@ ply_chl <- par_summary %>%
       bgcolor = "rgba(255, 255, 255, 1)",#"#FFFFFF",
       xanchor = "top-right",
       yanchor = "top-right",
-      x = 0.6,
-      y = 0.9
-    ),
-    showlegend = F
-  ) %>%
-  config(mathjax = "cdn", displayModeBar = FALSE)
+      x = 0.01,
+      y = 0.99
+    )
+  )
+xy_min <- min(par_summary$a_gnap_440_meas, par_summary$a_gnap_440_mean, na.rm = TRUE) - 0.1
+xy_max <- max(par_summary$a_gnap_440_meas, par_summary$a_gnap_440_mean, na.rm = TRUE) + 0.1
 
-xy_min <- min(par_summary$ag_440_meas, par_summary$a_g_440_mean, na.rm = TRUE) - 0.1
-xy_max <- max(par_summary$ag_440_meas, par_summary$a_g_440_mean, na.rm = TRUE) + 0.1
-
-ply_a_g_440 <- par_summary %>%
+ply_a_gnap_440 <- par_summary %>%
   plot_ly() %>%
   add_markers(
-    x = ~ag_440_meas,
-    y = ~a_g_440_mean
+    x = ~a_gnap_440_meas,
+    y = ~a_gnap_440_mean,
+    color = ~id,
+    showlegend = F
   ) %>%
   add_lines(
     x = c(xy_min, xy_max),
     y = c(xy_min, xy_max),
     name = "1:1",
-    line = list(dash = "dash", color = "black")
+    line = list(dash = "dash", color = "black"),
+    showlegend = F
   ) %>%
   layout(
     xaxis = list(
@@ -493,58 +506,39 @@ ply_a_g_440 <- par_summary %>%
     font = font,
     shapes = list(
       border
-    ),
-    legend = list(
-      font = list(
-        size = 20),
-      bgcolor = "rgba(255, 255, 255, 1)",#"#FFFFFF",
-      xanchor = "top-right",
-      yanchor = "top-right",
-      x = 0.6,
-      y = 0.9
-    ),
-    showlegend = F
-  ) %>%
-  config(mathjax = "cdn", displayModeBar = FALSE)
+    )
+  )
 
-xy_min <- min(par_summary$a_g_s_meas, par_summary$a_g_s_mean, na.rm = TRUE) - 0.001
-xy_max <- max(par_summary$a_g_s_meas, par_summary$a_g_s_mean, na.rm = TRUE) + 0.001
-
-ply_a_g_s <- par_summary %>%
-  plot_ly() %>%
-  add_markers(
-    x = ~a_g_s_meas,
-    y = ~a_g_s_mean
-  ) %>%
-  add_lines(
-    x = c(xy_min, xy_max),
-    y = c(xy_min, xy_max),
-    name = "1:1",
-    line = list(dash = "dash", color = "black")
-  ) %>%
-  layout(
-    xaxis = list(
-      range = c(xy_min, xy_max)
-    ),
-    yaxis = list(
-      range = c(xy_min, xy_max)
-    ),
-    font = font,
-    shapes = list(
-      border
-    ),
-    legend = list(
-      font = list(
-        size = 20),
-      bgcolor = "rgba(255, 255, 255, 1)",#"#FFFFFF",
-      xanchor = "top-right",
-      yanchor = "top-right",
-      x = 0.6,
-      y = 0.9
-    ),
-    showlegend = F
-  ) %>%
-  config(mathjax = "cdn", displayModeBar = FALSE)
+# xy_min <- min(par_summary$anap_440_meas, par_summary$a_nap_440_mean, na.rm = TRUE) - 0.1
+# xy_max <- max(par_summary$anap_440_meas, par_summary$a_nap_440_mean, na.rm = TRUE) + 0.1
+# 
+# ply_a_nap_440 <- par_summary %>%
+#   plot_ly() %>%
+#   add_markers(
+#     x = ~anap_440_meas,
+#     y = ~a_nap_440_mean,
+#     color = ~id,
+#     showlegend = F
+#   ) %>%
+#   add_lines(
+#     x = c(xy_min, xy_max),
+#     y = c(xy_min, xy_max),
+#     name = "1:1",
+#     line = list(dash = "dash", color = "black"),
+#     showlegend = F
+#   ) %>%
+#   layout(
+#     xaxis = list(
+#       range = c(xy_min, xy_max)
+#     ),
+#     yaxis = list(
+#       range = c(xy_min, xy_max)
+#     ),
+#     font = font,
+#     shapes = list(
+#       border
+#     )
+#   )
 
 xy_min <- min(par_summary$bbp_555_mean_meas, par_summary$bb_p_550_mean, na.rm = TRUE) - 0.001
 xy_max <- max(par_summary$bbp_555_mean_meas, par_summary$bb_p_550_mean, na.rm = TRUE) + 0.001
@@ -553,23 +547,151 @@ ply_bb_p_555 <- par_summary %>%
   plot_ly() %>%
   add_markers(
     x = ~bbp_555_mean_meas,
-    y = ~bb_p_550_mean
+    y = ~bb_p_550_mean,
+    color = ~id,
+    showlegend = F
   ) %>%
   add_lines(
     x = c(xy_min, xy_max),
     y = c(xy_min, xy_max),
     name = "1:1",
-    line = list(dash = "dash", color = "black")
+    line = list(dash = "dash", color = "black"),
+    showlegend = F
   ) %>%
   layout(
     font = font,
     shapes = list(
       border
+    )#,
+    # margin = list(l = 70, r = 20, b = 60, t = 20)
+  )
+
+ply <- subplot(
+  ply_chl,
+  ply_a_gnap_440,
+  #ply_a_nap_440,
+  ply_bb_p_555,
+  nrows = 2,
+  margin = 0.045
+) %>%
+  layout(
+    xaxis = list(
+      title = list(
+        text = TeX("\\Large{\\text{chl}}"),
+        standoff = 5
+        )
     ),
-    showlegend = F,
-    margin = list(l = 70, r = 20, b = 60, t = 20)
+    yaxis = list(
+      title = TeX("\\Large{\\widehat{\\text{chl}}}")
+    ),
+    xaxis2 = list(
+      title = list(
+        text = TeX("\\Large{a_\\text{g+nap}}(440)"),
+        standoff = 5
+        )
+    ),
+    yaxis2 = list(
+      title = list(
+        text = TeX("\\Large{\\widehat{a_\\text{g+nap}}(440)}"),
+        standoff = 5
+        )
+    ),
+    # xaxis3 = list(
+    #   title = TeX("\\Large{a_\\text{nap}(440)}")
+    # ),
+    # yaxis3 = list(
+    #   title = TeX("\\Large{\\widehat{a_\\text{nap}}(440)}")
+    # ),
+    xaxis3 = list(
+      title = TeX("\\Large{b_\\text{bp}(550)}")
+    ),
+    yaxis3 = list(
+      title = list(
+        text = TeX("\\Large{\\widehat{b_\\text{bp}}(550)}"),
+        standoff = 5
+        )
+    )
   ) %>%
   config(mathjax = "cdn", displayModeBar = FALSE)
+
+ply
+
+# save_image(ply, here("4_chapter/figure/iop_matchup_.png"), width = 1100, height = 1100, scale = 4)
+```
+
+### IOPs Spectral slope
+
+```{r}
+xy_min <- min(par_summary$a_gnap_s_meas, par_summary$a_gnap_s_mean, na.rm = TRUE) - 0.001
+xy_max <- max(par_summary$a_gnap_s_meas, par_summary$a_gnap_s_mean, na.rm = TRUE) + 0.001
+
+ply_a_gnap_s <- par_summary %>%
+  plot_ly() %>%
+  add_markers(
+    x = ~a_gnap_s_meas,
+    y = ~a_gnap_s_mean,
+    color = ~id,
+    showlegend = T
+  ) %>%
+  add_lines(
+    x = c(xy_min, xy_max),
+    y = c(xy_min, xy_max),
+    name = "1:1",
+    line = list(dash = "dash", color = "black"),
+    showlegend = F
+  ) %>%
+  layout(
+    xaxis = list(
+      range = c(xy_min, xy_max)
+    ),
+    yaxis = list(
+      range = c(xy_min, xy_max)
+    ),
+    font = font,
+    shapes = list(
+      border
+    ),
+    legend = list(
+      font = list(
+        size = 20),
+      bgcolor = "rgba(255, 255, 255, 1)",#"#FFFFFF",
+      xanchor = "top-right",
+      yanchor = "top-right",
+      x = 0.01,
+      y = 0.99
+    )
+  )
+
+# xy_min <- min(par_summary$a_nap_s_meas, par_summary$a_nap_s_mean, na.rm = TRUE) - 0.001
+# xy_max <- max(par_summary$a_nap_s_meas, par_summary$a_nap_s_mean, na.rm = TRUE) + 0.001
+# 
+# ply_a_nap_s <- par_summary %>%
+#   plot_ly() %>%
+#   add_markers(
+#     x = ~a_nap_s_meas,
+#     y = ~a_nap_s_mean,
+#     color = ~id,
+#     showlegend = F
+#   ) %>%
+#   add_lines(
+#     x = c(xy_min, xy_max),
+#     y = c(xy_min, xy_max),
+#     name = "1:1",
+#     line = list(dash = "dash", color = "black"),
+#     showlegend = F
+#   ) %>%
+#   layout(
+#     xaxis = list(
+#       range = c(xy_min, xy_max)
+#     ),
+#     yaxis = list(
+#       range = c(xy_min, xy_max)
+#     ),
+#     font = font,
+#     shapes = list(
+#       border
+#     )
+#   )
 
 xy_min <- min(par_summary$bbp_gamma_mean_meas, par_summary$bb_p_gamma_mean, na.rm = TRUE) - 0.001
 xy_max <- max(par_summary$bbp_gamma_mean_meas, par_summary$bb_p_gamma_mean, na.rm = TRUE) + 0.001
@@ -578,64 +700,222 @@ ply_bb_p_gamma <- par_summary %>%
   plot_ly() %>%
   add_markers(
     x = ~bbp_gamma_mean_meas,
-    y = ~bb_p_gamma_mean
+    y = ~bb_p_gamma_mean,
+    color = ~id,
+    showlegend = F
   ) %>%
   add_lines(
     x = c(xy_min, xy_max),
     y = c(xy_min, xy_max),
     name = "1:1",
-    line = list(dash = "dash", color = "black")
+    line = list(dash = "dash", color = "black"),
+    showlegend = F
   ) %>%
   layout(
     font = font,
     shapes = list(
       border
-    ),
-    showlegend = F,
-    margin = list(l = 70, r = 20, b = 60, t = 20)
-  ) %>%
-  config(mathjax = "cdn", displayModeBar = FALSE)
-
-ply <- subplot(
-  ply_chl, ply_a_g_440, ply_a_g_s, ply_bb_p_555, ply_bb_p_gamma,
-  nrows = 3
-) %>%
-  layout(
-    xaxis = list(
-      title = "chl"
-    ),
-    yaxis = list(
-      title = "chl_hat"
-    ),
-    xaxis2 = list(
-      title = "a_g_440"
-    ),
-    yaxis2 = list(
-      title = "a_g_440_hat"
-    ),
-    xaxis3 = list(
-      title = "a_g_s"
-    ),
-    yaxis3 = list(
-      title = "a_g_s_hat"
-    ),
-    xaxis4 = list(
-      title = "bb_p_550"
-    ),
-    yaxis4 = list(
-      title = "bb_p_550_hat"
-    ),
-    xaxis5 = list(
-      title = "bb_p_gamma"
-    ),
-    yaxis5 = list(
-      title = "bb_p_gamma_hat"
     )
   )
 
+ply <- subplot(
+  ply_a_gnap_s,
+  # ply_a_nap_s,
+  ply_bb_p_gamma,
+  nrows = 2,
+  margin = 0.03
+) %>%
+  layout(
+    xaxis = list(
+      title = list(
+        text = TeX("a_\\text{g+nap}(440)"),
+        standoff = 5
+        )
+    ),
+    yaxis = list(
+      title = TeX("\\widehat{a_\\text{g+nap}(440)}")
+    ),
+    # xaxis2 = list(
+    #   title = list(
+    #     text = TeX("a_\\text{naps}(440)"),
+    #     standoff = 5
+    #     )
+    # ),
+    # yaxis2 = list(
+    #   title = TeX("\\widehat{a_\\text{naps}(440)}")
+    # ),
+    xaxis2 = list(
+      title = TeX("b_\\text{bps}(550)")
+    ),
+    yaxis2 = list(
+      title = TeX("\\widehat{b_\\text{bps}(550)}")
+    )
+  ) %>%
+  config(mathjax = "cdn", displayModeBar = FALSE)
+
 ply
 
-# save_image(ply, here("4_chapter/figure/iop_matchup_.png"), width = 1100, height = 1100, scale = 4)
+# save_image(ply, here("4_chapter/figure/iop_slope_matchup_.png"), width = 550, height = 1100, scale = 4)
+```
+
+### Bottom reflectance
+
+```{r}
+test <- results %>%
+  mutate(
+    r_b = pmap(
+      list(
+        obs = data,  # list-column containing wavelength + rrs_0m
+        stan = stan
+      ),
+      function(obs, stan) {
+        
+        # browser()
+        
+        id = obs$id
+        wavelength <- obs$wavelength
+        r_rs <- obs$rrs_0m
+        theta_sun = obs$theta_sun
+        h_w = par_summary$h_w_mean
+        # h_w = obs$h_w_meas
+        
+        par_summary <- pivot_wider(
+          data = stan$par_summary,
+          names_from = variable,
+          names_glue = "{variable}_{.value}",
+          values_from = -variable
+        )
+
+        par <- c(
+          chl = par_summary$chl_mean,
+          a_g_440 = par_summary$a_dg_440_mean,
+          # a_nap_440 = par_summary$a_nap_440_mean,
+          bb_p_550 = par_summary$bb_p_550_mean,
+          a_g_s = par_summary$a_gnap_s_mean,
+          # a_nap_s = par_summary$a_nap_s_mean,
+          bb_p_gamma = par_summary$bb_p_gamma_mean
+          # a_g_s = 0.0168,
+          # a_nap_s = 0.0116,
+          # bb_p_gamma = 0.45
+        )
+
+        iop <- iop_from_oac(
+          wavelength = wavelength,
+          par = par
+        )
+
+        r_rs_b_hat <- retrieve_r_rs_b_am03(
+          wavelength = wavelength,
+          iop = iop,
+          r_rs = r_rs,
+          water_type = 2,
+          theta_sun = theta_sun,
+          theta_view = 0,
+          h_w = h_w
+        )
+        
+        tibble(
+          id = id,
+          wavelength = wavelength,
+          r_b_hat = r_rs_b_hat * pi 
+          )
+        
+      }
+    )
+  )
+```
+
+```{r}
+test <- test %>%
+  select(ensemble, r_b) %>%
+  unnest(cols = c(r_b))
+```
+
+```{r}
+plots <- test %>%
+  split(.$id) %>%
+  imap(function(df, id) {
+    df <- as.data.frame(df)
+    force(df); force(id)
+    
+    plot_ly(
+      data = df,
+      x = df$wavelength,
+      y = df$r_b_hat,
+      color = as.character(df$ensemble),
+      type = "scatter",
+      mode = "lines"
+    ) %>%
+      add_annotations(
+        text = id,
+        x = 0.5,
+        y = 1,
+        yref = "paper",
+        xref = "paper",
+        xanchor = "middle",
+        yanchor = "top",
+        showarrow = FALSE,
+        font = list(size = 20)
+      ) %>%
+      layout(
+        yaxis = list(
+          range = c(0, 0.4)
+          ),
+        xaxis = list(
+          range = c(380, 720)),
+        font = font,
+        shapes = list(
+          border
+        )
+      )
+  })
+
+# ply_sub <- do.call(
+#   subplot,
+#   c(plots, list(nrows = length(plots), shareX = TRUE, sharey = TRUE))
+# )
+
+
+ply <- subplot(
+  plots,
+  nrows = 3,
+  shareX = TRUE#,
+  # sharey = TRUE
+) %>%
+  add_annotations(
+    text = TeX("\\Large{\\text{Wavelength [nm]}}"),
+    yshift = -25,
+    x = 0.5,
+    y = 0.0,
+    yref = "paper",
+    xref = "paper",
+    xanchor = "middle",
+    yanchor = "top",
+    showarrow = FALSE,
+    font = list(size = 15)
+  ) %>%
+  add_annotations(
+    text = TeX("\\Large{R_\\text{b}}"),
+    textangle = -90,
+    xshift = -65,
+    x = 0,
+    y = 0.5,
+    yref = "paper",
+    xref = "paper",
+    xanchor = "middle",
+    yanchor = "top",
+    showarrow = FALSE,
+    font = list(size = 15)
+  ) %>%
+  layout(
+    margin = list(l=68, b = 60),
+    showlegend = F
+  ) %>%
+  config(mathjax = "cdn", displayModeBar = FALSE)
+
+ply
+
+# save_image(ply, here("4_chapter/figure/r_b_.png"), width = 1100, height = 1100, scale = 4)
 ```
 
 
