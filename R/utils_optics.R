@@ -20,11 +20,11 @@ rrs_0m_to_0p <- function(rrs_0m) {
 #'
 #' @return list with `view_w`, `sun_w`, `rho_L`
 #' @export
-snell_law <- function(theta_view, theta_sun) {
-  stopifnot(is.numeric(theta_view), length(theta_view) == 1)
-  stopifnot(is.numeric(theta_sun), length(theta_sun) == 1)
-  .Call("c_snell_law", as.numeric(theta_view), as.numeric(theta_sun))
-}
+# snell_law <- function(theta_view, theta_sun) {
+#   stopifnot(is.numeric(theta_view), length(theta_view) == 1)
+#   stopifnot(is.numeric(theta_sun), length(theta_sun) == 1)
+#   .Call("c_snell_law", as.numeric(theta_view), as.numeric(theta_sun))
+# }
 # snell_law <- memoise(function(theta_view, theta_sun) { # Function to convert above water to under water geometry
 #
 #   # Index of refrations (real)

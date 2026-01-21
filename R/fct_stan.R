@@ -1,244 +1,30 @@
-# data builders -----------------------------------------------------------
+#' @import dplyr
+#' @import tidyr
+#' @import purrr
+#' @import tibble
+#'
+#' @import posterior
+#' @import matrixStats
+#'
+#' @import future
+#' @import furrr
+#' @import progressr
+NULL
 
-interp1 <- function(x, y, xout) {
-  approx(x = x, y = y, xout = xout, rule = 2, ties = "ordered")$y
-}
-
-build_saber_stan_luts <- function(wavelength,
-                                  a_w_df,
-                                  a0_a1_df,
-                                  r_b_long,
-                                  bb_w_fun = function(wl) 0.00111 * (wl / 500)^(-4.32),
-                                  sd_floor = 1e-6) {
-
-  stopifnot(is.numeric(wavelength), length(wavelength) >= 2)
-
-  a_w  <- interp1(a_w_df$wavelength,  a_w_df$a_w, wavelength)
-  a0   <- interp1(a0_a1_df$wavelength, a0_a1_df$a0, wavelength)
-  a1   <- interp1(a0_a1_df$wavelength, a0_a1_df$a1, wavelength)
-  bb_w <- bb_w_fun(wavelength)
-
-  rb <- r_b_long %>%
-    transmute(
-      class = as.character(.data$class),
-      wl    = .data$wavelength,
-      mu    = .data$r_b_mean,
-      sd    = .data$r_b_sd
-    )
-
-  classes <- rb %>% distinct(class) %>% arrange(class) %>% pull(class)
-
-  # Wide mean + sd tables on the library's native wavelength grid
-  rb_mu_wide <- rb %>%
-    select(class, wl, mu) %>%
-    pivot_wider(names_from = class, values_from = mu) %>%
-    arrange(wl)
-
-  rb_sd_wide <- rb %>%
-    select(class, wl, sd) %>%
-    pivot_wider(names_from = class, values_from = sd) %>%
-    arrange(wl)
-
-  rb_wl_master <- rb_mu_wide$wl
-
-  # Interpolate each class mean and sd onto the Stan wavelength grid
-  r_b_mu_lib <- vapply(classes, function(cl) {
-    interp1(rb_wl_master, rb_mu_wide[[cl]], wavelength)
-  }, FUN.VALUE = numeric(length(wavelength)))
-
-  r_b_sd_lib <- vapply(classes, function(cl) {
-    interp1(rb_wl_master, rb_sd_wide[[cl]], wavelength)
-  }, FUN.VALUE = numeric(length(wavelength)))
-
-  r_b_mu_lib <- matrix(r_b_mu_lib, nrow = length(wavelength), ncol = length(classes))
-  r_b_sd_lib <- matrix(r_b_sd_lib, nrow = length(wavelength), ncol = length(classes))
-
-  colnames(r_b_mu_lib) <- classes
-  colnames(r_b_sd_lib) <- classes
-
-  # Spectral damping for SD: 1.0 from 350–700 nm, 0.3 above 700 nm
-  sd_coef <- ifelse(wavelength <= 700, 1.0, 0.25)
-  r_b_sd_lib <- r_b_sd_lib * sd_coef
-
-  # Safety: enforce nonnegative sd, add floor to avoid zeros in Stan
-  r_b_sd_lib <- pmax(r_b_sd_lib, sd_floor)
-
-  list(
-    a_w = a_w, a0 = a0, a1 = a1, bb_w = bb_w,
-    r_b_mu_lib = r_b_mu_lib,
-    r_b_sd_lib = r_b_sd_lib,
-    classes = classes
-  )
-}
-
-# make_saber_stan_data_base <- function(wavelength,
-#                                       water_type, theta_sun_deg, theta_view_deg, shallow,
-#                                       bottom_class_names,
-#                                       pkgname = "SABER") {
-#
-#   data("a_w", package = pkgname, envir = environment())
-#   data("a0_a1_phyto", package = pkgname, envir = environment())
-#   data("r_b_gamache", package = pkgname, envir = environment())
-#
-#   luts <- build_saber_stan_luts(
-#     wavelength = wavelength,
-#     a_w_df = a_w,
-#     a0_a1_df = a0_a1_phyto,
-#     r_b_long = r_b_gamache
-#   )
-#
-#   bottom_class_ids <- match(bottom_class_names, luts$classes)
-#   if (any(is.na(bottom_class_ids))) {
-#     missing <- bottom_class_names[is.na(bottom_class_ids)]
-#     stop("Bottom class not found in library: ", paste(missing, collapse = ", "))
-#   }
-#
-#   list(
-#     n_wl = length(wavelength),
-#     wavelength = as.numeric(wavelength),
-#
-#     # placeholders to fill per spectrum
-#     rrs_obs   = rep(NA_real_, length(wavelength)),
-#     sigma_rrs = rep(NA_real_, length(wavelength)),
-#
-#     a_w = luts$a_w,
-#     a0  = luts$a0,
-#     a1  = luts$a1,
-#     bb_w = luts$bb_w,
-#
-#     n_class = length(luts$classes),
-#
-#     # NEW names expected by the adapted Stan model
-#     r_b_mu_lib = luts$r_b_mu_lib,
-#     r_b_sd_lib = luts$r_b_sd_lib,
-#
-#     bottom_class_ids = as.integer(bottom_class_ids),
-#
-#     water_type = as.integer(water_type),
-#     theta_sun_deg = as.numeric(theta_sun_deg),
-#     theta_view_deg = as.numeric(theta_view_deg),
-#     shallow = as.integer(shallow)
-#   )
-# }
-
-
-make_saber_stan_data_base <- function(wavelength,
-                                      water_type, theta_view, shallow,
-                                      bottom_class_names,
-                                      a_gnap_s = 0.0168,
-                                      bb_p_gamma = 0.45,
-                                      pkgname = "SABER") {
-
-  data("a_w", package = pkgname, envir = environment())
-  data("a0_a1_phyto", package = pkgname, envir = environment())
-  data("r_b_gamache", package = pkgname, envir = environment())
-
-  luts <- build_saber_stan_luts(
-    wavelength = wavelength,
-    a_w_df = a_w,
-    a0_a1_df = a0_a1_phyto,
-    r_b_long = r_b_gamache
-  )
-
-  # --- enforce Stan model expectation: exactly 3 bottom classes ---
-  if (length(bottom_class_names) != 3) {
-    stop("This Stan model expects exactly 3 bottom_class_names (for simplex[3] and bottom_class_ids[3]).")
-  }
-
-  bottom_class_ids <- match(bottom_class_names, luts$classes)
-  if (any(is.na(bottom_class_ids))) {
-    missing <- bottom_class_names[is.na(bottom_class_ids)]
-    stop("Bottom class not found in library: ", paste(missing, collapse = ", "))
-  }
-  bottom_class_ids <- as.integer(bottom_class_ids)
-
-  # --- build basis Phi on the wavelength grid ---
-  wl <- as.numeric(wavelength)
-  n_wl <- length(wl)
-
-  list(
-    n_wl = n_wl,
-    wavelength = wl,
-
-    # placeholders to fill per spectrum
-    rrs_obs   = rep(NA_real_, n_wl),
-    sigma_rrs = rep(NA_real_, n_wl),
-
-    a_w  = luts$a_w,
-    a0   = luts$a0,
-    a1   = luts$a1,
-    bb_w = luts$bb_w,
-
-    n_class = length(luts$classes),
-
-    r_b_mu_lib = luts$r_b_mu_lib,
-    r_b_sd_lib = luts$r_b_sd_lib,
-
-    bottom_class_ids = bottom_class_ids,
-
-    water_type = as.integer(water_type),
-    theta_view = as.numeric(theta_view),
-    shallow = as.integer(shallow),
-
-    a_gnap_s = a_gnap_s,
-    bb_p_gamma = bb_p_gamma
-  )
-}
-
-prepare_obs_inputs <- function(df, stan_data_base, use_measured_sigma = TRUE,
-                               sigma_fallback = 0.00005, sigma_floor = 1e-8) {
-
-  wl <- as.numeric(df$wavelength)
-  rrs_obs <- as.numeric(df$rrs_0m)
-  theta_sun <- abs(unique(as.numeric(df$theta_sun)))
-  h_w <- abs(unique(as.numeric(df$h_w)))
-
-  stopifnot(length(wl) == stan_data_base$n_wl)
-  stopifnot(all(abs(wl - stan_data_base$wavelength) < 1e-8))
-
-  sigma_vec <- if (use_measured_sigma) as.numeric(df$rrs_unc) else rep(sigma_fallback, stan_data_base$n_wl)
-
-  # cleanup
-  sigma_vec[!is.finite(sigma_vec)] <- NA_real_
-  if (anyNA(sigma_vec)) {
-    s0 <- median(sigma_vec, na.rm = TRUE)
-    sigma_vec[is.na(sigma_vec)] <- if (is.finite(s0)) s0 else sigma_fallback
-  }
-  sigma_vec <- pmax(sigma_vec, sigma_floor)
-
-  list(
-    rrs_obs = rrs_obs,
-    sigma_rrs = sigma_vec,
-    theta_sun = theta_sun,
-    h_w = h_w,
-    wl = wl
-    )
-}
-
-# stan_data_from_obs <- function(stan_data_base, rrs_obs, sigma_vec) {
-#   stan_data_base$rrs_obs <- rrs_obs
-#   stan_data_base$sigma_rrs   <- sigma_vec
-#   stan_data_base
-# }
-
-stan_data_from_obs <- function(stan_data_base, rrs_obs, sigma_vec, theta_sun, h_w) {
-  stan_data_base$rrs_obs <- rrs_obs
-  stan_data_base$sigma_rrs <- sigma_vec
-  stan_data_base$theta_sun <- theta_sun
-  stan_data_base$h_w <- h_w
-  stan_data_base
-}
-
-# sampling ----------------------------------------------------------------
-
-fit_one <- function(mod, stan_data,
-                    mode = c("sample", "optimize"),
-                    seed = 123,
-                    chains = 2, iter_warmup = 300, iter_sampling = 300,
-                    parallel_chains = chains,
-                    adapt_delta = 0.85, max_treedepth = 12,
-                    threads_per_chain = 1,
-                    output_dir = NULL) {
+#' @export
+fit_one <- function(
+    mod, stan_data,
+    mode = c("sample", "optimize"),
+    seed = 123,
+    chains = 2,
+    iter_warmup = 300,
+    iter_sampling = 300,
+    # parallel_chains = chains,
+    adapt_delta = 0.85,
+    max_treedepth = 12,
+    threads_per_chain = 1#,
+    #output_dir = NULL
+) {
 
   mode <- match.arg(mode)
 
@@ -255,39 +41,43 @@ fit_one <- function(mod, stan_data,
     data = stan_data,
     seed = seed,
     chains = chains,
-    parallel_chains = parallel_chains,
+    # parallel_chains = parallel_chains,
     iter_warmup = iter_warmup,
     iter_sampling = iter_sampling,
     adapt_delta = adapt_delta,
     max_treedepth = max_treedepth,
-    threads_per_chain = threads_per_chain,
-    refresh = 0,
-    output_dir = output_dir
+    #threads_per_chain = threads_per_chain,
+    refresh = 0#,
+    #output_dir = output_dir
   )
 }
 
-run_one_ensemble <- function(df, ensemble_id, mod, stan_data_base,
-                             out_dir,
-                             use_measured_sigma = TRUE,
-                             mode = c("sample", "optimize"),
-                             seed = 123,
-                             chains = 2, iter_warmup = 300, iter_sampling = 300,
-                             adapt_delta = 0.85, max_treedepth = 12,
-                             threads_per_chain = 1,
-                             spec_probs = c(0.05, 0.95),
-                             keep_fit_rds = FALSE) {
+#' @export
+run_one_ensemble <- function(
+    df,
+    ensemble_id,
+    mod,
+    stan_data_base,
+    use_measured_sigma = TRUE,
+    mode = c("sample", "optimize"),
+    seed = 123,
+    chains = 2,
+    iter_warmup = 300,
+    iter_sampling = 300,
+    adapt_delta = 0.85,
+    max_treedepth = 12,
+    threads_per_chain = 1,
+    spec_probs = c(0.05, 0.95),
+    out_dir = ""
+) {
 
   mode <- match.arg(mode)
-  stopifnot(dir.exists(out_dir))
 
   # obs <- prepare_obs_inputs(df, stan_data_base, use_measured_sigma = use_measured_sigma)
   # stan_data <- stan_data_from_obs(stan_data_base, obs$rrs_obs, obs$sigma_rrs)
 
-  obs <- prepare_obs_inputs(df, stan_data_base, use_measured_sigma = use_measured_sigma)
-  stan_data <- stan_data_from_obs(stan_data_base, obs$rrs_obs, obs$sigma_rrs, obs$theta_sun, obs$h_w)
-
-  ens_dir <- file.path(out_dir, paste0("ensemble_", ensemble_id))
-  dir.create(ens_dir, recursive = TRUE, showWarnings = FALSE)
+  obs <- make_stan_data_obs(df, stan_data_base, use_measured_sigma = use_measured_sigma)
+  stan_data <- make_stan_data(stan_data_base, obs)
 
   fit <- fit_one(
     mod = mod,
@@ -298,16 +88,10 @@ run_one_ensemble <- function(df, ensemble_id, mod, stan_data_base,
     iter_warmup = iter_warmup,
     iter_sampling = iter_sampling,
     adapt_delta = adapt_delta,
-    max_treedepth = max_treedepth,
-    threads_per_chain = threads_per_chain,
-    output_dir = ens_dir
+    max_treedepth = max_treedepth#,
+    #threads_per_chain = threads_per_chain#,
+    #output_dir = ens_dir
   )
-
-  # Save inputs for reproducibility (small)
-  saveRDS(list(ensemble = ensemble_id,
-               wavelength = obs$wl,
-               sigma_rrs = obs$sigma_rrs),
-          file = file.path(ens_dir, "inputs_used.rds"))
 
   if (mode == "optimize") {
     # MAP outputs are different; keep it light
@@ -323,11 +107,9 @@ run_one_ensemble <- function(df, ensemble_id, mod, stan_data_base,
     min_ess_bulk = min(summ_all$ess_bulk, na.rm = TRUE)
   )
   diag <- bind_cols(diag_samp, diag_fit)
-  saveRDS(diag, file = file.path(ens_dir, "diagnostics.rds"))
 
   # Params
   par_sum <- summarize_params_fast(fit)
-  saveRDS(par_sum, file = file.path(ens_dir, "param_summary.rds"))
 
   par_mean_wide <- par_sum %>%
     # filter(
@@ -340,7 +122,6 @@ run_one_ensemble <- function(df, ensemble_id, mod, stan_data_base,
     ) %>%
     select(variable, mean) %>%
     pivot_wider(names_from = variable, values_from = mean)
-  saveRDS(par_mean_wide, file = file.path(ens_dir, "param_mean_wide.rds"))
 
   # Spectrum summaries + metrics (fast quantiles)
   spec <- summarize_rrs_hat_fast(fit, probs = spec_probs)
@@ -354,14 +135,23 @@ run_one_ensemble <- function(df, ensemble_id, mod, stan_data_base,
     probs = spec_probs,
     metrics = metrics
   )
-  saveRDS(rrs_out, file = file.path(ens_dir, "rrs_posterior_summaries.rds"))
 
-  # Optional: save fit object (usually unnecessary; CSVs are already in ens_dir)
-  if (keep_fit_rds) saveRDS(fit, file = file.path(ens_dir, "fit_object.rds"))
+  if (file.exists(out_dir)) {
+    ens_dir <- file.path(out_dir, paste0("ensemble_", ensemble_id))
+    dir.create(ens_dir, recursive = TRUE, showWarnings = FALSE)
+
+    saveRDS(list(ensemble = ensemble_id,
+                 wavelength = obs$wl,
+                 sigma_rrs = obs$sigma_rrs),
+            file = file.path(ens_dir, "inputs_used.rds"))
+    saveRDS(diag, file = file.path(ens_dir, "diagnostics.rds"))
+    saveRDS(par_sum, file = file.path(ens_dir, "param_summary.rds"))
+    saveRDS(par_mean_wide, file = file.path(ens_dir, "param_mean_wide.rds"))
+    saveRDS(rrs_out, file = file.path(ens_dir, "rrs_posterior_summaries.rds"))
+  }
 
   list(
     ensemble = ensemble_id,
-    out_dir = ens_dir,
     diag = diag,
     par_mean = par_mean_wide,
     par_summary = par_sum,
@@ -371,7 +161,7 @@ run_one_ensemble <- function(df, ensemble_id, mod, stan_data_base,
 
 
 # post-processing ---------------------------------------------------------
-
+#' @export
 summarize_rrs_hat_fast <- function(fit, probs = c(0.05, 0.95)) {
   rrs_mat <- posterior::as_draws_matrix(fit$draws("rrs_hat"))  # draws x n_wl
   rrs_hat <- colMeans(rrs_mat)
@@ -411,20 +201,37 @@ fit_metrics_1 <- function(rrs_obs, mean_hat, q_lo, q_hi, sigma_vec = NULL) {
   tibble(rmse = rmse, sam = sam, coverage = coverage, z_rmse = z_rmse)
 }
 
+#' @export
 summarize_params_fast <- function(fit,
                                   par_vars =
                                     c("chl","a_gnap_440", "a_gnap_s", "bb_p_550", "bb_p_gamma", "h_w","r_b_mix", "r_b_a", "sigma_model"),
                                     # c("chl","a_gnap_440", "a_gnap_s", "bb_p_550", "bb_p_gamma", "r_b_mix", "r_b_a", "sigma_model"),
                                     # c("chl","a_gnap_440","a_gnap_440", "bb_p_550", "r_b_mix", "r_b_a", "sigma_model"),
                                   probs = c(0.05, 0.5, 0.95)) {
+
+#
+#   posterior::summarise_draws(
+#     fit$draws(variables = par_vars),
+#     mean,
+#     sd,
+#     ~posterior::quantile2(.x, probs = probs),
+#     rhat,
+#     ess_bulk,
+#     ess_tail
+#   )
+#
   posterior::summarise_draws(
     fit$draws(variables = par_vars),
-    mean, sd,
+    mean,
+    sd,
     ~posterior::quantile2(.x, probs = probs),
-    rhat, ess_bulk, ess_tail
+    posterior::rhat,
+    posterior::ess_bulk,
+    posterior::ess_tail
   )
 }
 
+#' @export
 sampler_diag_stats <- function(fit) {
   d <- posterior::as_draws_matrix(fit$sampler_diagnostics())
   tibble(
@@ -438,7 +245,7 @@ sampler_diag_stats <- function(fit) {
 
 
 # diagnostic --------------------------------------------------------------
-
+#' @export
 plot_batch_diagnostics <- function(diag_tbl) {
   p1 <- plot_ly(diag_tbl, x = ~ensemble, y = ~n_divergent, type = "bar", name = "divergences")
   p2 <- plot_ly(diag_tbl, x = ~ensemble, y = ~max_rhat, type = "scatter", mode = "markers", name = "max Rhat")
@@ -452,7 +259,7 @@ plot_batch_diagnostics <- function(diag_tbl) {
       yaxis3 = list(title = "min ESS bulk")
     )
 }
-
+#' @export
 plot_sampler_cost <- function(diag_tbl) {
   plot_ly(diag_tbl, x = ~mean_n_leapfrog, y = ~mean_stepsize,
           type = "scatter", mode = "markers",
@@ -468,7 +275,7 @@ plot_sampler_cost <- function(diag_tbl) {
 
 
 # batch runner ------------------------------------------------------------
-
+#' @export
 run_batch <- function(rrs_hw_sub, mod, stan_data_base, out_dir,
                       mode = "sample",
                       chains = 2, iter_warmup = 300, iter_sampling = 300,
@@ -497,13 +304,18 @@ run_batch <- function(rrs_hw_sub, mod, stan_data_base, out_dir,
     )
 }
 
-run_batch_parallel <- function(rrs_hw_sub, mod, stan_data_base, out_dir,
-                               mode = "sample",
-                               chains = 2, iter_warmup = 300, iter_sampling = 300,
-                               adapt_delta = 0.85, max_treedepth = 12,
-                               threads_per_chain = 1,
-                               workers = NULL,
-                               seed = TRUE) {
+#' @export
+run_batch_parallel <- function(
+    rrs_hw_sub,
+    mod,
+    stan_data_base,
+    mode = "sample",
+    chains = 2, iter_warmup = 300, iter_sampling = 300,
+    adapt_delta = 0.85, max_treedepth = 12,
+    threads_per_chain = 1,
+    workers = NULL,
+    seed = TRUE
+) {
 
   stopifnot(all(c("data", "ensemble") %in% names(rrs_hw_sub)))
   n <- nrow(rrs_hw_sub)
@@ -546,7 +358,6 @@ run_batch_parallel <- function(rrs_hw_sub, mod, stan_data_base, out_dir,
           ensemble_id = .y,
           mod = mod,
           stan_data_base = stan_data_base,
-          out_dir = out_dir,
           mode = mode,
           chains = chains,
           iter_warmup = iter_warmup,
@@ -580,6 +391,7 @@ run_batch_parallel <- function(rrs_hw_sub, mod, stan_data_base, out_dir,
   out
 }
 
+#' @export
 extract_batch_tables <- function(results_tbl) {
   par_tbl <- results_tbl %>%
     transmute(ensemble, par_mean = map(stan, "par_mean")) %>%
