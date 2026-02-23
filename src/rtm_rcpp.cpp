@@ -2,6 +2,11 @@
 #include <RcppEigen.h>
 #include "rtm_core.hpp"
 
+//' Compute IOPs from OACs
+//'
+//' Bio-optical model to compute Inherent Optical Proprieties from Optically Active Constituents
+//'
+//' @export
 // [[Rcpp::export]]
 Eigen::MatrixXd iop_from_oac(const Eigen::VectorXd& wavelength,
                                    const Eigen::VectorXd& a_w,
@@ -18,21 +23,61 @@ Eigen::MatrixXd iop_from_oac(const Eigen::VectorXd& wavelength,
                                               a_gnap_s, bb_p_gamma);
 }
 
-//´ Albert & Mobley (2003) Forward Model
-//´
-//´ Computes Rrs below surface using analytical model from Albert & Mobley (2003)
-//´
-//´ @param wavelength vector of wavelengths [nm]
-//´ @param iop list with elements `a` and `bb`, same length as wavelength
-//´ @param water_type either 1 or 2 (default = 2)
-//´ @param theta_sun sun zenith angle [degrees]
-//´ @param theta_view sensor view angle [degrees]
-//´ @param h_w optional: water depth [m] (enables shallow mode)
-//´ @param r_b optional: bottom reflectance vector (same length as wavelength)
-//´
-//´ @return numeric vector of subsurface Rrs
-//´
-//´ @references Albert, A. and Mobley, C.D. (2003) ‘An analytical model for subsurface irradiance and remote sensing reflectance in deep and shallow case-2 waters’, Optics Express, 11(22), pp. 2873–2890. Available at: https://doi.org/10.1364/OE.11.002873.
+//' Compute IOPs from OACs
+//'
+//' Bio-optical model to compute Inherent Optical Proprieties from
+//' chl, g+nap(440), bb_p_550
+//'
+//' @export
+// [[Rcpp::export]]
+Eigen::MatrixXd iop_from_oac_spm(
+    const Eigen::VectorXd& wavelength,
+    const Eigen::VectorXd& a_w,
+    const Eigen::VectorXd& a0,
+    const Eigen::VectorXd& a1,
+    const Eigen::VectorXd& bb_w,
+    double chl,
+    double a_g_440,
+    double spm,
+    double a_nap_star,
+    double bb_p_star,
+    double a_g_s,
+    double a_nap_s,
+    double bb_p_gamma
+) {
+  return saber::iop_from_oac_spm_core<double>(
+    wavelength,
+    a_w,
+    a0,
+    a1,
+    bb_w,
+    chl,
+    a_g_440,
+    spm,
+    a_nap_star,
+    bb_p_star,
+    a_g_s,
+    a_nap_s,
+    bb_p_gamma
+  );
+}
+
+//' Albert & Mobley (2003) Forward Model
+//'
+//' Computes Rrs below surface using analytical model from Albert & Mobley (2003)
+//'
+//' @param wavelength vector of wavelengths [nm]
+//' @param iop list with elements `a` and `bb`, same length as wavelength
+//' @param water_type either 1 or 2 (default = 2)
+//' @param theta_sun sun zenith angle [degrees]
+//' @param theta_view sensor view angle [degrees]
+//' @param h_w optional: water depth [m] (enables shallow mode)
+//' @param r_b optional: bottom reflectance vector (same length as wavelength)
+//'
+//' @return numeric vector of subsurface Rrs
+//'
+//' @references Albert, A. and Mobley, C.D. (2003) ‘An analytical model for subsurface irradiance and remote sensing reflectance in deep and shallow case-2 waters’, Optics Express, 11(22), pp. 2873–2890. Available at: https://doi.org/10.1364/OE.11.002873.
+//' @export
 // [[Rcpp::export]]
 Eigen::VectorXd forward_am03(const Eigen::VectorXd& wavelength,
                                const Eigen::VectorXd& a,
@@ -75,6 +120,7 @@ Eigen::VectorXd forward_am03(const Eigen::VectorXd& wavelength,
   );
 }
 
+//' @export
 // [[Rcpp::export]]
 Eigen::VectorXd solve_rb_am03(const Eigen::VectorXd& wavelength,
                                 const Eigen::VectorXd& a,

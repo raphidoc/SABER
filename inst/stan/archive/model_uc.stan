@@ -1,6 +1,6 @@
 functions {
   // Returns [n_wl, 2] where col 1 = a(λ), col 2 = bb(λ)
-  matrix iop_from_oac_all(
+  matrix iop_from_oac(
       vector wavelength,
       vector a_w,
       vector a0,
@@ -38,10 +38,6 @@ data {
   vector[n_wl] a1;
   vector[n_wl] bb_w;
 
-  // IOPs spectral slopes
-  real<lower=0> a_gnap_s;
-  real<lower=0> bb_p_gamma;
-
   // Bottom library on the same wavelength grid
   int<lower=1> n_class;
   matrix[n_wl, n_class] r_b_mu_lib;
@@ -53,15 +49,21 @@ data {
   real theta_sun;
   real theta_view;
   int<lower=0,upper=1> shallow;
-
-  // KNOWN depth (passed from data)
-  real<lower=0> h_w;
 }
 
 parameters {
   real<lower=0> chl;
   real<lower=0> a_gnap_440;
   real<lower=0> bb_p_550;
+
+  real<lower=0> a_gnap_s;
+  real<lower=0> bb_p_gamma;
+
+  // real<lower=0> a_nap_s;
+  // real<lower=0> a_g_s;
+  // real<lower=0> bb_p_gamma;
+
+  real<lower=0, upper=20> h_w;
 
   simplex[3] r_b_mix;
   real<lower=0> r_b_a;
@@ -84,7 +86,7 @@ transformed parameters {
 
   // IOPs from OAC (autodiff-able)
   {
-    matrix[n_wl, 2] iop = iop_from_oac_all(
+    matrix[n_wl, 2] iop = iop_from_oac(
       wavelength, a_w, a0, a1, bb_w,
       chl, a_gnap_440, bb_p_550,
       a_gnap_s, bb_p_gamma
@@ -126,13 +128,14 @@ transformed parameters {
 
 model {
   // Priors
-  chl ~ lognormal(log(0.9), 0.6);
-  a_gnap_440 ~ lognormal(log(0.5), 0.7);
-  bb_p_550 ~ lognormal(log(0.0012), 0.45);
+  chl ~ lognormal(log(0.8), 0.7);
+  a_gnap_440 ~ lognormal(log(0.45), 0.4);
+  bb_p_550 ~ lognormal(log(0.0014), 0.4);
+  a_gnap_s ~ normal(0.0156, 0.0012);  // same sd, mean down a bit
+  bb_p_gamma ~ normal(0.38, 0.12);
 
   // bottom priors
-  r_b_a     ~ lognormal(log(1.0), 0.5);
-  // delta_raw ~ normal(0, 1);
+  r_b_a ~ lognormal(log(1.0), 0.5);
 
   // model error
   sigma_model ~ normal(0, 0.00005); // half-normal due to <lower=0>

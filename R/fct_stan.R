@@ -19,7 +19,7 @@ fit_one <- function(
     chains = 2,
     iter_warmup = 300,
     iter_sampling = 300,
-    # parallel_chains = chains,
+    parallel_chains = chains,
     adapt_delta = 0.85,
     max_treedepth = 12,
     threads_per_chain = 1#,
@@ -41,7 +41,7 @@ fit_one <- function(
     data = stan_data,
     seed = seed,
     chains = chains,
-    # parallel_chains = parallel_chains,
+    parallel_chains = parallel_chains,
     iter_warmup = iter_warmup,
     iter_sampling = iter_sampling,
     adapt_delta = adapt_delta,
@@ -68,7 +68,10 @@ run_one_ensemble <- function(
     max_treedepth = 12,
     threads_per_chain = 1,
     spec_probs = c(0.05, 0.95),
-    out_dir = ""
+    out_dir = "",
+    par_vars = c("chl","a_gnap_440", "a_gnap_s", "bb_p_550", "bb_p_gamma", "h_w","r_b_mix", "r_b_a", "sigma_model"),
+    h_w_mu_from_obs = F,
+    h_w_sd_from_obs = F
 ) {
 
   mode <- match.arg(mode)
@@ -77,7 +80,13 @@ run_one_ensemble <- function(
   # stan_data <- stan_data_from_obs(stan_data_base, obs$rrs_obs, obs$sigma_rrs)
 
   obs <- make_stan_data_obs(df, stan_data_base, use_measured_sigma = use_measured_sigma)
-  stan_data <- make_stan_data(stan_data_base, obs)
+
+  stan_data <- make_stan_data(
+    stan_data_base,
+    obs,
+    h_w_mu_from_obs = h_w_mu_from_obs,
+    h_w_sd_from_obs = h_w_sd_from_obs
+    )
 
   fit <- fit_one(
     mod = mod,
@@ -109,7 +118,7 @@ run_one_ensemble <- function(
   diag <- bind_cols(diag_samp, diag_fit)
 
   # Params
-  par_sum <- summarize_params_fast(fit)
+  par_sum <- summarize_params_fast(fit, par_vars = par_vars)
 
   par_mean_wide <- par_sum %>%
     # filter(
@@ -125,7 +134,7 @@ run_one_ensemble <- function(
 
   # Spectrum summaries + metrics (fast quantiles)
   spec <- summarize_rrs_hat_fast(fit, probs = spec_probs)
-  metrics <- fit_metrics_1(obs$rrs_obs, spec$rrs_hat, spec$rrs_q_lo, spec$rrs_q_hi, sigma_vec = obs$sigma_rrs)
+  metrics <- fit_metrics(obs$rrs_obs, spec$rrs_hat, spec$rrs_q_lo, spec$rrs_q_hi, sigma_vec = obs$sigma_rrs)
 
   rrs_out <- list(
     wl = obs$wl,
@@ -133,7 +142,11 @@ run_one_ensemble <- function(
     q_lo = spec$rrs_q_lo,
     q_hi = spec$rrs_q_hi,
     probs = spec_probs,
-    metrics = metrics
+    metrics = metrics,
+    # NEW: bottom reflectance posterior summaries
+    r_b_mean = spec$r_b_hat,
+    r_b_q_lo = spec$r_b_q_lo,
+    r_b_q_hi = spec$r_b_q_hi
   )
 
   if (file.exists(out_dir)) {
@@ -152,6 +165,7 @@ run_one_ensemble <- function(
 
   list(
     ensemble = ensemble_id,
+    fit = fit,
     diag = diag,
     par_mean = par_mean_wide,
     par_summary = par_sum,
@@ -167,21 +181,22 @@ summarize_rrs_hat_fast <- function(fit, probs = c(0.05, 0.95)) {
   rrs_hat <- colMeans(rrs_mat)
   rrs_qs <- matrixStats::colQuantiles(rrs_mat, probs = probs, drop = FALSE)
 
-  # r_b_mat <- posterior::as_draws_matrix(fit$draws("r_b_hat"))  # draws x n_wl
-  # r_b_hat <- colMeans(r_b_mat)
-  # r_b_qs <- matrixStats::colQuantiles(r_b_mat, probs = probs, drop = FALSE)
+  r_b_mat <- posterior::as_draws_matrix(fit$draws("r_b_hat"))  # draws x n_wl
+  r_b_hat <- colMeans(r_b_mat)
+  r_b_qs <- matrixStats::colQuantiles(r_b_mat, probs = probs, drop = FALSE)
 
   tibble(
     rrs_hat = rrs_hat,
     rrs_q_lo = rrs_qs[,1],
-    rrs_q_hi = rrs_qs[,2]#,
-    # r_b_hat = r_b_hat,
-    # r_b_q_lo = r_b_qs[,1],
-    # r_b_q_hi = r_b_qs[,2],
+    rrs_q_hi = rrs_qs[,2],
+    r_b_hat = r_b_hat,
+    r_b_q_lo = r_b_qs[,1],
+    r_b_q_hi = r_b_qs[,2],
   )
 }
 
-fit_metrics_1 <- function(rrs_obs, mean_hat, q_lo, q_hi, sigma_vec = NULL) {
+#' @export
+fit_metrics <- function(rrs_obs, mean_hat, q_lo, q_hi, sigma_vec = NULL) {
   resid <- rrs_obs - mean_hat
   rmse  <- sqrt(mean(resid^2, na.rm = TRUE))
 
@@ -276,11 +291,19 @@ plot_sampler_cost <- function(diag_tbl) {
 
 # batch runner ------------------------------------------------------------
 #' @export
-run_batch <- function(rrs_hw_sub, mod, stan_data_base, out_dir,
-                      mode = "sample",
-                      chains = 2, iter_warmup = 300, iter_sampling = 300,
-                      adapt_delta = 0.85, max_treedepth = 12,
-                      threads_per_chain = 1) {
+run_batch <- function(
+    rrs_hw_sub,
+    mod,
+    stan_data_base,
+    out_dir,
+    mode = "sample",
+    chains = 2,
+    iter_warmup = 300,
+    iter_sampling = 300,
+    adapt_delta = 0.85,
+    max_treedepth = 12#,
+    #threads_per_chain = 1
+) {
 
   rrs_hw_sub %>%
     mutate(
@@ -297,8 +320,8 @@ run_batch <- function(rrs_hw_sub, mod, stan_data_base, out_dir,
           iter_warmup = iter_warmup,
           iter_sampling = iter_sampling,
           adapt_delta = adapt_delta,
-          max_treedepth = max_treedepth,
-          threads_per_chain = threads_per_chain
+          max_treedepth = max_treedepth#,
+          #threads_per_chain = threads_per_chain
         )
       )
     )
@@ -310,11 +333,17 @@ run_batch_parallel <- function(
     mod,
     stan_data_base,
     mode = "sample",
-    chains = 2, iter_warmup = 300, iter_sampling = 300,
-    adapt_delta = 0.85, max_treedepth = 12,
-    threads_per_chain = 1,
+    chains = 2,
+    iter_warmup = 300,
+    iter_sampling = 300,
+    adapt_delta = 0.85,
+    max_treedepth = 12,
+    #threads_per_chain = 1,
     workers = NULL,
-    seed = TRUE
+    seed = TRUE,
+    par_vars = c("chl","a_gnap_440", "a_gnap_s", "bb_p_550", "bb_p_gamma", "h_w","r_b_mix", "r_b_a", "sigma_model"),
+    h_w_mu_from_obs = F,
+    h_w_sd_from_obs = F
 ) {
 
   stopifnot(all(c("data", "ensemble") %in% names(rrs_hw_sub)))
@@ -364,7 +393,10 @@ run_batch_parallel <- function(
           iter_sampling = iter_sampling,
           adapt_delta = adapt_delta,
           max_treedepth = max_treedepth,
-          threads_per_chain = threads_per_chain
+          #threads_per_chain = threads_per_chain
+          par_vars = par_vars,
+          h_w_mu_from_obs = h_w_mu_from_obs,
+          h_w_sd_from_obs = h_w_sd_from_obs
         )
 
         dt <- as.numeric(difftime(Sys.time(), t_i, units = "secs"))

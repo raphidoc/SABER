@@ -2,10 +2,12 @@
 % Please edit documentation in R/utils_optics.R
 \name{rrs_0m_to_0p}
 \alias{rrs_0m_to_0p}
-\title{Transmit rrs(0-) to Rrs(0+)}
+\title{Transmit rrs(0-) to Rrs(0+)
+Rrs to rrs: Lee et al, 1998, 2002}
 \usage{
 rrs_0m_to_0p(rrs_0m)
 }
 \description{
 Transmit rrs(0-) to Rrs(0+)
+Rrs to rrs: Lee et al, 1998, 2002
 }

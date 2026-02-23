@@ -1,16 +1,16 @@
 #' Transmit rrs(0+) to rrs(0-)
-#'
+#' Rrs to rrs: Lee et al, 1998, 2002
 #' @export
 rrs_0p_to_0m <- function(rrs_0p) {
-  rrs_0m <- rrs_0p / (0.52 + 1.7 * rrs_0p)
+  rrs_0m <- rrs_0p / (0.518 + 1.562 * rrs_0p)
   return(rrs_0m)
 }
 
 #' Transmit rrs(0-) to Rrs(0+)
-#'
+#' Rrs to rrs: Lee et al, 1998, 2002
 #' @export
 rrs_0m_to_0p <- function(rrs_0m) {
-  rrs_0p <- -0.52 * rrs_0m / (1.7 * rrs_0m - 1)
+  rrs_0p <- 0.518 * rrs_0m / (1 - 1.562 * rrs_0m)
   return(rrs_0p)
 }
 

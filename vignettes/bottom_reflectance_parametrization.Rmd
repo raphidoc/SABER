@@ -1,0 +1,283 @@
+---
+title: "bottom_reflectance_parametrization"
+output: html_document
+---
+
+```{r setup, include = FALSE}
+# library(SABER)
+# devtools::load_all(".")
+library(SABER)
+
+library(plotly)
+library(stringr)
+library(dplyr)
+library(tidyr)
+library(lubridate)
+library(cmdstanr)
+library(purrr)
+library(posterior)
+library(matrixStats)
+library(readr)
+library(glue)
+
+font <- list(family = "Times New Roman", size = 20, weight = "normal")
+
+border <- list(
+  type = "rect",
+  fillcolor = "transparent",
+  line = list(width = 0.5),
+  xref = "paper",
+  yref = "paper",
+  x0 = 0,
+  x1 = 1,
+  y0 = 0,
+  y1 = 1
+)
+
+library(reticulate)
+use_condaenv("kaleido", required = TRUE)
+py_config()
+py_run_string("import sys")
+
+here <- function(...) {
+  start <- "/D/Documents/phd/thesis"
+  file.path(start, ...)
+}
+```
+
+```{r}
+
+```
+
+```{r}
+r_b_gamache <- read_csv("/home/raphael/R/SABER/inst/extdata/r_b_gamache_obs.csv")
+
+spectra_df <- r_b_gamache %>%
+  pivot_wider(
+    names_from = wavelength,
+    values_from = r_b,
+    names_prefix = "wl_"
+  )
+
+# spectra_df: columns = class, and one column per wavelength OR a matrix list
+# Suppose you have: class, and columns named like wl_350, wl_351, ... or numeric names
+wl_cols <- grep("^wl_", names(spectra_df), value = TRUE)
+
+eps <- 1e-8
+shrink_cov <- function(S, lambda = 0.1) {
+  D <- diag(diag(S))
+  (1 - lambda) * S + lambda * D
+}
+
+fit_class_gaussians <- function(df, lambda = 0.1) {
+  X <- as.matrix(df[, wl_cols])
+  # mean-normalize each spectrum (row)
+  m <- rowMeans(X)
+  Xn <- X / (m + eps)
+
+  mu <- colMeans(Xn)
+  S  <- cov(Xn)
+  S  <- shrink_cov(S, lambda = lambda)
+  L  <- chol(S)
+
+  list(mu = mu, L = L, n = nrow(Xn))
+}
+
+fits <- spectra_df %>%
+  group_by(class) %>%
+  group_split() %>%
+  map(~fit_class_gaussians(.x, lambda = 0.1))
+
+classes <- spectra_df %>% distinct(class) %>% pull(class)
+K <- length(classes)
+
+# mixture weights from library proportions
+counts <- map_int(fits, "n")
+rb_pi <- counts / sum(counts)
+
+rb_mu_k <- lapply(fits, `[[`, "mu")
+rb_L_k  <- lapply(fits, `[[`, "L")
+```
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(purrr)
+library(ggplot2)
+
+# --- identify wavelength columns ---
+wl_cols <- grep("^wl_", names(spectra_df), value = TRUE)
+wavelength <- as.numeric(sub("^wl_", "", wl_cols))
+
+eps <- 1e-8
+shrink_cov <- function(S, lambda = 0.1) {
+  D <- diag(diag(S))
+  (1 - lambda) * S + lambda * D
+}
+
+fit_class_gaussian <- function(df, lambda = 0.1) {
+  X <- as.matrix(df[, wl_cols, drop = FALSE])
+  Xn <- X / (rowMeans(X) + eps)          # mean-normalize each spectrum (shape only)
+
+  mu <- colMeans(Xn)
+  S  <- cov(Xn)
+  S  <- shrink_cov(S, lambda = lambda)
+
+  sd <- sqrt(diag(S))
+  list(mu = mu, sd = sd, Xn = Xn)
+}
+
+lambda <- 0.1  # adjust if needed for stability
+fits <- spectra_df %>%
+  group_by(class) %>%
+  group_split() %>%
+  set_names(map_chr(., ~ unique(.x$class))) %>%
+  map(~ fit_class_gaussian(.x, lambda = lambda))
+
+# --- long-form normalized library spectra for plotting ---
+lib_long <- spectra_df %>%
+  select(class, all_of(wl_cols)) %>%
+  mutate(.row = row_number()) %>%
+  pivot_longer(all_of(wl_cols), names_to = "wl", values_to = "R") %>%
+  group_by(.row) %>%
+  mutate(Rn = R / (mean(R) + eps)) %>%    # mean-normalize per spectrum
+  ungroup() %>%
+  mutate(wavelength = as.numeric(sub("^wl_", "", wl))) %>%
+  select(class, .row, wavelength, Rn)
+
+# --- per-class mu +/- sd bands ---
+mu_sd_long <- imap_dfr(fits, function(fit, cls) {
+  tibble(
+    class = cls,
+    wavelength = wavelength,
+    mu = fit$mu,
+    sd = fit$sd,
+    lo = fit$mu - fit$sd,
+    hi = fit$mu + fit$sd
+  )
+})
+
+# --- plot ---
+ggplot() +
+  geom_line(
+    data = lib_long,
+    aes(x = wavelength, y = Rn, group = interaction(class, .row), color = class),
+    linewidth = 0.4, alpha = 0.35
+  ) +
+  geom_ribbon(
+    data = mu_sd_long,
+    aes(x = wavelength, ymin = lo, ymax = hi, fill = class),
+    alpha = 0.15, linewidth = 0
+  ) +
+  geom_line(
+    data = mu_sd_long,
+    aes(x = wavelength, y = mu, color = class),
+    linewidth = 1.1
+  ) +
+  labs(
+    x = "wavelength (nm)",
+    y = "Normalized bottom reflectance (mean-normalized)",
+    title = "Bottom library (normalized) and fitted class Gaussian prior: μ ± 1σ"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(legend.title = element_blank())
+```
+
+```{r}
+# ---- Bottom replicate spectra: low-rank PCA prior ----
+rb_obs <- read_csv("/home/raphael/R/SABER/inst/extdata/r_b_gamache_obs.csv") %>%
+  dplyr::mutate(
+    class = as.character(.data$class),
+    wavelength = as.numeric(.data$wavelength),
+    r_b = as.numeric(.data$r_b)
+  )
+
+# identify replicate id if present; otherwise fabricate within class
+id_col <- intersect(names(rb_obs), c("time_target"))
+if (length(id_col) == 0) {
+  rb_obs <- rb_obs %>%
+    group_by(class) %>%
+    arrange(wavelength, .by_group = TRUE) %>%
+    mutate(rep_id = cumsum(c(1, diff(wavelength) < 0))) %>%
+    ungroup()
+  id_col <- "rep_id"
+} else {
+  id_col <- id_col[1]
+}
+
+spectra_df <- rb_obs %>%
+  dplyr::select(class, dplyr::all_of(id_col), wavelength, r_b) %>%
+  tidyr::pivot_wider(names_from = wavelength, values_from = r_b, names_prefix = "wl_")
+
+wl_cols <- grep("^wl_", names(spectra_df), value = TRUE)
+wl_native <- as.numeric(sub("^wl_", "", wl_cols))
+ord <- order(wl_native)
+wl_cols <- wl_cols[ord]
+wl_native <- wl_native[ord]
+
+X_native <- as.matrix(spectra_df[, wl_cols, drop = FALSE])
+wl_target <- as.numeric(wavelength)
+
+# interpolate each replicate spectrum onto Stan grid
+X <- t(apply(X_native, 1, function(row_vals) {
+  y <- as.numeric(row_vals)
+  ok <- is.finite(y)
+  if (sum(ok) < 2) return(rep(NA_real_, length(wl_target)))
+  interp1(wl_native[ok], y[ok], wl_target)
+}))  # [n_spec, n_wl]
+
+# fill any non-finite with column medians
+if (any(!is.finite(X))) {
+  col_med <- apply(X, 2, function(z) stats::median(z, na.rm = TRUE))
+  for (j in seq_len(ncol(X))) {
+    bad <- !is.finite(X[, j])
+    if (any(bad)) X[bad, j] <- col_med[j]
+  }
+}
+
+cls_vec <- spectra_df$class
+classes <- sort(unique(cls_vec))
+K <- length(classes)
+
+# global PCA basis (shared across classes)
+mu_global <- colMeans(X)
+Xc <- sweep(X, 2, mu_global, "-")
+p <- stats::prcomp(Xc, center = FALSE, scale. = FALSE)
+
+q_eff <- min(q, ncol(p$rotation), ncol(X))
+rb_U <- p$rotation[, 1:q_eff, drop = FALSE]  # [n_wl, q]
+
+rb_mu_k <- vector("list", K)
+rb_tau_k <- vector("list", K)
+rb_sigma2_k <- numeric(K)
+counts <- integer(K)
+
+for (i in seq_along(classes)) {
+  cl <- classes[i]
+  idx <- which(cls_vec == cl)
+  counts[i] <- length(idx)
+  
+  Xk <- X[idx, , drop = FALSE]
+  mu_k <- colMeans(Xk)
+  rb_mu_k[[i]] <- as.numeric(mu_k)
+  
+  # residuals around class mean
+  Rk <- sweep(Xk, 2, mu_k, "-")        # [n_k, n_wl]
+  Ak <- Rk %*% rb_U                    # [n_k, q]
+  tau <- apply(Ak, 2, stats::sd)
+  tau[!is.finite(tau)] <- 0
+  tau <- pmax(tau, tau_floor)
+  rb_tau_k[[i]] <- as.numeric(tau)
+  
+  Rhat <- Ak %*% t(rb_U)
+  Ek <- Rk - Rhat
+  sigma2 <- mean(Ek^2)
+  sigma2 <- max(sigma2, sigma2_floor)
+  rb_sigma2_k[i] <- sigma2
+}
+
+names(rb_mu_k) <- classes
+names(rb_tau_k) <- classes
+rb_pi <- counts / sum(counts)
+```
+

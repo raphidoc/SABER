@@ -31,6 +31,29 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// iop_from_oac_spm
+Eigen::MatrixXd iop_from_oac_spm(const Eigen::VectorXd& wavelength, const Eigen::VectorXd& a_w, const Eigen::VectorXd& a0, const Eigen::VectorXd& a1, const Eigen::VectorXd& bb_w, double chl, double a_g_440, double spm, double a_nap_star, double bb_p_star, double a_g_s, double a_nap_s, double bb_p_gamma);
+RcppExport SEXP _SABER_iop_from_oac_spm(SEXP wavelengthSEXP, SEXP a_wSEXP, SEXP a0SEXP, SEXP a1SEXP, SEXP bb_wSEXP, SEXP chlSEXP, SEXP a_g_440SEXP, SEXP spmSEXP, SEXP a_nap_starSEXP, SEXP bb_p_starSEXP, SEXP a_g_sSEXP, SEXP a_nap_sSEXP, SEXP bb_p_gammaSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const Eigen::VectorXd& >::type wavelength(wavelengthSEXP);
+    Rcpp::traits::input_parameter< const Eigen::VectorXd& >::type a_w(a_wSEXP);
+    Rcpp::traits::input_parameter< const Eigen::VectorXd& >::type a0(a0SEXP);
+    Rcpp::traits::input_parameter< const Eigen::VectorXd& >::type a1(a1SEXP);
+    Rcpp::traits::input_parameter< const Eigen::VectorXd& >::type bb_w(bb_wSEXP);
+    Rcpp::traits::input_parameter< double >::type chl(chlSEXP);
+    Rcpp::traits::input_parameter< double >::type a_g_440(a_g_440SEXP);
+    Rcpp::traits::input_parameter< double >::type spm(spmSEXP);
+    Rcpp::traits::input_parameter< double >::type a_nap_star(a_nap_starSEXP);
+    Rcpp::traits::input_parameter< double >::type bb_p_star(bb_p_starSEXP);
+    Rcpp::traits::input_parameter< double >::type a_g_s(a_g_sSEXP);
+    Rcpp::traits::input_parameter< double >::type a_nap_s(a_nap_sSEXP);
+    Rcpp::traits::input_parameter< double >::type bb_p_gamma(bb_p_gammaSEXP);
+    rcpp_result_gen = Rcpp::wrap(iop_from_oac_spm(wavelength, a_w, a0, a1, bb_w, chl, a_g_440, spm, a_nap_star, bb_p_star, a_g_s, a_nap_s, bb_p_gamma));
+    return rcpp_result_gen;
+END_RCPP
+}
 // forward_am03
 Eigen::VectorXd forward_am03(const Eigen::VectorXd& wavelength, const Eigen::VectorXd& a, const Eigen::VectorXd& bb, int water_type, double theta_sun_deg, double theta_view_deg, bool shallow, double h_w, Rcpp::Nullable<Eigen::VectorXd> r_b);
 RcppExport SEXP _SABER_forward_am03(SEXP wavelengthSEXP, SEXP aSEXP, SEXP bbSEXP, SEXP water_typeSEXP, SEXP theta_sun_degSEXP, SEXP theta_view_degSEXP, SEXP shallowSEXP, SEXP h_wSEXP, SEXP r_bSEXP) {
@@ -71,6 +94,7 @@ END_RCPP
 
 static const R_CallMethodDef CallEntries[] = {
     {"_SABER_iop_from_oac", (DL_FUNC) &_SABER_iop_from_oac, 10},
+    {"_SABER_iop_from_oac_spm", (DL_FUNC) &_SABER_iop_from_oac_spm, 13},
     {"_SABER_forward_am03", (DL_FUNC) &_SABER_forward_am03, 9},
     {"_SABER_solve_rb_am03", (DL_FUNC) &_SABER_solve_rb_am03, 8},
     {NULL, NULL, 0}

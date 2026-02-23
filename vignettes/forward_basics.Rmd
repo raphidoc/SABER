@@ -50,15 +50,33 @@ wavelength <- unique(rrs_hw$wavelength)
 Bio-optical modelling refer to the link we draw between Optically Active Constituents (OAC) and Inherent Optical Proprieties (IOP). The function `iop_from_oac` implement this, using some data and option presented in the literature.
 
 ```{r}
-# oac <- c("chl" = 24.442, "a_g_440" = 0.798, "bb_p_550" = 0.009, "a_g_s" = 0.032, "bb_p_gamma" = 3.166)
-oac <- c("chl" = 3.065, "a_g_440" = 0.234, "bb_p_550" = 0.003, "a_g_s" = 0.027, "bb_p_gamma" = 0.209)
+wl <- seq(380, 700, 3)
 
-iop <- iop_from_oac(wavelength, oac)
+luts <- make_luts(wavelength = wl)
 
-plot_ly(x = wavelength) %>%
-  add_lines(y = iop$a, name = "absorption") %>%
-  add_lines(y = iop$bb, name = "backscattering") #%>%
-  # add_lines(y = - iop$a+iop$bb, name = "transmission")
+iops <- iop_from_oac_spm(
+  wavelength = wl,
+  a_w = luts$a_w,
+  a0 = luts$a0,
+  a1 = luts$a1,
+  bb_w = luts$bb_w,
+  chl = 1.5,
+  a_g_440 = 0.2,
+  spm = 5,
+  a_nap_star = 0.005,
+  bb_p_star = 0.0005,
+  a_g_s = 0.0156,
+  a_nap_s = 0.005,
+  bb_p_gamma = 0.38
+)
+
+plot_ly(x = wl) %>%
+  add_lines(y = iops[,1], name = "a_t") %>%
+  add_lines(y = iops[,2], name = "bb_t") %>%
+  add_lines(y = iops[,3], name = "a_phy") %>%
+  add_lines(y = iops[,4], name = "a_g") %>%
+  add_lines(y = iops[,5], name = "a_nap") %>%
+  add_lines(y = iops[,6], name = "bb_p")
 ```
 
 ## Bottom reflectance

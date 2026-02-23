@@ -8,6 +8,8 @@ make_stan_data_obs(
   df,
   stan_data_base,
   use_measured_sigma = TRUE,
+  use_depth_prior_from_obs = TRUE,
+  h_w_sd_obs = NA_real_,
   sigma_fallback = 5e-05,
   sigma_floor = 1e-08
 )

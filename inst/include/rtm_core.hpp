@@ -32,8 +32,6 @@ inline void snell_law_double(double theta_view_deg, double theta_sun_deg,
   *sun_w_rad  = std::asin(sts);
 }
 
-// ------- core algorithms (single source of truth) -------
-
 // Returns [n_wl,2] col1=a, col2=bb
 template <typename T>
 inline Eigen::Matrix<T, Eigen::Dynamic, 2>
@@ -49,7 +47,7 @@ iop_from_oac_core(const Eigen::Ref<const Eigen::VectorXd>& wavelength,
                       const T& bb_p_gamma) {
   const int n = wavelength.size();
   if (a_w.size()!=n || a0.size()!=n || a1.size()!=n || bb_w.size()!=n)
-    throw std::domain_error("iop_from_oac_all_core: LUT size mismatch vs wavelength");
+    throw std::domain_error("iop_from_oac_core: LUT size mismatch vs wavelength");
 
   Eigen::Matrix<T, Eigen::Dynamic, 2> out(n, 2);
 
@@ -67,6 +65,54 @@ iop_from_oac_core(const Eigen::Ref<const Eigen::VectorXd>& wavelength,
 
     out(i, 0) = T(a_w(i))  + a_phy + a_gnap;
     out(i, 1) = T(bb_w(i)) + bb_p;
+  }
+  return out;
+}
+
+template <typename T>
+inline Eigen::Matrix<T, Eigen::Dynamic, 6>
+iop_from_oac_spm_core(const Eigen::Ref<const Eigen::VectorXd>& wavelength,
+                  const Eigen::Ref<const Eigen::VectorXd>& a_w,
+                  const Eigen::Ref<const Eigen::VectorXd>& a0,
+                  const Eigen::Ref<const Eigen::VectorXd>& a1,
+                  const Eigen::Ref<const Eigen::VectorXd>& bb_w,
+                  const T& chl,
+                  const T& a_g_440,
+                  const T& spm,
+                  const T& a_nap_star,
+                  const T& bb_p_star,
+                  const T& a_g_s,
+                  const T& a_nap_s,
+                  const T& bb_p_gamma) {
+  const int n = wavelength.size();
+  if (a_w.size()!=n || a0.size()!=n || a1.size()!=n || bb_w.size()!=n)
+    throw std::domain_error("iop_from_oac_core: LUT size mismatch vs wavelength");
+
+  Eigen::Matrix<T, Eigen::Dynamic, 6> out(n, 6);
+
+  // IMPORTANT: call exp/log/pow unqualified (ADL picks Stan overloads when T is Stan)
+  const T aph_440 = T(0.06) * pow(chl, T(0.65));
+
+  for (int i = 0; i < n; ++i) {
+    const T wl = T(wavelength(i));
+
+    T a_phy = (T(a0(i)) + T(a1(i)) * log(aph_440)) * aph_440;
+    if (saber::value(a_phy) < 0.0) a_phy = T(0.0);
+
+    const T a_g = a_g_440 * exp(-a_g_s * (wl - T(440.0)));
+
+    const T a_nap_440 = a_nap_star * spm;
+    const T bb_p_550 = bb_p_star * spm;
+
+    const T a_nap = a_nap_440 * exp(-a_nap_s * (wl - T(440.0)));
+    const T bb_p   = bb_p_550 * pow(wl / T(550.0), -bb_p_gamma);
+
+    out(i, 0) = T(a_w(i))  + a_phy + a_g + a_nap;
+    out(i, 1) = T(bb_w(i)) + bb_p;
+    out(i, 2) = a_phy;
+    out(i, 3) = a_g;
+    out(i, 4) = a_nap;
+    out(i, 5) = bb_p;
   }
   return out;
 }
