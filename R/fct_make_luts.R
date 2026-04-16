@@ -360,44 +360,44 @@ make_luts_gmm <- function(
   bb_w <- compute_bb_w(wavelength)
 
   # ---- Bottom library: mean/sd table (legacy; keep) ----
-  rb_ms <- r_b_gamache %>%
-    dplyr::transmute(
-      class = as.character(.data$class),
-      wl    = as.numeric(.data$wavelength),
-      mu    = as.numeric(.data$r_b_mean),
-      sd    = as.numeric(.data$r_b_sd)
-    )
-
-  classes_ms <- rb_ms %>%
-    dplyr::distinct(class) %>%
-    dplyr::arrange(class) %>%
-    dplyr::pull(class)
-
-  rb_mu_wide <- rb_ms %>%
-    dplyr::select(class, wl, mu) %>%
-    tidyr::pivot_wider(names_from = class, values_from = mu) %>%
-    dplyr::arrange(wl)
-
-  rb_sd_wide <- rb_ms %>%
-    dplyr::select(class, wl, sd) %>%
-    tidyr::pivot_wider(names_from = class, values_from = sd) %>%
-    dplyr::arrange(wl)
-
-  rb_wl_master <- rb_mu_wide$wl
-
-  r_b_mu_lib <- vapply(classes_ms, function(cl) {
-    interp1(rb_wl_master, rb_mu_wide[[cl]], wavelength)
-  }, FUN.VALUE = numeric(length(wavelength)))
-
-  r_b_sd_lib <- vapply(classes_ms, function(cl) {
-    interp1(rb_wl_master, rb_sd_wide[[cl]], wavelength)
-  }, FUN.VALUE = numeric(length(wavelength)))
-
-  r_b_mu_lib <- matrix(r_b_mu_lib, nrow = length(wavelength), ncol = length(classes_ms))
-  r_b_sd_lib <- matrix(r_b_sd_lib, nrow = length(wavelength), ncol = length(classes_ms))
-  colnames(r_b_mu_lib) <- classes_ms
-  colnames(r_b_sd_lib) <- classes_ms
-  r_b_sd_lib <- pmax(r_b_sd_lib, sd_floor)
+  # rb_ms <- r_b_gamache %>%
+  #   dplyr::transmute(
+  #     class = as.character(.data$class),
+  #     wl    = as.numeric(.data$wavelength),
+  #     mu    = as.numeric(.data$r_b_mean),
+  #     sd    = as.numeric(.data$r_b_sd)
+  #   )
+  #
+  # classes_ms <- rb_ms %>%
+  #   dplyr::distinct(class) %>%
+  #   dplyr::arrange(class) %>%
+  #   dplyr::pull(class)
+  #
+  # rb_mu_wide <- rb_ms %>%
+  #   dplyr::select(class, wl, mu) %>%
+  #   tidyr::pivot_wider(names_from = class, values_from = mu) %>%
+  #   dplyr::arrange(wl)
+  #
+  # rb_sd_wide <- rb_ms %>%
+  #   dplyr::select(class, wl, sd) %>%
+  #   tidyr::pivot_wider(names_from = class, values_from = sd) %>%
+  #   dplyr::arrange(wl)
+  #
+  # rb_wl_master <- rb_mu_wide$wl
+  #
+  # r_b_mu_lib <- vapply(classes_ms, function(cl) {
+  #   interp1(rb_wl_master, rb_mu_wide[[cl]], wavelength)
+  # }, FUN.VALUE = numeric(length(wavelength)))
+  #
+  # r_b_sd_lib <- vapply(classes_ms, function(cl) {
+  #   interp1(rb_wl_master, rb_sd_wide[[cl]], wavelength)
+  # }, FUN.VALUE = numeric(length(wavelength)))
+  #
+  # r_b_mu_lib <- matrix(r_b_mu_lib, nrow = length(wavelength), ncol = length(classes_ms))
+  # r_b_sd_lib <- matrix(r_b_sd_lib, nrow = length(wavelength), ncol = length(classes_ms))
+  # colnames(r_b_mu_lib) <- classes_ms
+  # colnames(r_b_sd_lib) <- classes_ms
+  # r_b_sd_lib <- pmax(r_b_sd_lib, sd_floor)
 
   # ---- Bottom replicate spectra: LOW-RANK PCA PRIOR IN LOGIT SPACE ----
   rb_obs <- readr::read_csv(rb_obs_path, show_col_types = FALSE) %>%
@@ -499,8 +499,8 @@ make_luts_gmm <- function(
     a_w = a_w_int, a0 = a0_int, a1 = a1_int, bb_w = bb_w,
 
     # legacy mean/sd (optional)
-    r_b_mu_lib = r_b_mu_lib,
-    r_b_sd_lib = r_b_sd_lib,
+    # r_b_mu_lib = r_b_mu_lib,
+    # r_b_sd_lib = r_b_sd_lib,
 
     # low-rank PCA prior objects (ETA / LOGIT SPACE)
     classes = classes,

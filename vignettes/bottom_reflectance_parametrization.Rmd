@@ -46,238 +46,233 @@ here <- function(...) {
 ```
 
 ```{r}
-
-```
-
-```{r}
 r_b_gamache <- read_csv("/home/raphael/R/SABER/inst/extdata/r_b_gamache_obs.csv")
 
 spectra_df <- r_b_gamache %>%
+  filter(
+    wavelength > 400, wavelength < 720,
+    class %in% c("algae_coralline", "algae_brown", "sediment")
+    ) %>%
   pivot_wider(
     names_from = wavelength,
     values_from = r_b,
     names_prefix = "wl_"
   )
-
-# spectra_df: columns = class, and one column per wavelength OR a matrix list
-# Suppose you have: class, and columns named like wl_350, wl_351, ... or numeric names
-wl_cols <- grep("^wl_", names(spectra_df), value = TRUE)
-
-eps <- 1e-8
-shrink_cov <- function(S, lambda = 0.1) {
-  D <- diag(diag(S))
-  (1 - lambda) * S + lambda * D
-}
-
-fit_class_gaussians <- function(df, lambda = 0.1) {
-  X <- as.matrix(df[, wl_cols])
-  # mean-normalize each spectrum (row)
-  m <- rowMeans(X)
-  Xn <- X / (m + eps)
-
-  mu <- colMeans(Xn)
-  S  <- cov(Xn)
-  S  <- shrink_cov(S, lambda = lambda)
-  L  <- chol(S)
-
-  list(mu = mu, L = L, n = nrow(Xn))
-}
-
-fits <- spectra_df %>%
-  group_by(class) %>%
-  group_split() %>%
-  map(~fit_class_gaussians(.x, lambda = 0.1))
-
-classes <- spectra_df %>% distinct(class) %>% pull(class)
-K <- length(classes)
-
-# mixture weights from library proportions
-counts <- map_int(fits, "n")
-rb_pi <- counts / sum(counts)
-
-rb_mu_k <- lapply(fits, `[[`, "mu")
-rb_L_k  <- lapply(fits, `[[`, "L")
 ```
 
 ```{r}
-library(dplyr)
-library(tidyr)
-library(purrr)
-library(ggplot2)
-
-# --- identify wavelength columns ---
-wl_cols <- grep("^wl_", names(spectra_df), value = TRUE)
-wavelength <- as.numeric(sub("^wl_", "", wl_cols))
-
-eps <- 1e-8
-shrink_cov <- function(S, lambda = 0.1) {
-  D <- diag(diag(S))
-  (1 - lambda) * S + lambda * D
+clamp01 <- function(x, eps = 1e-6) {
+  pmin(pmax(x, eps), 1 - eps)
 }
 
-fit_class_gaussian <- function(df, lambda = 0.1) {
-  X <- as.matrix(df[, wl_cols, drop = FALSE])
-  Xn <- X / (rowMeans(X) + eps)          # mean-normalize each spectrum (shape only)
+eta_X <- spectra_df %>%
+  select(starts_with("wl_")) %>%
+  as.matrix()
 
-  mu <- colMeans(Xn)
-  S  <- cov(Xn)
-  S  <- shrink_cov(S, lambda = lambda)
+eta_X <- qlogis(clamp01(eta_X))
 
-  sd <- sqrt(diag(S))
-  list(mu = mu, sd = sd, Xn = Xn)
-}
+eta_long <- eta_X %>%
+  as.data.frame() %>%
+  mutate(id = row_number()) %>%
+  pivot_longer(-id, names_to = "wl", values_to = "eta")
 
-lambda <- 0.1  # adjust if needed for stability
-fits <- spectra_df %>%
-  group_by(class) %>%
-  group_split() %>%
-  set_names(map_chr(., ~ unique(.x$class))) %>%
-  map(~ fit_class_gaussian(.x, lambda = lambda))
+eta_long$wavelength <- as.numeric(gsub("wl_", "", eta_long$wl))
 
-# --- long-form normalized library spectra for plotting ---
-lib_long <- spectra_df %>%
-  select(class, all_of(wl_cols)) %>%
-  mutate(.row = row_number()) %>%
-  pivot_longer(all_of(wl_cols), names_to = "wl", values_to = "R") %>%
-  group_by(.row) %>%
-  mutate(Rn = R / (mean(R) + eps)) %>%    # mean-normalize per spectrum
-  ungroup() %>%
-  mutate(wavelength = as.numeric(sub("^wl_", "", wl))) %>%
-  select(class, .row, wavelength, Rn)
-
-# --- per-class mu +/- sd bands ---
-mu_sd_long <- imap_dfr(fits, function(fit, cls) {
-  tibble(
-    class = cls,
-    wavelength = wavelength,
-    mu = fit$mu,
-    sd = fit$sd,
-    lo = fit$mu - fit$sd,
-    hi = fit$mu + fit$sd
-  )
-})
-
-# --- plot ---
-ggplot() +
-  geom_line(
-    data = lib_long,
-    aes(x = wavelength, y = Rn, group = interaction(class, .row), color = class),
-    linewidth = 0.4, alpha = 0.35
-  ) +
-  geom_ribbon(
-    data = mu_sd_long,
-    aes(x = wavelength, ymin = lo, ymax = hi, fill = class),
-    alpha = 0.15, linewidth = 0
-  ) +
-  geom_line(
-    data = mu_sd_long,
-    aes(x = wavelength, y = mu, color = class),
-    linewidth = 1.1
-  ) +
-  labs(
-    x = "wavelength (nm)",
-    y = "Normalized bottom reflectance (mean-normalized)",
-    title = "Bottom library (normalized) and fitted class Gaussian prior: μ ± 1σ"
-  ) +
-  theme_minimal(base_size = 13) +
-  theme(legend.title = element_blank())
+ggplot(eta_long, aes(x = wavelength, y = eta, group = id)) +
+  geom_line(alpha = 0.2) +
+  labs(title = "Spectra in eta (logit) space")
 ```
 
 ```{r}
-# ---- Bottom replicate spectra: low-rank PCA prior ----
-rb_obs <- read_csv("/home/raphael/R/SABER/inst/extdata/r_b_gamache_obs.csv") %>%
-  dplyr::mutate(
-    class = as.character(.data$class),
-    wavelength = as.numeric(.data$wavelength),
-    r_b = as.numeric(.data$r_b)
-  )
+mu_global <- colMeans(eta_X)
+Xc <- sweep(eta_X, 2, mu_global, "-")
 
-# identify replicate id if present; otherwise fabricate within class
-id_col <- intersect(names(rb_obs), c("time_target"))
-if (length(id_col) == 0) {
-  rb_obs <- rb_obs %>%
-    group_by(class) %>%
-    arrange(wavelength, .by_group = TRUE) %>%
-    mutate(rep_id = cumsum(c(1, diff(wavelength) < 0))) %>%
-    ungroup()
-  id_col <- "rep_id"
-} else {
-  id_col <- id_col[1]
+p <- prcomp(Xc, center = FALSE, scale. = FALSE)
+
+# Variance explained
+explained_var <- p$sdev^2 / sum(p$sdev^2)
+
+plot(explained_var, type = "b",
+     main = "Variance explained by each PC",
+     ylab = "Proportion of variance")
+```
+
+```{r}
+q_eff <- 7
+eta_U <- p$rotation[, 1:q_eff]
+
+U_df <- as.data.frame(eta_U) %>%
+  mutate(wavelength = as.numeric(gsub("wl_", "", colnames(eta_X)))) %>%
+  pivot_longer(-wavelength, names_to = "PC", values_to = "value")
+
+ggplot(U_df, aes(x = wavelength, y = value)) +
+  geom_line() +
+  facet_wrap(~PC, scales = "free_y") +
+  labs(title = "PCA basis spectra (eta space)")
+```
+
+```{r}
+# Position of spectrum in PC space
+Ak <- Xc %*% eta_U   # Matrix multiplication: sum of product of Xc rows element to eta_U columns elements
+
+scores_df <- as.data.frame(Ak)
+colnames(scores_df) <- paste0("PC", 1:q_eff)
+
+pairs(scores_df[,1:7],
+      main = "PCA score space")
+```
+
+```{r}
+scores_df$class <- spectra_df$class
+
+ggplot(scores_df, aes(PC1, PC2, color = class)) +
+  geom_point(alpha = 0.5)
+```
+
+```{r}
+class_k <- unique(scores_df$class)[1]
+Ak_k <- scores_df %>%
+  filter(class == class_k) %>%
+  select(starts_with("PC")) %>%
+  as.matrix()
+
+Sk <- cov(Ak_k)
+print(Sk)
+```
+
+```{r}
+corrplot::corrplot(cor(Ak_k), method = "color")
+```
+
+```{r}
+i <- 10
+r_original <- Xc[i, ]
+a <- Ak[i, ]
+
+r_recon <- eta_U %*% a
+r_recon <- as.numeric(r_recon)
+
+df_compare <- tibble(
+  wavelength = as.numeric(gsub("wl_", "", colnames(eta_X))),
+  original = r_original,
+  recon = r_recon
+)
+
+ggplot(df_compare, aes(wavelength)) +
+  geom_line(aes(y = original), color = "black") +
+  geom_line(aes(y = recon), color = "red") +
+  labs(title = "Original vs PCA reconstruction (eta space)")
+```
+
+```{r}
+X <- eta_X
+mu <- colMeans(X)
+Xc <- sweep(X, 2, mu, "-")
+p <- prcomp(Xc, center = FALSE, scale. = FALSE)
+
+max_q <- 20
+errs <- numeric(max_q)
+
+for (q in 1:max_q) {
+  U <- p$rotation[, 1:q, drop = FALSE]
+  A <- Xc %*% U
+  Xhat <- A %*% t(U)
+  E <- Xc - Xhat
+  errs[q] <- mean(E^2)
 }
 
-spectra_df <- rb_obs %>%
-  dplyr::select(class, dplyr::all_of(id_col), wavelength, r_b) %>%
-  tidyr::pivot_wider(names_from = wavelength, values_from = r_b, names_prefix = "wl_")
+# tibble(q = 1:max_q, mse = errs) %>%
+#   ggplot(aes(q, mse)) +
+#   geom_line() + geom_point() +
+#   geom_text(aes(label = signif(mse, 2)), vjust = -0.5, size = 3) +
+#   scale_y_log10() +
+#   labs(title = "Mean squared reconstruction error vs number of PCs",
+#        y = "MSE in eta space")
 
-wl_cols <- grep("^wl_", names(spectra_df), value = TRUE)
-wl_native <- as.numeric(sub("^wl_", "", wl_cols))
-ord <- order(wl_native)
-wl_cols <- wl_cols[ord]
-wl_native <- wl_native[ord]
+ply <- tibble(q = 1:max_q, mse = errs) %>%
+  plot_ly(
+    x = ~q,
+    y = ~mse,
+    # text = ~sprintf("%.2e", mse),
+    type = "scatter",
+    mode = "lines+markers+text",
+    textposition = "top right",
+    marker = list(color = "black"),
+    line = list(color = "black")
+  ) %>%
+  layout(
+    xaxis = list(title = TeX("\\Large{q}")),
+    yaxis = list(
+      title = TeX("\\Large{\\text{MSE}}"),
+      type = "log"
+    ),
+    font = font,
+    shapes = list(
+      border
+    )
+  ) %>%
+  config(mathjax = "cdn", displayModeBar = FALSE)
 
-X_native <- as.matrix(spectra_df[, wl_cols, drop = FALSE])
-wl_target <- as.numeric(wavelength)
+ply
 
-# interpolate each replicate spectrum onto Stan grid
-X <- t(apply(X_native, 1, function(row_vals) {
-  y <- as.numeric(row_vals)
-  ok <- is.finite(y)
-  if (sum(ok) < 2) return(rep(NA_real_, length(wl_target)))
-  interp1(wl_native[ok], y[ok], wl_target)
-}))  # [n_spec, n_wl]
+# save_image(ply, here("4_chapter/figure/pca_q_mse.png"), width = 550, height = 550, scale = 4)
+```
 
-# fill any non-finite with column medians
-if (any(!is.finite(X))) {
-  col_med <- apply(X, 2, function(z) stats::median(z, na.rm = TRUE))
-  for (j in seq_len(ncol(X))) {
-    bad <- !is.finite(X[, j])
-    if (any(bad)) X[bad, j] <- col_med[j]
+```{r}
+X <- eta_X
+mu <- colMeans(X)
+Xc <- sweep(X, 2, mu, "-")
+p <- prcomp(Xc, center = FALSE, scale. = FALSE)
+
+max_q <- 20
+errs <- numeric(max_q)
+
+for (q in 1:max_q) {
+  U <- p$rotation[, 1:q, drop = FALSE]
+  A <- Xc %*% U
+  Xhat <- A %*% t(U)
+  E <- Xc - Xhat
+  if (q == 1) {
+    errs[q] <- abs(0 - mean(E^2))
+  } else {
+    errs[q] <- abs(errs[q-1] - mean(E^2))
   }
+  
 }
 
-cls_vec <- spectra_df$class
-classes <- sort(unique(cls_vec))
-K <- length(classes)
+# tibble(q = 1:max_q, mse = errs) %>%
+#   ggplot(aes(q, mse)) +
+#   geom_line() + geom_point() +
+#   geom_text(aes(label = signif(mse, 2)), vjust = -0.5, size = 3) +
+#   scale_y_log10() +
+#   labs(title = "Mean squared reconstruction error vs number of PCs",
+#        y = "MSE in eta space")
 
-# global PCA basis (shared across classes)
-mu_global <- colMeans(X)
-Xc <- sweep(X, 2, mu_global, "-")
-p <- stats::prcomp(Xc, center = FALSE, scale. = FALSE)
+ply <- tibble(q = 1:max_q, mse = errs) %>%
+  plot_ly(
+    x = ~q,
+    y = ~mse,
+    # text = ~sprintf("%.2e", mse),
+    type = "scatter",
+    mode = "lines+markers+text",
+    textposition = "top right",
+    marker = list(color = "black"),
+    line = list(color = "black")
+  ) %>%
+  layout(
+    xaxis = list(title = TeX("\\Large{q}")),
+    yaxis = list(
+      title = TeX("\\Large{\\text{MSE}}")#,
+      # type = "log"
+    ),
+    font = font,
+    shapes = list(
+      border
+    )
+  ) %>%
+  config(mathjax = "cdn", displayModeBar = FALSE)
 
-q_eff <- min(q, ncol(p$rotation), ncol(X))
-rb_U <- p$rotation[, 1:q_eff, drop = FALSE]  # [n_wl, q]
+ply
 
-rb_mu_k <- vector("list", K)
-rb_tau_k <- vector("list", K)
-rb_sigma2_k <- numeric(K)
-counts <- integer(K)
-
-for (i in seq_along(classes)) {
-  cl <- classes[i]
-  idx <- which(cls_vec == cl)
-  counts[i] <- length(idx)
-  
-  Xk <- X[idx, , drop = FALSE]
-  mu_k <- colMeans(Xk)
-  rb_mu_k[[i]] <- as.numeric(mu_k)
-  
-  # residuals around class mean
-  Rk <- sweep(Xk, 2, mu_k, "-")        # [n_k, n_wl]
-  Ak <- Rk %*% rb_U                    # [n_k, q]
-  tau <- apply(Ak, 2, stats::sd)
-  tau[!is.finite(tau)] <- 0
-  tau <- pmax(tau, tau_floor)
-  rb_tau_k[[i]] <- as.numeric(tau)
-  
-  Rhat <- Ak %*% t(rb_U)
-  Ek <- Rk - Rhat
-  sigma2 <- mean(Ek^2)
-  sigma2 <- max(sigma2, sigma2_floor)
-  rb_sigma2_k[i] <- sigma2
-}
-
-names(rb_mu_k) <- classes
-names(rb_tau_k) <- classes
-rb_pi <- counts / sum(counts)
+# save_image(ply, here("4_chapter/figure/pca_q_mse.png"), width = 550, height = 550, scale = 4)
 ```
-

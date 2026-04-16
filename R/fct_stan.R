@@ -32,7 +32,7 @@ fit_one <- function(
     return(mod$optimize(
       data = stan_data,
       seed = seed,
-      output_dir = output_dir,
+      # output_dir = output_dir,
       refresh = 0
     ))
   }

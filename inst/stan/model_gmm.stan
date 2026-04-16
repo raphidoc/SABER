@@ -28,52 +28,29 @@ functions {
       vector r_b
       );
 
-      // real mvn_lowrank_orth_lpdf(
-      //   vector y,
-      //   vector mu,
-      //   matrix U,        // [n, q], columns orthonormal
-      //   vector tau,      // length q, std dev in PC space
-      //   real sigma2      // residual variance
-      //   ) {
-      //     int n = num_elements(y);
-      //     int q = num_elements(tau);
-      //     vector[n] r = y - mu;
-      //     vector[q] a = U' * r;                   // PC coords
-      //     vector[q] denom = sigma2 + square(tau); // sigma2 + tau_j^2
-      //
-      //     // logdet = (n-q)*log(sigma2) + sum_j log(sigma2 + tau_j^2)
-      //     real logdet = (n - q) * log(sigma2) + sum(log(denom));
-      //
-      //     // quad = (||r||^2 - sum_j (tau_j^2/(sigma2+tau_j^2)) * a_j^2) / sigma2
-      //     vector[q] w = square(tau) ./ denom;
-      //     real quad = (dot_self(r) - dot_product(w, square(a))) / sigma2;
-      //
-      //     return -0.5 * (n * log(2*pi()) + logdet + quad);
-      //   }
+      real mvn_lowrank_orth_corr_lpdf(
+        vector y,
+        vector mu,
+        matrix U,              // [n, q], orthonormal columns
+        matrix L,              // [q, q], lower Cholesky of Sigma in PC space
+        real sigma2
+        ) {
+          int n = num_elements(y);
+          int q = cols(U);
+          vector[n] r = y - mu;
 
-        real mvn_lowrank_orth_corr_lpdf(
-          vector y,
-          vector mu,
-          matrix U,              // [n, q], orthonormal columns
-          matrix L,              // [q, q], lower Cholesky of Sigma in PC space
-          real sigma2
-          ) {
-            int n = num_elements(y);
-            int q = cols(U);
-            vector[n] r = y - mu;
+          vector[q] a = U' * r;                 // PC coords
+          vector[n] e = r - U * a;              // orthogonal residual (because U orthonormal)
 
-            vector[q] a = U' * r;                 // PC coords
-            vector[n] e = r - U * a;              // orthogonal residual (because U orthonormal)
+          // a ~ MVN(0, L L')
+          vector[q] z = mdivide_left_tri_low(L, a);
+          real lp_a = -0.5 * (q * log(2*pi()) + 2 * sum(log(diagonal(L))) + dot_self(z));
 
-            // a ~ MVN(0, L L')
-            vector[q] z = mdivide_left_tri_low(L, a);
-            real lp_a = -0.5 * (q * log(2*pi()) + 2 * sum(log(diagonal(L))) + dot_self(z));
+          // e ~ N(0, sigma2 I) in the (n-q)-dim orthogonal complement
+          real lp_e = -0.5 * ((n - q) * log(2*pi()) + (n - q) * log(sigma2) + dot_self(e) / sigma2);
 
-            // e ~ N(0, sigma2 I) in the (n-q)-dim orthogonal complement
-            real lp_e = -0.5 * ((n - q) * log(2*pi()) + (n - q) * log(sigma2) + dot_self(e) / sigma2);
-
-            return lp_a + lp_e;
-          }
+          return lp_a + lp_e;
+        }
 
 
 }
@@ -93,13 +70,6 @@ data {
   // ----- Bottom prior: class-conditional GMM on mean-normalized shape -----
   int<lower=1> K;
   int<lower=1> q;
-
-  // matrix[n_wl, q] rb_U;                // shared PCA basis
-  // array[K] vector[n_wl] rb_mu_k;       // class means (raw spectra)
-  // // array[K] vector[q] rb_tau_k;         // class PC std devs
-  // array[K] matrix[q, q] rb_L_k;   // lower Cholesky of PC-score covariance per class
-  // vector<lower=0>[K] rb_sigma2_k;      // class residual variance
-  // simplex[K] rb_pi;                    // FIXED weights (data)
 
   array[K] vector[n_wl] eta_mu_k;
   matrix[n_wl, q] eta_U;
@@ -126,7 +96,7 @@ data {
   real bb_p_gamma_mu;
   real bb_p_gamma_sd;
 
-  // Depth prior (optional; use what you prefer)
+  // Depth prior
   real h_w_mu;
   real h_w_sd;
 }
@@ -147,8 +117,7 @@ parameters {
   real<lower=0, upper=30> h_w;
 
   // Bottom: channelwise raw spectrum
-  // vector<lower=1e-5>[n_wl] r_b_raw;
-  vector[n_wl] eta_b;  // unconstrained latent
+  vector[n_wl] eta_b;
 
   // Model discrepancy (same units as Rrs)
   real<lower=0> sigma_model;
@@ -209,30 +178,7 @@ model {
 
   h_w ~ normal(h_w_mu, h_w_sd);
 
-  // {
-  //   vector[n_wl] y = log(r_b_raw + 1e-8);
-  //   for (i in 2:(n_wl-1)) {
-  //     real d2 = y[i+1] - 2*y[i] + y[i-1];
-  //     d2 ~ normal(0, 0.5); // smaller = smoother
-  //   }
-  // }
-
-  // {
-  //   vector[n_wl] y = r_b_raw;
-  //   for (i in 2:(n_wl-1)) {
-  //     real d2 = y[i+1] - 2*y[i] + y[i-1];
-  //     d2 ~ normal(0, 0.05);
-  //   }
-  // }
-
   {
-    // vector[K] log_comp;
-    // for (k in 1:K) {
-      //   log_comp[k] =
-      //   log(rb_pi[k]) +
-      //   mvn_lowrank_orth_corr_lpdf(r_b_raw | rb_mu_k[k], rb_U, rb_L_k[k], rb_sigma2_k[k]);
-      // }
-      // target += log_sum_exp(log_comp);
       {
         vector[K] log_comp;
         for (k in 1:K) {
